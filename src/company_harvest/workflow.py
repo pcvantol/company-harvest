@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 import itertools
 import json
 import os
@@ -251,8 +252,10 @@ def _latest_artifact_rows(run: Run, step: str, kind_prefix: str) -> list[tuple[P
 
 
 def _peak_memory() -> tuple[int | None, str]:
+    if sys.platform == "win32":
+        return None, "UNAVAILABLE_ON_PLATFORM"
     try:
-        import resource
+        resource: Any = importlib.import_module("resource")
     except ImportError:
         return None, "UNAVAILABLE_ON_PLATFORM"
     maximum = int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)

@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 from company_harvest.audit import _overlap, trace, verify
 from company_harvest.core import HarvestError, initialize_run, read_tsv, write_tsv
 from company_harvest.workflow import (
+    _peak_memory,
     active_only,
     consolidate,
     exclude_sole_proprietorships,
@@ -86,6 +87,11 @@ def test_excel_safe_text(tmp_path: Path) -> None:
     write_xlsx(path, ["Bedrijfsnaam", "KVK-nummer"], [{"Bedrijfsnaam": "=cmd", "KVK-nummer": "00123456"}])
     sheet = load_workbook(path)["Bedrijven"]
     assert sheet["A2"].value == "'=cmd" and sheet.freeze_panes == "A2"
+
+
+def test_peak_memory_has_explicit_windows_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("company_harvest.workflow.sys.platform", "win32")
+    assert _peak_memory() == (None, "UNAVAILABLE_ON_PLATFORM")
 
 
 def test_partition_overlap_and_atomic_export_failure(run, monkeypatch: pytest.MonkeyPatch) -> None:
