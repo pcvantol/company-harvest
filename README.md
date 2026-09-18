@@ -21,7 +21,9 @@ Zie [de gebruikershandleiding](docs/functional/user-guide.md), [technische docum
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-De onafhankelijk gereviewde publieke versie is [Company Harvest v0.1.0](https://github.com/pcvantol/company-harvest/releases/tag/v0.1.0).
+Er is momenteel geen gepubliceerde GitHub Release. Het release-object `v0.1.0` en de
+assets zijn op 18 september 2026 op expliciet verzoek van de eigenaar verwijderd; de
+Git-tag en historische kwalificatie-evidence zijn behouden.
 
 ## Status van externe toegang
 

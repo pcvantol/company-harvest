@@ -44,7 +44,7 @@ Er wordt geen persoonlijke GitHub-URL, gebruikersnaam, lokaal pad of contactadre
 
 ### RD-003 — Outcome-gates gaan vóór een volgende release
 
-De volgende publieke release bundelt een betekenisvolle productverbetering, bijvoorbeeld een nieuwe gevalideerde bronadapter plus meetrapportage. `v0.1.0` wordt niet gewijzigd en het oude manifest wordt niet hergebruikt.
+De volgende publieke release bundelt een betekenisvolle productverbetering, bijvoorbeeld een nieuwe gevalideerde bronadapter plus meetrapportage. Het GitHub Release-object `v0.1.0` en de bijbehorende assets zijn op expliciet eigenaarsbesluit verwijderd; de historische tag blijft staan. Die tag wordt niet verplaatst en het oude manifest wordt niet hergebruikt.
 
 ### RD-004 — Geen automatische productieharvest
 
@@ -526,6 +526,7 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — GitHub Release `v0.1.0` verwijderd:** op expliciet besluit van de repository-eigenaar zijn het release-object en de vijf assets verwijderd. De Git-tag, broncommit en historische kwalificatie-evidence zijn behouden. Er is momenteel geen publieke release; een volgende release doorloopt opnieuw alle toepasselijke gates.
 - **2026-09-18 — CI-matrix gericht verkleind:** op expliciet besluit van de repository-eigenaar is RD-005 gewijzigd. Doorlopende CI valideert voortaan uitsluitend Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 zijn voor nieuwe wijzigingen `NOT_TESTED`. De overige kwaliteits- en releasegates blijven staan.
 - **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.
 - **2026-09-18 — KVK-nummermatching toegestaan:** op expliciet besluit van de repository-eigenaar is RD-007 toegevoegd. Kandidaten zonder initieel KVK-nummer mogen regulier worden gematcht en verrijkt; R8 vereist daarom niet langer R7. Alleen providerbulk, routemigratie en volledige rechtsvorm-/statusverificatie blijven onder RD-001/R7 geparkeerd.

@@ -20,7 +20,7 @@
 | CH-TEST-001 | >80% per file | ADR-004, `tools/check_coverage.py` | qualityrapport |
 | CH-TEST-002 | Onafhankelijke subagentreview | `docs/reviews/` | reviewdocument |
 | CH-DIST-001 | Wheel/sdist/bundle uit broncommit | `tools/release.py` | manifest/installtest |
-| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | release/downloadbewijs |
+| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | `REMOVED`; een volgende release moet opnieuw worden gekwalificeerd |
 | CH-DIST-003 | Cross-platform wrappers/preflight | `scripts/`, `preflight.py` | wrapper/CI-smokes |
 
 ## Roadmapbesluiten en outcome-gates
