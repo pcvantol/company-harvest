@@ -16,6 +16,7 @@ company-harvest sources duo --run-dir "$RUN_DIR" --limit 500
 company-harvest companies sample --run-dir "$RUN_DIR" --size 500 --review-size 25 --pilot-size 50
 company-harvest companies merge --run-dir "$RUN_DIR"
 company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
+company-harvest kvk pilot --run-dir "$RUN_DIR" --provider public-http --interval 2 --review-size 20
 company-harvest kvk resolve --run-dir "$RUN_DIR" --provider auto --limit 1
 company-harvest report --run-dir "$RUN_DIR"
 ```
@@ -86,5 +87,27 @@ company-harvest companies sample-review --run-dir "$RUN_DIR" --input beoordeling
 De beoordeling sluit alleen wanneer zij exact bij de actuele queue past. Persoons- en
 bedrijfsrecords, de review en de pilotselectie blijven lokale runartefacten en worden niet
 in Git opgenomen.
+
+`kvk pilot` voert de R8-selectie expliciet en sequentieel uit. Het commando probeert
+eerst offline exacte koppeling en raadpleegt alleen voor resterende records de huidige
+publieke frontendroute. Voor echte providers is twee seconden de minimale configureerbare
+interval. Gebruik geen `--refresh` tenzij de meetset bewust opnieuw moet
+worden opgebouwd; zonder die optie worden exact passende inhoudelijke terminale
+journaluitkomsten hergebruikt en technische `FAILED`/`DEFERRED`-regels hervat.
+`--max-live N` is uitsluitend een technische bovengrens: niet-uitgevoerde
+records blijven zichtbaar als technische terminale uitkomst.
+
+Vul alle regels van `r8_review_queue.csv` in een apart TSV-bestand met
+`queue_sha256`, `review_id`, `review_verdict` (`CONFIRMED`, `FALSE_MATCH` of
+`UNCERTAIN`), `review_seconds` en `review_notes`. Registreer dit met:
+
+```bash
+company-harvest kvk pilot-review --run-dir "$RUN_DIR" --input r8-beoordeling.tsv
+```
+
+Een gevonden KVK-nummer blijft voorlopig. `observed_legal_form` en `observed_status`
+zijn bronobservaties, geen geverifieerde canonieke velden. Ook een no-match, ambigu of
+technische fout verwijdert de oorspronkelijke kandidaat niet. Een succesvolle R8-review
+activeert R9 niet zolang R7 geparkeerd blijft.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

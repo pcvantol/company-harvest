@@ -23,3 +23,10 @@ oplevert, alle actieve families en beschikbare identifierstrata vertegenwoordigd
 bronrecords volledig sluiten naar dedupbeslissing of conflict, een exact gekoppelde
 gestratificeerde review geen onverklaarde false merge toont, en een 50-record-R8-pool plus
 vooraf bepaald metriekcontract lokaal gereedstaan zonder KVK-frontendcall.
+
+R8 is geaccepteerd wanneer de volledige R6-overdracht op hash en grootte is gevalideerd;
+iedere pilotkandidaat exact één terminale uitkomst heeft; geen nummer op naam, domein of
+score alleen wordt gekoppeld; ieder gekoppeld nummer een exact onafhankelijk bronveld en
+voorlopige verificatiestatus draagt; blokkades en hervatting gesloten zijn; de
+transactionele output/reviewlifecycle is getest; en een hashgebonden gestratificeerde
+review nul false matches en nul uncertain oplevert bij maximaal 5% technische fouten.

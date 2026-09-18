@@ -29,11 +29,11 @@
 |---|---|---|---|
 | CH-RM-001 | KVK-routemigratie, providerbulk en volledige bulkverificatie blijven geparkeerd tot expliciete activatie | `ROADMAP.md` RD-001/R7 | documentatiebesluit |
 | CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + toepasselijke CI |
-| CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R6 | roadmap; uitvoering gepland |
-| CH-RM-004 | Een brede set goede bronfamilies wordt vroeg verzameld; registratienummers bepalen routing, niet vroege toelating | `ROADMAP.md` RD-006/R3-R6 | portfolio-opbouw gepland |
+| CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R8 | R1-R6 en R8 uitgevoerd; R9/R10 geblokkeerd |
+| CH-RM-004 | Een brede set goede bronfamilies wordt vroeg verzameld; registratienummers bepalen routing, niet vroege toelating | `ROADMAP.md` RD-006/R3-R6 | vijf actieve families; R5/R6 `DONE` |
 | CH-RM-005 | Geen productieharvest vóór representatieve pilot-, sample- en schaalpoorten | `ROADMAP.md` RD-004/R8-R9 | eigenaar-go/no-go vereist |
-| CH-RM-006 | Verkleining gebeurt expliciet tussen raw-, candidate- en verified-lagen; onzekerheid veroorzaakt geen stil dataverlies | `ROADMAP.md` RD-006/R6/R8-R9 | ontwerpbesluit; implementatie gepland |
-| CH-RM-007 | Kandidaten zonder initieel KVK-nummer blijven waardevol en mogen regulier, bewijsbaar worden gematcht/verrijkt | `ROADMAP.md` RD-007/R6/R8 | ontwerpbesluit; pilot gepland |
+| CH-RM-006 | Verkleining gebeurt expliciet tussen raw-, candidate- en verified-lagen; onzekerheid veroorzaakt geen stil dataverlies | `ROADMAP.md` RD-006/R6/R8-R9 | R6/R8 bewezen; R9 geblokkeerd |
+| CH-RM-007 | Kandidaten zonder initieel KVK-nummer blijven waardevol en mogen regulier, bewijsbaar worden gematcht/verrijkt | `ROADMAP.md` RD-007/R6/R8 | 50-recordpilot en behoud bij iedere outcome bewezen |
 | CH-R1-001 | Iedere bron heeft catalogusschema 2 met expliciet identifier-, toegang-, meet-, herkomst- en laagprofiel | `sources.Source`, `SOURCE_HEADERS` | catalogus- en migratietests |
 | CH-R1-002 | Bronnen zonder KVK-kolom en ontbrekende/ongeldige nummers blijven verliesvrij als kandidaten behouden | `sources.import_source`, `RAW_HEADERS` | import- en parserfixtures |
 | CH-R1-003 | Outcome-rapportage meet per bron, dedup/conflict/review, kandidaatdiversiteit/-overlap, resourcegroei en closure per procesovergang | `workflow.outcome_metrics`, `workflow.report` | lege/dubbele/conflict- en volledige-pipelinefixtures |
@@ -56,4 +56,9 @@
 | CH-R6-002 | Iedere sample-input eindigt aantoonbaar in een kandidaatbeslissing of conflict zonder stil verlies | R6 count-closure | 500 = 500 decision-/conflictinputs; regressietests |
 | CH-R6-003 | Een gestratificeerde handmatige beslissingsreview is exact gekoppeld aan de actuele queue en sluit zonder onverklaarde false merge | CLI `companies sample-review` | 25/25 `CONFIRMED`, reviewstatus `PASS` |
 | CH-R6-004 | R8 krijgt vóór uitvoering een reproduceerbare kleine pilotpool en vast metriekcontract, zonder KVK-call in R6 | `r8_pilot_selection`, R6-rapport schema 1 | 50 kandidaten zonder direct KVK; terminale uitkomsten en capaciteitsmetrics vastgelegd |
+| CH-R8-001 | Iedere pilotkandidaat krijgt exact één terminale uitkomst zonder verlies van no-match, ambigu of technische kandidaten | `matching.py`, R8-rapport schema 1 | 50/50 closure; regressietests + R8-meting |
+| CH-R8-002 | Automatische KVK-koppeling vereist exacte naam plus onafhankelijk exact bronveld; naam/domein/score alleen is nooit voldoende | `_offline_match`, `_public_match` | unit-/branchtests; 15 voorlopige sterke-veldenmatches |
+| CH-R8-003 | Meerdere KVK-kandidaten en bronconflicten worden niet gemerged; rechtsvorm/status blijven bronobservaties | terminale outcomecontract en verificatiestatus | ambigu-/conflicttests + 6 lokale ambigu-uitkomsten |
+| CH-R8-004 | Review is gestratificeerd, exact aan de actuele queue gebonden en bepaalt thresholds pas na succesvolle kwaliteitscontrole | `kvk pilot-review`, reviewrapport schema 1 | 20/20 `CONFIRMED`; nul false/uncertain; R9-metriekgrenzen vastgelegd |
+| CH-R8-005 | R8 publiceert atomisch, hervat alleen exact gebonden outcomes en stopt veilig op providerblokkades | requestjournal, providerlock, publication helpers | resume-, rollback-, live-limit- en blokkadetests |
 | CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |

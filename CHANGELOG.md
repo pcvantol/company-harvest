@@ -24,6 +24,9 @@
 - Deterministische R6-sampling over bronfamilie en identifierstatus met een gesloten
   500-record dedupmeting, expliciete reviewimport, resourcebaseline en reproduceerbare
   50-recordselectie plus metriekcontract voor de R8-matchingpilot.
+- Begrensde R8-identiteitsmatching met offline-first sterke-veldenbewijs, sequentiële
+  publieke frontendfallback, exact hervatjournal, vijf terminale uitkomsten,
+  transactionele reviewlifecycle en reviewgestuurde R9-thresholds zonder naam-onlymerge.
 
 ## 0.1.0 - 2026-09-18
 

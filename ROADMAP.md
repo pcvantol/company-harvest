@@ -113,8 +113,8 @@ Daarbij gelden de volgende grenzen:
 | R5 | `DONE` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `DONE` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
-| R8 | `NEXT` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
-| R9 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
+| R8 | `DONE` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
+| R9 | `BLOCKED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
 | R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
 
 De volgorde is outcome-gedreven. Een later increment mag niet worden gestart omdat het technisch aantrekkelijk is; de afhankelijkheden en exitcriteria moeten eerst zijn gehaald.
@@ -465,8 +465,9 @@ Zolang R7 `PARKED` is, zijn bulkgebruik van een KVK-provider en volledige KVK-ve
 
 ## 13. R8 — Begrensde KVK-nummermatchingpilot
 
-Status: `NEXT`; de reproduceerbare gestratificeerde kandidaatlaag uit R6 is gereed. R7
-blijft `PARKED` en is voor deze begrensde identiteitsmatching niet vereist.
+Status: `DONE`; implementatie, echte 50-recordmeting, hashgebonden review en
+onafhankelijke finale review zijn afgerond met status `PASS`. R7 blijft `PARKED` en is
+voor deze begrensde identiteitsmatching niet vereist.
 
 De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. Zulke bronnen kunnen waardevolle organisaties leveren zonder direct KVK-nummer. R8 meet daarom expliciet hoe goed hun kandidaten naar een KVK-nummer kunnen worden verrijkt. Het doel is identiteitskoppeling, niet het omzeilen van het geparkeerde besluit over providerbulk, rechtsvorm of ondernemingsstatus.
 
@@ -494,7 +495,7 @@ De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten
 
 ## 14. R9 — Volledige sample- en schaalvalidatie
 
-Status: `PLANNED`, onvoorwaardelijk afhankelijk van R6, een geslaagde R8-pilot en een expliciet geactiveerd en succesvol afgerond R7-besluit.
+Status: `BLOCKED`, onvoorwaardelijk afhankelijk van R6, een geslaagde R8-pilot en een expliciet geactiveerd en succesvol afgerond R7-besluit. R6 en R8 zijn gereed; R7 blijft expliciet `PARKED`, waardoor R9 niet uitvoerbaar is.
 
 ### Fase A — volledige sample van 500
 
@@ -588,6 +589,11 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — R8 afgerond:** de byte-exact aan pilot en bronartefactset gebonden
+  50-recordmatchingpilot sloot met 15 voorlopige matches, 28 no-match, 6 ambigu, nul
+  bronconflicten en 1 technische fout. De hashgebonden review bevestigde 20/20
+  beslissingen zonder false/uncertain; onafhankelijke review is `PASS`. R8 is `DONE`,
+  R7 blijft `PARKED` en R9 daarom `BLOCKED`.
 - **2026-09-18 — R6 afgerond:** de vijf-bronnenlaag is deterministisch gestratificeerd
   tot 500 records, volledig gededupliceerd en gesloten. Alle 25 handmatig beoordeelde
   beslissingen zijn bevestigd; de 50-record-R8-pilotpool en het vooraf bepaalde

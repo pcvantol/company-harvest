@@ -14,6 +14,7 @@ from company_harvest.core import HarvestError, data_root, initialize_run, open_r
 from company_harvest.gleif import collect_gleif
 from company_harvest.kvk import preflight as kvk_preflight
 from company_harvest.kvk import resolve
+from company_harvest.matching import record_matching_review, run_matching_pilot
 from company_harvest.merge_lists import InputOptions, merge_lists
 from company_harvest.preflight import host, run_preflight
 from company_harvest.public_registers import collect_public_register
@@ -74,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
     kvk = commands.add_parser("kvk").add_subparsers(dest="kvk_command", required=True)
     kp = kvk.add_parser("preflight"); _run_arg(kp); _provider_arg(kp)
     kr = kvk.add_parser("resolve"); _run_arg(kr); _provider_arg(kr); kr.add_argument("--resume", action="store_true"); kr.add_argument("--refresh", action="store_true"); kr.add_argument("--headed", action="store_true"); kr.add_argument("--limit", type=int); kr.add_argument("--interval", type=float, default=2.0)
+    pilot = kvk.add_parser("pilot"); _run_arg(pilot); _provider_arg(pilot); pilot.add_argument("--refresh", action="store_true"); pilot.add_argument("--interval", type=float, default=2.0); pilot.add_argument("--review-size", type=int, default=20); pilot.add_argument("--max-live", type=int)
+    pilot_review = kvk.add_parser("pilot-review"); _run_arg(pilot_review); pilot_review.add_argument("--input", type=Path, required=True)
     kc = kvk.add_parser("consolidate"); _run_arg(kc)
     exp = commands.add_parser("export"); _run_arg(exp); exp.add_argument("--limit", type=int, default=10000); exp.add_argument("--allow-partial", action="store_true")
     rep = commands.add_parser("report"); _run_arg(rep)
@@ -117,6 +120,8 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "companies" and args.companies_command == "sample-review": _print(record_sample_review(run, args.input)); return 0
     if args.command == "companies" and args.companies_command == "merge": _print(merge_candidates(run)); return 0
     if args.command == "kvk" and args.kvk_command == "preflight": print(kvk_preflight(run, args.provider)); return 0
+    if args.command == "kvk" and args.kvk_command == "pilot": _print(run_matching_pilot(run, args.provider, args.interval, args.refresh, args.review_size, args.max_live)); return 0
+    if args.command == "kvk" and args.kvk_command == "pilot-review": _print(record_matching_review(run, args.input)); return 0
     if args.command == "kvk" and args.kvk_command == "resolve": _print(resolve(run, args.provider, args.limit, args.resume, args.refresh, args.headed, args.interval)); return 0
     if args.command == "kvk" and args.kvk_command == "consolidate": print(consolidate(run)); return 0
     if args.command == "companies" and args.companies_command == "exclude-sole-proprietorships": _print(exclude_sole_proprietorships(run)); return 0

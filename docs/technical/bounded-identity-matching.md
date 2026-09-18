@@ -1,0 +1,58 @@
+# Begrensde identiteitsmatching naar KVK-nummer
+
+R8 koppelt de reproduceerbare R6-pilotpool aan een KVK-nummer zonder het geparkeerde
+R7-besluit over routemigratie, providerbulk of volledige verificatie te activeren. De
+opdracht is expliciet en wordt niet gestart door `run execute`.
+
+## Beslisvolgorde
+
+1. Controleer hashes en groottes van pilot, sample, R6-reviewqueue en R6-reviewrapport.
+2. Eis een actuele, hashgebonden R6-review met status `PASS`.
+3. Zoek eerst offline in de geregistreerde bronartefacten. Bind pad, kind, SHA-256 en
+   grootte van de volledige actuele bronset aan journal, rapport en runtimeconfiguratie;
+   een offline beslissing verwijst daarnaast naar exact artefact en bronrij.
+4. Gebruik alleen wanneer nodig de huidige publieke frontendroute, klein en sequentieel;
+   de echte provider accepteert geen interval onder twee seconden.
+5. Ken iedere kandidaat exact één terminale uitkomst toe.
+6. Publiceer resultaten, queue en rapport als één transactionele outputset en maak een
+   eerdere R8-review en latere stappen stale.
+
+Een automatische match vereist een exact genormaliseerde naam én een onafhankelijk exact
+bronveld: plaats of websitehost. Naam-only, domein-only en scores zijn nooit zelfstandig
+matchbewijs. Meerdere sterke KVK-kandidaten worden `AMBIGUOUS`; conflicterende offline
+bronnen worden `SOURCE_CONFLICT`. Een volledige response zonder exactenaamhit wordt
+`NO_MATCH`. Een onvolledige of technisch mislukte zoekactie wordt `TECHNICAL_ERROR`.
+
+## Betekenis van velden
+
+Een gekoppeld nummer krijgt `PROVISIONAL_*_IDENTITY_MATCH` en is nog geen definitieve
+ondernemingssleutel. Rechtsvorm, status en plaats uit de frontend zijn bronobservaties en
+blijven buiten de verificatiesemantiek. Een `NO_MATCH`, `AMBIGUOUS` of technische fout
+verwijdert de kandidaat niet.
+
+## Hervatten en blokkades
+
+Het requestjournal bindt ieder resultaat aan kandidaatinhoud, bronfeatures, pilothash,
+provider en de byte-exacte actuele bronartefactset. Alleen een exact passende
+inhoudelijke terminale uitkomst wordt hergebruikt;
+`FAILED` en `DEFERRED` worden bij hervatting opnieuw geprobeerd. `--refresh`
+verwijdert uitsluitend R8-journalregels. Bij publieke blokkade, rate limit of providerlock
+stopt de live verwerking; resterende kandidaten krijgen
+`NOT_PROCESSED_INTERRUPTED`. Een gedeelde providerlock voorkomt parallelle KVK-runs en
+de gedeelde SQLite-cooldown wordt vóór iedere live zoekactie afgedwongen.
+
+## Handmatige review en thresholds
+
+De reviewqueue is deterministisch verdeeld over bronfamilie en terminale uitkomst. Iedere
+assessmentregel moet de SHA-256 van de actuele queue dragen. Geldige verdicts zijn
+`CONFIRMED`, `FALSE_MATCH` en `UNCERTAIN`; ook reviewtijd is verplicht.
+
+Alleen bij maximaal 5% technische fouten en nul false/uncertain reviews worden de vooraf
+vastgelegde R9-formules toegepast:
+
+- minimum matchrate: `max(0,10; floor(gemeten matchrate × 0,8, 2 decimalen))`;
+- maximum ambigu-rate: `min(0,50; ceil(gemeten ambigu-rate + 0,10, 2 decimalen))`;
+- technische foutgraad maximaal 0,05, false matches nul en closure 1,0.
+
+Deze kwaliteitsuitkomst activeert R9 niet: R9 vereist daarnaast nog steeds expliciete
+activatie en succesvolle afronding van het geparkeerde R7-besluit.
