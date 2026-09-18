@@ -13,6 +13,7 @@ company-harvest sources collect --run-dir "$RUN_DIR"
 company-harvest sources gleif --run-dir "$RUN_DIR" --limit 200
 company-harvest sources anbi --run-dir "$RUN_DIR" --limit 500
 company-harvest sources duo --run-dir "$RUN_DIR" --limit 500
+company-harvest companies sample --run-dir "$RUN_DIR" --size 500 --review-size 25 --pilot-size 50
 company-harvest companies merge --run-dir "$RUN_DIR"
 company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
 company-harvest kvk resolve --run-dir "$RUN_DIR" --provider auto --limit 1
@@ -64,5 +65,26 @@ ANBI-fiscale nummers zijn geen KVK-nummers en blijven alleen als ruwe bronidenti
 beschikbaar. DUO neemt alleen huidige `A`-records als kandidaat, maar verliest historische
 regels niet stil: die staan in rejected. Ook huidige DUO-records zonder of met ongeldig
 KVK-veld blijven kandidaat. Bekijk na afloop de twee ingest reports en rejected-bestanden.
+
+`companies sample` bouwt de R6-kwaliteitssample zonder netwerkrequests. De verdeling is
+eerst gelijkmatig over actieve bronfamilies en daarna binnen iedere familie over records
+met en zonder geldig direct KVK-nummer. Bij onvoldoende capaciteit wordt het restant
+deterministisch herverdeeld. Binnen ieder stratum worden de laagste SHA-256-selecties van
+de volledige bronrij gekozen. De opdracht schrijft de 500 bronrecords, voorlopige
+kandidaten, dedupbeslissingen, conflicten, een gestratificeerde reviewqueue, een
+50-record-R8-pilotselectie en JSON-/Markdownrapporten.
+
+Vul alle regels uit `r6_review_queue.csv` in een afzonderlijk TSV-bestand aan met
+`queue_sha256` (op iedere regel exact de hash uit `r6_sample_report.json`), `review_id`,
+`review_verdict` (`CONFIRMED`, `FALSE_MERGE` of `UNCERTAIN`) en `review_notes`.
+Registreer het daarna met:
+
+```bash
+company-harvest companies sample-review --run-dir "$RUN_DIR" --input beoordeling.tsv
+```
+
+De beoordeling sluit alleen wanneer zij exact bij de actuele queue past. Persoons- en
+bedrijfsrecords, de review en de pilotselectie blijven lokale runartefacten en worden niet
+in Git opgenomen.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

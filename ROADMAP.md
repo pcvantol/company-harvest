@@ -111,9 +111,9 @@ Daarbij gelden de volgende grenzen:
 | R3 | `DONE` | GLEIF-feasibility met gereviewd `GO`-besluit | R1 |
 | R4 | `DONE` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
 | R5 | `DONE` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
-| R6 | `NEXT` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
+| R6 | `DONE` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
-| R8 | `PLANNED` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
+| R8 | `NEXT` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
 | R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
 
@@ -394,8 +394,12 @@ Common Crawl of een internetbrede `.nl`-crawl wordt niet zonder afzonderlijk ont
 
 ## 11. R6 — Bron- en dedupsample van 500
 
-Status: `NEXT`, geactiveerd doordat R5 vijf actieve bronfamilies en volledige
-identifier-/closuremetingen heeft opgeleverd.
+Status: `DONE` op 2026-09-18 na onafhankelijke review `PASS`. Een deterministische
+500-recordsample uit vijf
+bronfamilies is volledig gesloten, een gestratificeerde review van 25 beslissingen is
+`PASS` en een reproduceerbare 50-recordselectie plus metriekcontract voor R8 zijn
+vastgelegd. Bewijs:
+[`docs/measurements/20260918-r6-stratified-sample.md`](docs/measurements/20260918-r6-stratified-sample.md).
 
 ### Doel
 
@@ -461,7 +465,8 @@ Zolang R7 `PARKED` is, zijn bulkgebruik van een KVK-provider en volledige KVK-ve
 
 ## 13. R8 — Begrensde KVK-nummermatchingpilot
 
-Status: `PLANNED`, afhankelijk van de gestratificeerde kandidaatlaag uit R6; geen activatie van R7 vereist.
+Status: `NEXT`; de reproduceerbare gestratificeerde kandidaatlaag uit R6 is gereed. R7
+blijft `PARKED` en is voor deze begrensde identiteitsmatching niet vereist.
 
 De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. Zulke bronnen kunnen waardevolle organisaties leveren zonder direct KVK-nummer. R8 meet daarom expliciet hoe goed hun kandidaten naar een KVK-nummer kunnen worden verrijkt. Het doel is identiteitskoppeling, niet het omzeilen van het geparkeerde besluit over providerbulk, rechtsvorm of ondernemingsstatus.
 
@@ -583,6 +588,11 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — R6 afgerond:** de vijf-bronnenlaag is deterministisch gestratificeerd
+  tot 500 records, volledig gededupliceerd en gesloten. Alle 25 handmatig beoordeelde
+  beslissingen zijn bevestigd; de 50-record-R8-pilotpool en het vooraf bepaalde
+  metriekcontract zijn vastgelegd. De onafhankelijke review is `PASS`; R8 is `NEXT` en
+  R7 blijft `PARKED`.
 - **2026-09-18 — R5 afgerond:** ANBI en DUO zijn als expliciete, streaming bulkadapters
   toegevoegd; zes bronnen zijn met primaire documentatie en gemeten samples beoordeeld.
   De actieve kandidaatlaag telt vijf onafhankelijke bronfamilies. R6 is geactiveerd;

@@ -21,6 +21,9 @@
 - Beveiligde ANBI XML-verwerking via vastgepinde `defusedxml`; oudere broninventarissen
   worden uitsluitend via expliciete migrerende acties verliesvrij aangevuld; pure reads
   veranderen historische runs niet.
+- Deterministische R6-sampling over bronfamilie en identifierstatus met een gesloten
+  500-record dedupmeting, expliciete reviewimport, resourcebaseline en reproduceerbare
+  50-recordselectie plus metriekcontract voor de R8-matchingpilot.
 
 ## 0.1.0 - 2026-09-18
 

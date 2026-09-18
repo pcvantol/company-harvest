@@ -12,3 +12,14 @@ zijn getest; evidence en ruwe afwijzingen verliesvrij blijven; ontbrekende/ongel
 identifiers kandidaten niet verwijderen; beide adapterpartities sluiten; hergebruik en
 downstream-invalidatie aantoonbaar zijn; en opbrengst plus expliciete nul-/niet-nuloverlap
 in het outcome-rapport staan zonder bronstatus als KVK-verificatie te labelen.
+
+R5 is geaccepteerd wanneer minimaal vijf bruikbare bronfamilies aantoonbaar actief zijn,
+zes kandidaatbronnen een volledige feasibilitykaart hebben, en de expliciete ANBI-/DUO-
+adapters hun streaming-, veiligheids-, identifier- en count-closurecontracten halen
+zonder impliciete bulkdownload of historische catalogusmutatie tijdens pure reads.
+
+R6 is geaccepteerd wanneer dezelfde bronfingerprint steeds dezelfde 500-recordsample
+oplevert, alle actieve families en beschikbare identifierstrata vertegenwoordigd zijn,
+bronrecords volledig sluiten naar dedupbeslissing of conflict, een exact gekoppelde
+gestratificeerde review geen onverklaarde false merge toont, en een 50-record-R8-pool plus
+vooraf bepaald metriekcontract lokaal gereedstaan zonder KVK-frontendcall.

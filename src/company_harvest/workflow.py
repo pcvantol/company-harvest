@@ -42,16 +42,15 @@ def _missing_source_status(value: str | None) -> bool:
     return False
 
 
-def merge_candidates(run: Run) -> tuple[Path, Path, Path]:
-    source_paths = _latest_artifact_rows(run, "02", "source_")
-    if not source_paths:
-        raise HarvestError("geen verzamelde bronlijsten; voer sources collect uit")
+def _deduplicate_rows(
+    raw_rows: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
+    """Apply the canonical preliminary deduplication rules to an explicit row set."""
     grouped: dict[str, list[dict[str, str]]] = {}
     decisions: list[dict[str, str]] = []
     conflicts: list[dict[str, str]] = []
-    for path, _ in source_paths:
-        for row in read_tsv(path):
-            grouped.setdefault(normalize_name(row["original_name"]), []).append(row)
+    for row in raw_rows:
+        grouped.setdefault(normalize_name(row["original_name"]), []).append(row)
     candidates: list[dict[str, str]] = []
     for normalized_name, name_rows in grouped.items():
         hints = {row["source_kvk_hint"] for row in name_rows if row.get("source_kvk_hint")}
@@ -77,6 +76,21 @@ def merge_candidates(run: Run) -> tuple[Path, Path, Path]:
             candidates.append({"candidate_id": candidate_id, "original_name": chosen["original_name"], "normalized_name": normalized_name, "source_kvk_hint": group_hint, "country": chosen.get("country", ""), "city": "", "website": chosen.get("website", ""), "sector": chosen.get("sector", ""), "source_relations": json.dumps(relations, ensure_ascii=False, separators=(",", ":"))})
             decisions.append({"candidate_id": candidate_id, "decision": "MERGED_IDENTICAL" if len(rows) > 1 else "KEPT_SINGLE", "input_count": str(len(rows)), "names": json.dumps(sorted(names), ensure_ascii=False)})
     candidates.sort(key=lambda row: (normalize_name(row["original_name"]), row["source_kvk_hint"], row["candidate_id"]))
+    decisions.sort(key=lambda row: row["candidate_id"])
+    conflicts.sort(
+        key=lambda row: (
+            normalize_name(row["original_name"]), row["source_id"], row["source_kvk_hint"]
+        )
+    )
+    return candidates, decisions, conflicts
+
+
+def merge_candidates(run: Run) -> tuple[Path, Path, Path]:
+    source_paths = _latest_artifact_rows(run, "02", "source_")
+    if not source_paths:
+        raise HarvestError("geen verzamelde bronlijsten; voer sources collect uit")
+    raw_rows = [row for path, _ in source_paths for row in read_tsv(path)]
+    candidates, decisions, conflicts = _deduplicate_rows(raw_rows)
     candidate_path = run.artifact_path("03", "companies_candidates", "csv")
     decisions_path = run.artifact_path("03", "dedup_decisions", "csv")
     conflicts_path = run.artifact_path("03", "dedup_conflicts", "csv")

@@ -17,6 +17,7 @@ from company_harvest.kvk import resolve
 from company_harvest.merge_lists import InputOptions, merge_lists
 from company_harvest.preflight import host, run_preflight
 from company_harvest.public_registers import collect_public_register
+from company_harvest.sampling import build_sample, record_sample_review
 from company_harvest.sources import collect, discover, import_source, list_sources, measure_sources
 from company_harvest.workflow import (
     active_only,
@@ -65,6 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
     companies = commands.add_parser("companies").add_subparsers(dest="companies_command", required=True)
     for name in ("merge", "exclude-sole-proprietorships", "active-only"):
         _run_arg(companies.add_parser(name))
+    sample = companies.add_parser("sample"); _run_arg(sample); sample.add_argument("--size", type=int, default=500); sample.add_argument("--review-size", type=int, default=25); sample.add_argument("--pilot-size", type=int, default=50)
+    sample_review = companies.add_parser("sample-review"); _run_arg(sample_review); sample_review.add_argument("--input", type=Path, required=True)
     merge = companies.add_parser("merge-lists"); merge.add_argument("--left", type=Path, required=True); merge.add_argument("--right", type=Path, required=True); merge.add_argument("--conflict-policy", choices=("exclude", "prefer-left", "prefer-right"), default="exclude"); merge.add_argument("--run-dir", type=Path)
     for side in ("left", "right"):
         merge.add_argument(f"--{side}-delimiter"); merge.add_argument(f"--{side}-encoding", default="utf-8-sig"); merge.add_argument(f"--{side}-sheet"); merge.add_argument(f"--{side}-name-column"); merge.add_argument(f"--{side}-kvk-column")
@@ -110,6 +113,8 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "sources" and args.sources_command == "gleif": _print(collect_gleif(run, args.archive, args.limit, args.refresh)); return 0
     if args.command == "sources" and args.sources_command in {"anbi", "duo"}: _print(collect_public_register(run, args.public_register_source_id, args.archive, args.limit, args.refresh)); return 0
     if args.command == "sources" and args.sources_command == "import": print(import_source(run, args.input, args.source_id, args.name_column, args.kvk_column, args.sheet)); return 0
+    if args.command == "companies" and args.companies_command == "sample": _print(build_sample(run, args.size, args.review_size, args.pilot_size)); return 0
+    if args.command == "companies" and args.companies_command == "sample-review": _print(record_sample_review(run, args.input)); return 0
     if args.command == "companies" and args.companies_command == "merge": _print(merge_candidates(run)); return 0
     if args.command == "kvk" and args.kvk_command == "preflight": print(kvk_preflight(run, args.provider)); return 0
     if args.command == "kvk" and args.kvk_command == "resolve": _print(resolve(run, args.provider, args.limit, args.resume, args.refresh, args.headed, args.interval)); return 0
