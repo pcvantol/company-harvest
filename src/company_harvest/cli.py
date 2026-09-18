@@ -16,6 +16,7 @@ from company_harvest.kvk import preflight as kvk_preflight
 from company_harvest.kvk import resolve
 from company_harvest.merge_lists import InputOptions, merge_lists
 from company_harvest.preflight import host, run_preflight
+from company_harvest.public_registers import collect_public_register
 from company_harvest.sources import collect, discover, import_source, list_sources, measure_sources
 from company_harvest.workflow import (
     active_only,
@@ -53,6 +54,13 @@ def build_parser() -> argparse.ArgumentParser:
     source_collect = sources.add_parser("collect"); _run_arg(source_collect); source_collect.add_argument("--only-source", action="append", default=[]); source_collect.add_argument("--skip-source", action="append", default=[]); source_collect.add_argument("--refresh", action="store_true"); source_collect.add_argument("--limit", type=int)
     source_measure = sources.add_parser("measure"); _run_arg(source_measure); source_measure.add_argument("--wikidata-limit", type=int, default=200)
     source_gleif = sources.add_parser("gleif"); _run_arg(source_gleif); source_gleif.add_argument("--archive", type=Path); source_gleif.add_argument("--limit", type=int); source_gleif.add_argument("--refresh", action="store_true")
+    for command, source_id in (("anbi", "anbi_register"), ("duo", "duo_education_organisations")):
+        source_register = sources.add_parser(command)
+        _run_arg(source_register)
+        source_register.add_argument("--archive", type=Path)
+        source_register.add_argument("--limit", type=int)
+        source_register.add_argument("--refresh", action="store_true")
+        source_register.set_defaults(public_register_source_id=source_id)
     source_import = sources.add_parser("import"); _run_arg(source_import); source_import.add_argument("--input", type=Path, required=True); source_import.add_argument("--source-id", required=True); source_import.add_argument("--name-column", required=True); source_import.add_argument("--kvk-column"); source_import.add_argument("--sheet")
     companies = commands.add_parser("companies").add_subparsers(dest="companies_command", required=True)
     for name in ("merge", "exclude-sole-proprietorships", "active-only"):
@@ -100,6 +108,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "sources" and args.sources_command == "collect": _print(collect(run, args.only_source, args.skip_source, args.limit, args.refresh)); return 0
     if args.command == "sources" and args.sources_command == "measure": _print(measure_sources(run, args.wikidata_limit)); return 0
     if args.command == "sources" and args.sources_command == "gleif": _print(collect_gleif(run, args.archive, args.limit, args.refresh)); return 0
+    if args.command == "sources" and args.sources_command in {"anbi", "duo"}: _print(collect_public_register(run, args.public_register_source_id, args.archive, args.limit, args.refresh)); return 0
     if args.command == "sources" and args.sources_command == "import": print(import_source(run, args.input, args.source_id, args.name_column, args.kvk_column, args.sheet)); return 0
     if args.command == "companies" and args.companies_command == "merge": _print(merge_candidates(run)); return 0
     if args.command == "kvk" and args.kvk_command == "preflight": print(kvk_preflight(run, args.provider)); return 0

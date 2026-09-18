@@ -31,6 +31,7 @@ from company_harvest.sources import (
     measure_sources,
     parse_ind_html,
     parse_wikidata,
+    read_catalog,
 )
 
 
@@ -85,11 +86,13 @@ def test_sources_discovery_and_parsers(run) -> None:
     inventory, report = discover(run)
     assert inventory.is_file() and report.is_file()
     catalog = list_sources(run)
-    assert len(catalog) == 3
+    assert len(catalog) == 5
     assert all(row["catalog_schema_version"] == "2" for row in catalog)
     assert {row["access_mode"] for row in catalog} == {"api", "bulk", "html"}
     assert {row["registration_number_type"] for row in catalog} == {
+        "Fiscaal nummer (geen KVK-nummer)",
         "KVK",
+        "KVK indien door de bron geleverd; ontbrekende waarden blijven kandidaten",
         "KVK via registratieautoriteit RA000463",
     }
     assert catalog[0]["terms_url"] == "https://ind.nl/nl/proclaimer"
@@ -383,6 +386,9 @@ def test_legacy_source_catalog_is_migrated_losslessly(run) -> None:
         }],
     )
     run.register_artifact(legacy, "01", "sources_inventory")
+    historical = read_catalog(run)
+    assert [row["source_id"] for row in historical] == ["ind_arbeid"]
+    assert run.latest_artifact("01", "sources_inventory") == legacy
     migrated = list_sources(run)[0]
     assert migrated["catalog_schema_version"] == "2"
     assert migrated["name"] == "Legacy naam" and migrated["measured_count"] == "7"

@@ -1,5 +1,5 @@
 # Directe runtimepinnen; gebruik daarnaast constraints.txt voor de geteste volledige set.
+defusedxml==0.7.1
 httpx==0.28.1
 openpyxl==3.1.5
 playwright==1.55.0
-

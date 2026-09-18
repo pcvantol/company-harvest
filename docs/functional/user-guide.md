@@ -11,6 +11,8 @@ company-harvest sources discover --run-dir "$RUN_DIR"
 company-harvest sources measure --run-dir "$RUN_DIR" --wikidata-limit 200
 company-harvest sources collect --run-dir "$RUN_DIR"
 company-harvest sources gleif --run-dir "$RUN_DIR" --limit 200
+company-harvest sources anbi --run-dir "$RUN_DIR" --limit 500
+company-harvest sources duo --run-dir "$RUN_DIR" --limit 500
 company-harvest companies merge --run-dir "$RUN_DIR"
 company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
 company-harvest kvk resolve --run-dir "$RUN_DIR" --provider auto --limit 1
@@ -48,5 +50,19 @@ vrije schijfruimte: de evidence-ZIP wordt volledig in de run gekopieerd. `--refr
 forceert nieuwe evidence en verwerking; zonder deze optie wordt exact dezelfde input en
 limiet hergebruikt. Bekijk na afloop altijd `gleif_ingest_report`, `gleif_rejected` en het
 outcome-rapport. GLEIF-status en -rechtsvorm zijn brondata, geen KVK-verificatie.
+
+`sources anbi` en `sources duo` zijn net als GLEIF expliciete bulkacties en worden nooit
+door `sources collect` of `run execute` gestart. Gebruik voor een gecontroleerde lokale
+snapshot bijvoorbeeld:
+
+```bash
+company-harvest sources anbi --run-dir "$RUN_DIR" --archive anbi.zip --limit 500
+company-harvest sources duo --run-dir "$RUN_DIR" --archive basisgegevens-instellingen.zip --limit 500
+```
+
+ANBI-fiscale nummers zijn geen KVK-nummers en blijven alleen als ruwe bronidentifier
+beschikbaar. DUO neemt alleen huidige `A`-records als kandidaat, maar verliest historische
+regels niet stil: die staan in rejected. Ook huidige DUO-records zonder of met ongeldig
+KVK-veld blijven kandidaat. Bekijk na afloop de twee ingest reports en rejected-bestanden.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

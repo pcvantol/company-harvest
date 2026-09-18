@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11,<3.15"
 authors = [{name = "Company Harvest contributors"}]
 dependencies = [
+  "defusedxml==0.7.1",
   "httpx==0.28.1",
   "openpyxl==3.1.5",
   "playwright==1.55.0",

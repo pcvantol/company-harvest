@@ -110,8 +110,8 @@ Daarbij gelden de volgende grenzen:
 | R2 | `DONE` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
 | R3 | `DONE` | GLEIF-feasibility met gereviewd `GO`-besluit | R1 |
 | R4 | `DONE` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
-| R5 | `NEXT` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
-| R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
+| R5 | `DONE` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
+| R6 | `NEXT` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
 | R8 | `PLANNED` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
@@ -336,7 +336,11 @@ Het volledige aggregaatbewijs staat in
 
 ## 10. R5 — Brede bronportfolio
 
-Status: `NEXT`, geactiveerd doordat R4 de gedeelde brede-innamebasis heeft bewezen.
+Status: `DONE` op 2026-09-18. Zes kandidaatbronnen zijn volledig gekwalificeerd; ANBI
+en DUO zijn als afzonderlijke verticale adapters toegevoegd. De actieve meetportfolio
+bevat vijf bronnen uit vijf bronfamilies. TenderNed is `GO_NEXT`; TED, DNB en AFM zijn
+gemotiveerd `PARKED`. Bewijs:
+[`docs/measurements/20260918-r5-source-portfolio.md`](docs/measurements/20260918-r5-source-portfolio.md).
 
 ### Doel
 
@@ -390,7 +394,8 @@ Common Crawl of een internetbrede `.nl`-crawl wordt niet zonder afzonderlijk ont
 
 ## 11. R6 — Bron- en dedupsample van 500
 
-Status: `PLANNED`.
+Status: `NEXT`, geactiveerd doordat R5 vijf actieve bronfamilies en volledige
+identifier-/closuremetingen heeft opgeleverd.
 
 ### Doel
 
@@ -578,6 +583,10 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — R5 afgerond:** ANBI en DUO zijn als expliciete, streaming bulkadapters
+  toegevoegd; zes bronnen zijn met primaire documentatie en gemeten samples beoordeeld.
+  De actieve kandidaatlaag telt vijf onafhankelijke bronfamilies. R6 is geactiveerd;
+  R7 blijft `PARKED`.
 - **2026-09-18 — R4 afgerond:** de streaming GLEIF-adapter, brede-innamecontracten,
   begrensde capability-run, expliciete bronpaaroverlap en onafhankelijke review zijn
   afgerond. R5 is de eerstvolgende uitvoerbare increment; R7 blijft `PARKED`.

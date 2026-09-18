@@ -39,3 +39,22 @@ evidencehash, scope, duur, count-closure en identifier-/velddekking. Een identie
 met dezelfde limiet wordt hergebruikt; `--refresh` of een andere input maakt downstream
 stappen pas na geslaagde parsing stale. `sources collect` blijft bewust alleen voor IND
 en Wikidata, zodat een gewone run niet onverwacht een bulkbestand downloadt.
+
+R5 voegt `sources anbi` en `sources duo` toe als eveneens expliciete bulkacties. Beide
+accepteren optioneel `--archive`, `--limit` en `--refresh`; zonder `--archive` gebruiken
+ze uitsluitend hun vastgelegde officiële HTTPS-host. De gedeelde gates beperken
+downloads tot 20 MiB, totale ongecomprimeerde ZIP-inhoud tot 100 MiB,
+compressieratio tot 25 en redirects tot drie. Ieder ZIP-lid moet een veilig top-levelpad
+hebben en mag niet versleuteld zijn. Exact dezelfde input, modus en limiet worden
+hergebruikt; downstream wordt pas na geslaagde parsing ongeldig gemaakt.
+
+ANBI wordt streaming als XML verwerkt met `defusedxml`. Het fiscale nummer blijft in
+`source_registration_raw`, maar wordt nooit als KVK geïnterpreteerd; alle records blijven
+in de kandidaatlaag. De ingangsdatum is geen actuele status en wordt daarom niet in
+`source_status` gepromoveerd. DUO verwerkt alleen `CODE_STAND_RECORD=A` als huidige
+kandidaat, maar schrijft historische/transitieregels zichtbaar naar rejected. Een
+ontbrekende of ongeldige `KVK_NR` verwijdert de huidige organisatie niet. DUO's
+`IND_OPGEHEVEN` blijft bronstatus en is geen KVK-verificatie.
+
+De volledige bronselectie, licentievoorbehouden en gemeten opbrengst staan in
+[`docs/measurements/20260918-r5-source-portfolio.md`](../measurements/20260918-r5-source-portfolio.md).

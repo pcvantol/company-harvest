@@ -422,7 +422,7 @@ def _parse_archive(
 
 
 def _update_inventory(run: Run, report: dict[str, object]) -> None:
-    rows = read_catalog(run)
+    rows = read_catalog(run, migrate=True)
     counts = report["counts"]
     assert isinstance(counts, dict)
     for row in rows:

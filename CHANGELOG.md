@@ -15,6 +15,12 @@
 - Streaming GLEIF Golden Copy-adapter met begrensde download/ZIP-gates, immutable
   evidence, Nederlandse filtering, verliesvrije identifier-review, resume/refresh en
   zichtbare opbrengst plus exacte KVK-overlap in het outcome-rapport.
+- Zes aanvullende bronfeasibilitykaarten en een vijf-familiesportfolio; expliciete
+  streaming ANBI- en DUO-adapters met veilige ZIP/XML/CSV-verwerking, immutable evidence,
+  volledige historie-/identifierclosure en behoud van kandidaten zonder KVK-nummer.
+- Beveiligde ANBI XML-verwerking via vastgepinde `defusedxml`; oudere broninventarissen
+  worden uitsluitend via expliciete migrerende acties verliesvrij aangevuld; pure reads
+  veranderen historische runs niet.
 
 ## 0.1.0 - 2026-09-18
 

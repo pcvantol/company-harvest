@@ -115,6 +115,44 @@ CATALOG = (
         "PRIMARY_AGGREGATED_REGISTER",
         "Alleen entiteiten met een LEI; geen volledige populatie van Nederlandse ondernemingen.",
     ),
+    Source(
+        "anbi_register",
+        "ANBI Open Data",
+        "Belastingdienst",
+        "fiscale-erkenningen",
+        "https://download.belastingdienst.nl/data/anbi/anbi.zip",
+        "anbi_xml_v1",
+        "bulk",
+        "https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/themaoverstijgend/"
+        "brochures_en_publicaties/open_data_anbi",
+        "Wekelijks op dinsdag volgens de bronpagina; de evidence-snapshot bepaalt de versie.",
+        False,
+        "Fiscaal nummer (geen KVK-nummer)",
+        False,
+        False,
+        "Brede officiële bron die ook kandidaten zonder direct KVK-nummer toevoegt.",
+        "PRIMARY_OWNER_SOURCE_CC0",
+        "Alleen erkende ANBI-instellingen; bevat ook buitenlandse vestigingsplaatsen.",
+    ),
+    Source(
+        "duo_education_organisations",
+        "DUO Basisgegevens instellingen",
+        "Dienst Uitvoering Onderwijs",
+        "onderwijsregister",
+        "https://duo.nl/open_onderwijsdata/images/basisgegevens-instellingen.zip",
+        "duo_organisations_csv_v1",
+        "bulk",
+        "https://duo.nl/open_onderwijsdata/onderwijs-algemeen/basisgegevens/"
+        "basisgegevens-instellingen.jsp",
+        "Wekelijks; de publicatiedatum in de bestandsnaam en evidence-snapshot bepalen de versie.",
+        True,
+        "KVK indien door de bron geleverd; ontbrekende waarden blijven kandidaten",
+        False,
+        True,
+        "Officiële onderwijsbron met directe KVK-identifiers én organisaties zonder KVK-veld.",
+        "PRIMARY_OWNER_SOURCE",
+        "Onderwijsinstellingen en organisatorische eenheden; geen sectorbrede bedrijvenpopulatie.",
+    ),
 )
 
 SOURCE_HEADERS = [
@@ -771,7 +809,7 @@ def measure_sources(
 def _update_capability_inventory(
     run: Run, capabilities: list[dict[str, object]], shared_count: int | None
 ) -> None:
-    rows = read_catalog(run)
+    rows = read_catalog(run, migrate=True)
     by_id = {str(item["source_id"]): item for item in capabilities}
     for row in rows:
         capability = by_id.get(row["source_id"])
@@ -807,11 +845,22 @@ def read_catalog(run: Run, migrate: bool = False) -> list[dict[str, str]]:
         raise HarvestError("voer eerst sources discover uit")
     rows = read_tsv(path)
     normalized = [_normalize_catalog_row(row) for row in rows]
-    if migrate and rows and list(rows[0]) != SOURCE_HEADERS:
+    known_ids = {row["source_id"] for row in normalized}
+    missing_catalog_sources = [source for source in CATALOG if source.source_id not in known_ids]
+    if migrate and missing_catalog_sources:
+        discovered_at = datetime.now(UTC).isoformat()
+        normalized.extend(_catalog_row(source, discovered_at) for source in missing_catalog_sources)
+    if migrate and rows and (list(rows[0]) != SOURCE_HEADERS or missing_catalog_sources):
         migrated = run.artifact_path("01", "sources_inventory_schema_2", "csv")
         write_tsv(migrated, SOURCE_HEADERS, normalized)
         run.register_artifact(migrated, "01", "sources_inventory")
-        run.log("INFO", "sources_inventory_migrated", from_schema="legacy", to_schema=2)
+        run.log(
+            "INFO",
+            "sources_inventory_migrated",
+            from_schema=rows[0].get("catalog_schema_version", "legacy"),
+            to_schema=2,
+            added_sources=[source.source_id for source in missing_catalog_sources],
+        )
     return normalized
 
 
