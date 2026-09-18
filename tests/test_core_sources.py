@@ -5,6 +5,7 @@ import pytest
 from openpyxl import Workbook
 
 from company_harvest.core import (
+    HTTP_USER_AGENT,
     HarvestError,
     atomic_write,
     data_root,
@@ -52,6 +53,8 @@ def test_core_roundtrip_and_validation(tmp_path: Path, monkeypatch: pytest.Monke
 
 
 def test_run_lock_artifacts_and_open(run, tmp_path: Path) -> None:
+    assert run.metadata()["http_user_agent"] == HTTP_USER_AGENT == "company-lookup/0.1"
+    assert run.metadata()["storage_baseline"]["evidence_bytes"] == 0
     artifact = run.artifact_path("01", "demo", "md")
     artifact.write_text("demo")
     run.register_artifact(artifact, "01", "demo")
@@ -69,20 +72,26 @@ def test_run_lock_artifacts_and_open(run, tmp_path: Path) -> None:
     metadata = json.loads((run.path / "run.json").read_text())
     metadata["schema_version"] = 999
     (run.path / "run.json").write_text(json.dumps(metadata))
-    with pytest.raises(HarvestError):
+    with pytest.raises(HarvestError, match="oorspronkelijke programmaversie"):
         open_run(run.path)
 
 
 def test_sources_discovery_and_parsers(run) -> None:
     inventory, report = discover(run)
     assert inventory.is_file() and report.is_file()
-    assert len(list_sources(run)) == 2
+    catalog = list_sources(run)
+    assert len(catalog) == 2
+    assert all(row["catalog_schema_version"] == "2" for row in catalog)
+    assert {row["access_mode"] for row in catalog} == {"api", "html"}
+    assert all(row["registration_number_type"] == "KVK" for row in catalog)
     rows = parse_ind_html("<tr><td>Voorbeeld B.V.</td><td>01234567</td></tr>", "https://ind.nl/x")
     assert rows[0]["source_kvk_hint"] == "01234567"
     with pytest.raises(HarvestError):
         parse_ind_html("geen tabel", "https://ind.nl/x")
     payload = {"results": {"bindings": [{"orgLabel": {"value": "Demo"}, "kvk": {"value": "12345678"}}, {"orgLabel": {"value": "Bad"}, "kvk": {"value": "x"}}]}}
-    assert parse_wikidata(payload, "https://query.wikidata.org")[0]["original_name"] == "Demo"
+    parsed = parse_wikidata(payload, "https://query.wikidata.org")
+    assert parsed[0]["original_name"] == "Demo"
+    assert parsed[1]["registration_validation_status"] == "INVALID"
     assert parse_wikidata({}, "x") == []
     assert [item.source_id for item in _enabled(["ind_arbeid"], [])] == ["ind_arbeid"]
     with pytest.raises(HarvestError):
@@ -152,7 +161,8 @@ def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.Monkey
     discover(run)
     monkeypatch.setattr("company_harvest.sources.httpx.Client", PagingClient)
     output = collect(run, only=["wikidata_nl_companies"])[0]
-    assert len(calls) == 2 and len(read_tsv(output)) == 99
+    assert len(calls) == 2 and len(read_tsv(output)) == 100
+    assert read_tsv(output)[0]["registration_validation_status"] == "INVALID"
 
 
 def test_generic_source_import_adapters(run, tmp_path: Path) -> None:
@@ -167,5 +177,36 @@ def test_generic_source_import_adapters(run, tmp_path: Path) -> None:
     xlsx_path = tmp_path / "input.xlsx"
     workbook = Workbook(); sheet = workbook.active; sheet.append(["Naam", "KVK"]); sheet.append(["Gamma BV", "23456789"]); workbook.save(xlsx_path)
     assert read_tsv(import_source(run, xlsx_path, "xlsx_input", "Naam", "KVK"))[0]["source_kvk_hint"] == "23456789"
+    names_path = tmp_path / "names.csv"
+    names_path.write_text("Naam\nZonder Nummer BV\n", encoding="utf-8")
+    name_only = read_tsv(import_source(run, names_path, "name_only", "Naam"))
+    assert name_only[0]["source_kvk_hint"] == ""
+    assert name_only[0]["registration_validation_status"] == "MISSING"
+    profile = next(row for row in list_sources(run) if row["source_id"] == "name_only")
+    assert profile["has_registration_number"] == "false"
     with pytest.raises(HarvestError):
         import_source(run, csv_path, "BAD", "Naam", "KVK")
+
+
+def test_legacy_source_catalog_is_migrated_losslessly(run) -> None:
+    legacy = run.artifact_path("01", "legacy_inventory", "csv")
+    headers = [
+        "source_id", "name", "owner", "url", "parser", "discovered_at", "terms_url",
+        "status", "bias", "measured_count",
+    ]
+    write_tsv(
+        legacy,
+        headers,
+        [{
+            "source_id": "ind_arbeid", "name": "Legacy naam", "owner": "IND",
+            "url": "https://ind.nl/legacy", "parser": "legacy", "discovered_at": "then",
+            "terms_url": "https://ind.nl/nl/copyright", "status": "COLLECTED",
+            "bias": "bewaard", "measured_count": "7",
+        }],
+    )
+    run.register_artifact(legacy, "01", "sources_inventory")
+    migrated = list_sources(run)[0]
+    assert migrated["catalog_schema_version"] == "2"
+    assert migrated["name"] == "Legacy naam" and migrated["measured_count"] == "7"
+    assert migrated["source_family"] == "overheidsregister"
+    assert run.latest_artifact("01", "sources_inventory") != legacy

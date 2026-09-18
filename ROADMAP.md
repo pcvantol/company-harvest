@@ -102,8 +102,8 @@ Daarbij gelden de volgende grenzen:
 | Increment | Status | Uitkomst | Afhankelijk van |
 |---|---|---|---|
 | R0 | `DONE` | Roadmap, besluiten en prioriteiten canoniek vastgelegd en onafhankelijk gereviewd | — |
-| R1 | `NEXT` | Meetcontract en rijkere broncatalogus | R0 |
-| R2 | `PLANNED` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
+| R1 | `DONE` | Meetcontract en rijkere broncatalogus | R0 |
+| R2 | `NEXT` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
 | R3 | `PLANNED` | GLEIF-feasibility met go/no-go-besluit | R1 |
 | R4 | `PLANNED` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
 | R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
@@ -136,7 +136,7 @@ Status: `DONE` — onafhankelijke review `PASS` vastgelegd.
 
 ## 6. R1 — Meetcontract en broncatalogus 2.0
 
-Status: `NEXT`.
+Status: `DONE` — verticale slice geïmplementeerd en onafhankelijk gereviewd met `PASS`.
 
 ### Doel
 
@@ -183,9 +183,18 @@ Voeg aan runrapportage minimaal toe:
 - Een synthetische sample levert een volledig outcome-rapport met sluitende aantallen.
 - Er zijn nog geen verzonnen succesdrempels; thresholds worden pas na R2/R3 met data vastgesteld.
 
+### Gerealiseerd bewijs
+
+- Broncatalogusschema 2 bevat alle afgesproken profiel-, toegang-, actualiteits-, meet-, herkomst- en laagvelden.
+- Oude catalogusartefacten worden bij lezen verliesvrij genormaliseerd en als schema 2 vastgelegd.
+- Handmatige bronnen zonder KVK-kolom blijven als kandidaten behouden; ontbrekende en ongeldige nummers zijn afzonderlijk meetbaar.
+- `report` schrijft naast Markdown een machineleesbaar `outcome_report.json` met bron-, identifier-, dedup-, conflict-, review-, diversiteits-, closure- en resourcecijfers.
+- `company-lookup/0.1` staat in nieuwe runmetadata en in ieder outcome-/runrapport.
+- Lege, dubbele, conflicterende en identifierloze fixtures bewijzen de meetsemantiek; succesdrempels blijven bewust unset tot R2/R3.
+
 ## 7. R2 — Bestaande bronnen werkelijk meten
 
-Status: `PLANNED`.
+Status: `NEXT`.
 
 ### Doel
 

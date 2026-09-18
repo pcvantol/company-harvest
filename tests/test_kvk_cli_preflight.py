@@ -160,7 +160,10 @@ class Page:
 
 
 class Browser:
-    def new_context(self): return self
+    context_options = {}
+    def new_context(self, **kwargs):
+        type(self).context_options = kwargs
+        return self
     def new_page(self): return Page()
     def close(self): return None
 
@@ -181,6 +184,7 @@ def test_browser_provider(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert provider.preflight()["available"]
     result = provider.search("Alpha")
     assert result.hits and (run.path / ".provider" / "kvk_observed_http.json").is_file()
+    assert Browser.context_options == {"user_agent": "company-lookup/0.1"}
 
 
 def test_auto_fallback_and_provider_lock(run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -239,3 +243,49 @@ def test_preflight_and_cli(tmp_path: Path, run, capsys: pytest.CaptureFixture[st
     assert cli.main(["run", "status", "--run-dir", str(created)]) == 0
     assert cli.main(["audit", "verify", "--run-dir", str(created)]) == 0
     assert cli.main(["run", "status", "--run-dir", str(tmp_path / "missing")]) == 3
+
+
+def test_r1_vertical_cli_slice_accepts_name_only_source(run, tmp_path: Path) -> None:
+    source = tmp_path / "organisaties.csv"
+    source.write_text("Naam\nVoorbeeld Zonder Nummer\n", encoding="utf-8")
+    assert cli.main([
+        "sources", "import", "--run-dir", str(run.path), "--input", str(source),
+        "--source-id", "name_only", "--name-column", "Naam",
+    ]) == 0
+    first = tmp_path / "eerste.csv"
+    first.write_text(
+        "Naam,KVK\nNaamgenoot,\nOngeldig,abc\nConflict,11111111\n",
+        encoding="utf-8",
+    )
+    second = tmp_path / "tweede.csv"
+    second.write_text(
+        "Naam,KVK\nNaamgenoot,\nOngeldig,xyz\nConflict,22222222\n",
+        encoding="utf-8",
+    )
+    for path, source_id in ((first, "family_a"), (second, "family_b")):
+        assert cli.main([
+            "sources", "import", "--run-dir", str(run.path), "--input", str(path),
+            "--source-id", source_id, "--name-column", "Naam", "--kvk-column", "KVK",
+        ]) == 0
+    inventory = run.latest_artifact("01", "sources_inventory")
+    assert inventory is not None
+    catalog = read_tsv(inventory)
+    for row in catalog:
+        if row["source_id"] in {"family_a", "family_b"}:
+            row["source_family"] = row["source_id"]
+    catalog_path = run.artifact_path("01", "sources_inventory_two_families", "csv")
+    write_tsv(catalog_path, list(catalog[0]), catalog)
+    run.register_artifact(catalog_path, "01", "sources_inventory")
+    assert cli.main(["companies", "merge", "--run-dir", str(run.path)]) == 0
+    assert cli.main(["report", "--run-dir", str(run.path)]) == 0
+    outcome_path = run.latest_artifact("08", "outcome_report")
+    assert outcome_path is not None
+    outcome = json.loads(outcome_path.read_text(encoding="utf-8"))
+    assert outcome["counts"]["raw_records"] == 7
+    assert outcome["counts"]["without_direct_registration_number"] == 5
+    assert outcome["counts"]["unique_candidates_after_deduplication"] == 5
+    assert outcome["counts"]["conflict_records"] == 2
+    assert outcome["source_diversity"]["source_family_count"] == 3
+    assert outcome["count_closure"]["status"] == "PARTIAL_CLOSED"
+    assert outcome["count_closure"]["transitions"]["raw_to_dedup"]["status"] == "CLOSED"
+    assert outcome["http_user_agent"] == "company-lookup/0.1"

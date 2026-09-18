@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("discover", "list"):
         _run_arg(sources.add_parser(name))
     source_collect = sources.add_parser("collect"); _run_arg(source_collect); source_collect.add_argument("--only-source", action="append", default=[]); source_collect.add_argument("--skip-source", action="append", default=[]); source_collect.add_argument("--refresh", action="store_true"); source_collect.add_argument("--limit", type=int)
-    source_import = sources.add_parser("import"); _run_arg(source_import); source_import.add_argument("--input", type=Path, required=True); source_import.add_argument("--source-id", required=True); source_import.add_argument("--name-column", required=True); source_import.add_argument("--kvk-column", required=True); source_import.add_argument("--sheet")
+    source_import = sources.add_parser("import"); _run_arg(source_import); source_import.add_argument("--input", type=Path, required=True); source_import.add_argument("--source-id", required=True); source_import.add_argument("--name-column", required=True); source_import.add_argument("--kvk-column"); source_import.add_argument("--sheet")
     companies = commands.add_parser("companies").add_subparsers(dest="companies_command", required=True)
     for name in ("merge", "exclude-sole-proprietorships", "active-only"):
         _run_arg(companies.add_parser(name))

@@ -4,13 +4,14 @@ import pytest
 from openpyxl import load_workbook
 
 from company_harvest.audit import _overlap, trace, verify
-from company_harvest.core import HarvestError, read_tsv, write_tsv
+from company_harvest.core import HarvestError, initialize_run, read_tsv, write_tsv
 from company_harvest.workflow import (
     active_only,
     consolidate,
     exclude_sole_proprietorships,
     export,
     merge_candidates,
+    outcome_metrics,
     report,
     write_xlsx,
 )
@@ -42,6 +43,10 @@ def test_harvest_offline_pipeline(run) -> None:
     outputs = export(run, 100)
     assert load_workbook(outputs[1])["Bedrijven"]["B2"].value == "01234567"
     assert report(run).is_file()
+    outcome = outcome_metrics(run)
+    assert outcome["http_user_agent"] == "company-lookup/0.1"
+    assert outcome["count_closure"]["status"] == "COMPLETE_CLOSED"
+    assert run.latest_artifact("08", "outcome_report").is_file()
     assert verify(run)["valid"]
     with run.connect() as connection:
         connection.execute(
@@ -98,3 +103,77 @@ def test_audit_requires_terminal_artifacts(run) -> None:
     run.update_status("IN_PROGRESS", "04")
     with pytest.raises(HarvestError):
         verify(run)
+
+
+def test_outcome_report_closes_empty_duplicate_conflict_and_review_fixtures(run) -> None:
+    headers = [
+        "original_name", "source_kvk_hint", "source_id", "source_registration_raw", "source_row",
+        "source_url", "registration_validation_status", "source_legal_form", "source_status",
+    ]
+    raw = [
+        {"original_name": "Alpha BV", "source_kvk_hint": "01234567", "source_id": "a", "source_registration_raw": "01234567", "source_row": "1", "source_url": "a", "registration_validation_status": "VALID"},
+        {"original_name": " Alpha BV ", "source_kvk_hint": "01234567", "source_id": "b", "source_registration_raw": "01234567", "source_row": "1", "source_url": "b", "registration_validation_status": "VALID"},
+        {"original_name": "Naamgenoot", "source_kvk_hint": "", "source_id": "a", "source_registration_raw": "", "source_row": "2", "source_url": "a", "registration_validation_status": "MISSING"},
+        {"original_name": "Naamgenoot", "source_kvk_hint": "", "source_id": "b", "source_registration_raw": "", "source_row": "2", "source_url": "b", "registration_validation_status": "MISSING"},
+        {"original_name": "Ongeldig", "source_kvk_hint": "", "source_id": "a", "source_registration_raw": "abc", "source_row": "3", "source_url": "a", "registration_validation_status": "INVALID"},
+        {"original_name": "Ongeldig", "source_kvk_hint": "", "source_id": "b", "source_registration_raw": "xyz", "source_row": "3", "source_url": "b", "registration_validation_status": "INVALID"},
+        {"original_name": "Conflict", "source_kvk_hint": "11111111", "source_id": "a", "source_registration_raw": "11111111", "source_row": "4", "source_url": "a", "registration_validation_status": "VALID"},
+        {"original_name": "Conflict", "source_kvk_hint": "22222222", "source_id": "b", "source_registration_raw": "22222222", "source_row": "4", "source_url": "b", "registration_validation_status": "VALID"},
+    ]
+    _register(run, "01", "sources_inventory", ["source_id", "source_family"], [
+        {"source_id": "a", "source_family": "family-a"},
+        {"source_id": "b", "source_family": "family-b"},
+    ])
+    _register(run, "02", "source_a", headers, raw[::2])
+    _register(run, "02", "source_b", headers, raw[1::2])
+    candidates_path, decisions_path, conflicts_path = merge_candidates(run)
+    assert len(read_tsv(candidates_path)) == 5
+    assert len(read_tsv(decisions_path)) == 5
+    assert len(read_tsv(conflicts_path)) == 2
+    assert sum(row["original_name"] == "Naamgenoot" for row in read_tsv(candidates_path)) == 2
+    metrics = outcome_metrics(run)
+    assert metrics["counts"] == {
+        "raw_records": 8,
+        "valid_registration_numbers": 4,
+        "without_direct_registration_number": 4,
+        "missing_registration_numbers": 2,
+        "invalid_registration_numbers": 2,
+        "unique_candidates_before_deduplication": 7,
+        "unique_candidates_after_deduplication": 5,
+        "identical_merges": 1,
+        "conflict_records": 2,
+        "review_case_records": 6,
+        "cross_source_candidates": 1,
+    }
+    assert metrics["count_closure"]["status"] == "PARTIAL_CLOSED"
+    assert metrics["count_closure"]["transitions"]["raw_to_dedup"] == {
+        "status": "CLOSED", "input": 8, "output": 8, "delta": 0,
+    }
+    assert metrics["source_diversity"]["source_family_count"] == 2
+    assert metrics["source_diversity"]["measured_candidate_overlap_by_family_pair"] == {
+        "family-a|family-b": 1,
+    }
+    assert metrics["resources"]["storage_growth_status"] == "MEASURED"
+    empty_run = initialize_run(run.path.parent, 1)
+    empty = outcome_metrics(empty_run)
+    assert empty["counts"]["raw_records"] == 0
+    assert empty["count_closure"]["status"] == "NOT_AVAILABLE"
+
+
+def test_merge_and_metrics_use_only_latest_complete_artifact_per_source(run) -> None:
+    headers = ["original_name", "source_kvk_hint", "source_id", "source_row", "source_url"]
+    _register(run, "02", "source_a", headers, [{
+        "original_name": "Oud BV", "source_kvk_hint": "", "source_id": "a",
+        "source_row": "1", "source_url": "old",
+    }])
+    _register(run, "02", "source_a", headers, [{
+        "original_name": "Nieuw BV", "source_kvk_hint": "", "source_id": "a",
+        "source_row": "1", "source_url": "new",
+    }])
+    candidates, _, _ = merge_candidates(run)
+    assert [row["original_name"] for row in read_tsv(candidates)] == ["Nieuw BV"]
+    metrics = outcome_metrics(run)
+    assert metrics["counts"]["raw_records"] == 1
+    assert metrics["count_closure"]["transitions"]["raw_to_dedup"] == {
+        "status": "CLOSED", "input": 1, "output": 1, "delta": 0,
+    }

@@ -187,7 +187,7 @@ class PublicBrowserProvider:
         try:
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=not headed)
-                context = browser.new_context()
+                context = browser.new_context(user_agent=HTTP_USER_AGENT)
                 page = context.new_page()
 
                 def capture(response: Any) -> None:

@@ -34,3 +34,7 @@
 | CH-RM-005 | Geen productieharvest vóór representatieve pilot-, sample- en schaalpoorten | `ROADMAP.md` RD-004/R8-R9 | eigenaar-go/no-go vereist |
 | CH-RM-006 | Verkleining gebeurt expliciet tussen raw-, candidate- en verified-lagen; onzekerheid veroorzaakt geen stil dataverlies | `ROADMAP.md` RD-006/R6/R8-R9 | ontwerpbesluit; implementatie gepland |
 | CH-RM-007 | Kandidaten zonder initieel KVK-nummer blijven waardevol en mogen regulier, bewijsbaar worden gematcht/verrijkt | `ROADMAP.md` RD-007/R6/R8 | ontwerpbesluit; pilot gepland |
+| CH-R1-001 | Iedere bron heeft catalogusschema 2 met expliciet identifier-, toegang-, meet-, herkomst- en laagprofiel | `sources.Source`, `SOURCE_HEADERS` | catalogus- en migratietests |
+| CH-R1-002 | Bronnen zonder KVK-kolom en ontbrekende/ongeldige nummers blijven verliesvrij als kandidaten behouden | `sources.import_source`, `RAW_HEADERS` | import- en parserfixtures |
+| CH-R1-003 | Outcome-rapportage meet per bron, dedup/conflict/review, kandidaatdiversiteit/-overlap, resourcegroei en closure per procesovergang | `workflow.outcome_metrics`, `workflow.report` | lege/dubbele/conflict- en volledige-pipelinefixtures |
+| CH-R1-004 | `company-lookup/0.1` is zichtbaar in directe en browserrequests, runmetadata en rapportage | `core.HTTP_USER_AGENT`, browsercontext, `initialize_run`, outcome-rapport | bron/KVK-browser/run/rapporttests |

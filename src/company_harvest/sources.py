@@ -37,9 +37,18 @@ class Source:
     source_id: str
     name: str
     owner: str
+    source_family: str
     url: str
     parser: str
+    access_mode: str
     terms_url: str
+    refresh_info: str
+    has_registration_number: bool
+    registration_number_type: str
+    provides_legal_form: bool
+    provides_status: bool
+    inclusion_reason: str
+    provenance_quality_status: str
     bias: str
 
 
@@ -48,49 +57,126 @@ CATALOG = (
         "ind_arbeid",
         "Openbaar register Arbeid",
         "IND",
+        "overheidsregister",
         "https://ind.nl/nl/openbaar-register-erkende-referenten/openbaar-register-arbeid",
         "ind_html_table_v1",
+        "html",
         "https://ind.nl/nl/copyright",
+        "Publicatiefrequentie niet vastgesteld; live meting vereist.",
+        True,
+        "KVK",
+        False,
+        False,
+        "Publiek Nederlands register met directe organisatie-identifiers.",
+        "PRIMARY_OWNER_SOURCE",
         "Erkende referenten voor arbeid; geen sectorbrede populatie.",
     ),
     Source(
         "wikidata_nl_companies",
         "Wikidata Nederlandse organisaties",
         "Wikimedia community",
+        "open-kennisbank",
         "https://query.wikidata.org/sparql",
         "wikidata_sparql_v1",
+        "api",
         "https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use",
+        "Doorlopend bewerkbaar; actualiteit verschilt per item.",
+        True,
+        "KVK",
+        False,
+        False,
+        "Onafhankelijke kennisbron voor aanvullende dekking en overlapmeting.",
+        "COMMUNITY_CURATED",
         "Vrijwillig samengestelde kennisbank; dekking en actualiteit variëren.",
     ),
 )
 
 SOURCE_HEADERS = [
-    "source_id", "name", "owner", "url", "parser", "discovered_at", "terms_url",
-    "status", "bias", "measured_count",
+    "catalog_schema_version", "source_id", "name", "owner", "source_family", "url",
+    "parser", "access_mode", "discovered_at", "terms_url", "refresh_info", "status",
+    "live_measurement_status", "measured_count", "has_registration_number",
+    "registration_number_type", "provides_legal_form", "provides_status",
+    "estimated_overlap", "inclusion_reason", "provenance_quality_status",
+    "candidate_layer", "bias",
 ]
 RAW_HEADERS = [
     "original_name", "country", "nl_evidence", "employees_raw", "employees_date",
     "employees_scope", "website", "sector", "source_kvk_hint", "source_id", "source_url",
-    "fetched_at", "source_row", "evidence_reference",
+    "fetched_at", "source_row", "evidence_reference", "source_registration_raw",
+    "registration_validation_status", "source_legal_form", "source_status", "candidate_layer",
 ]
+
+CATALOG_SCHEMA_VERSION = "2"
+
+
+def _catalog_row(source: Source, discovered_at: str) -> dict[str, str]:
+    return {
+        "catalog_schema_version": CATALOG_SCHEMA_VERSION,
+        "source_id": source.source_id,
+        "name": source.name,
+        "owner": source.owner,
+        "source_family": source.source_family,
+        "url": source.url,
+        "parser": source.parser,
+        "access_mode": source.access_mode,
+        "discovered_at": discovered_at,
+        "terms_url": source.terms_url,
+        "refresh_info": source.refresh_info,
+        "status": "CONFIGURED_NOT_COLLECTED",
+        "live_measurement_status": "NOT_MEASURED",
+        "measured_count": "",
+        "has_registration_number": str(source.has_registration_number).lower(),
+        "registration_number_type": source.registration_number_type,
+        "provides_legal_form": str(source.provides_legal_form).lower(),
+        "provides_status": str(source.provides_status).lower(),
+        "estimated_overlap": "",
+        "inclusion_reason": source.inclusion_reason,
+        "provenance_quality_status": source.provenance_quality_status,
+        "candidate_layer": "raw",
+        "bias": source.bias,
+    }
+
+
+def _normalize_catalog_row(row: dict[str, str]) -> dict[str, str]:
+    known = next((source for source in CATALOG if source.source_id == row.get("source_id")), None)
+    if known:
+        normalized = _catalog_row(known, row.get("discovered_at", ""))
+    else:
+        normalized = {header: "" for header in SOURCE_HEADERS}
+        normalized.update(
+            {
+                "catalog_schema_version": CATALOG_SCHEMA_VERSION,
+                "source_family": "unclassified",
+                "access_mode": "manual-import",
+                "live_measurement_status": "NOT_MEASURED",
+                "has_registration_number": "unknown",
+                "provides_legal_form": "unknown",
+                "provides_status": "unknown",
+                "provenance_quality_status": "UNCLASSIFIED",
+                "candidate_layer": "raw",
+            }
+        )
+    for header in SOURCE_HEADERS:
+        if header in row:
+            normalized[header] = row[header]
+    normalized["catalog_schema_version"] = CATALOG_SCHEMA_VERSION
+    if not normalized["live_measurement_status"]:
+        normalized["live_measurement_status"] = (
+            "MEASURED" if normalized.get("measured_count") else "NOT_MEASURED"
+        )
+    return normalized
 
 
 def discover(run: Run) -> tuple[Path, Path]:
     now = datetime.now(UTC).isoformat()
-    rows = [
-        {
-            "source_id": source.source_id, "name": source.name, "owner": source.owner,
-            "url": source.url, "parser": source.parser, "discovered_at": now,
-            "terms_url": source.terms_url, "status": "CONFIGURED_NOT_COLLECTED",
-            "bias": source.bias, "measured_count": "",
-        }
-        for source in CATALOG
-    ]
+    rows = [_catalog_row(source, now) for source in CATALOG]
     csv_path = run.artifact_path("01", "sources_inventory", "csv")
     md_path = run.artifact_path("01", "sources_report", "md")
     write_tsv(csv_path, SOURCE_HEADERS, rows)
     report = "# Bronneninventaris\n\n" + "\n".join(
-        f"- **{row['name']}** (`{row['source_id']}`): {row['status']}. Bias: {row['bias']}"
+        f"- **{row['name']}** (`{row['source_id']}`): {row['status']}; "
+        f"familie `{row['source_family']}`, toegang `{row['access_mode']}`, "
+        f"registratie-ID `{row['registration_number_type'] or 'geen/unknown'}`. Bias: {row['bias']}"
         for row in rows
     ) + "\n\nAantallen blijven onbekend totdat de bron werkelijk is verzameld.\n"
     md_path.write_text(report, encoding="utf-8")
@@ -139,7 +225,15 @@ def parse_ind_html(content: str, source_url: str, limit: int | None = None) -> l
     return rows
 
 
-def _raw_row(name: str, kvk: str, source_id: str, url: str, row: str) -> dict[str, str]:
+def _raw_row(
+    name: str,
+    kvk: str,
+    source_id: str,
+    url: str,
+    row: str,
+    registration_raw: str | None = None,
+    registration_status: str | None = None,
+) -> dict[str, str]:
     clean_name = re.sub(r'""([^\n]+?)""', r'"\1"', name.strip())
     return {
         "original_name": clean_name, "country": "Nederland",
@@ -148,6 +242,9 @@ def _raw_row(name: str, kvk: str, source_id: str, url: str, row: str) -> dict[st
         "source_kvk_hint": kvk, "source_id": source_id, "source_url": url,
         "fetched_at": datetime.now(UTC).isoformat(), "source_row": row,
         "evidence_reference": url,
+        "source_registration_raw": kvk if registration_raw is None else registration_raw,
+        "registration_validation_status": registration_status or ("VALID" if kvk else "MISSING"),
+        "source_legal_form": "", "source_status": "", "candidate_layer": "raw",
     }
 
 
@@ -164,9 +261,22 @@ def parse_wikidata(payload: dict[str, object], source_url: str, limit: int | Non
         kvk = kvk_cell.get("value", "") if isinstance(kvk_cell, dict) else ""
         try:
             number = validate_kvk(kvk)
+            validation_status = "VALID"
         except ValueError:
-            continue
-        rows.append(_raw_row(str(name), number, "wikidata_nl_companies", source_url, str(index + 1)))
+            number = ""
+            validation_status = "INVALID" if str(kvk).strip() else "MISSING"
+        if str(name).strip():
+            rows.append(
+                _raw_row(
+                    str(name),
+                    number,
+                    "wikidata_nl_companies",
+                    source_url,
+                    str(index + 1),
+                    str(kvk),
+                    validation_status,
+                )
+            )
         if limit and len(rows) >= limit:
             break
     return rows
@@ -255,29 +365,46 @@ def _hash(path: Path) -> str:
 
 
 def list_sources(run: Run) -> list[dict[str, str]]:
+    return read_catalog(run, migrate=True)
+
+
+def read_catalog(run: Run, migrate: bool = False) -> list[dict[str, str]]:
     path = run.latest_artifact("01", "sources_inventory")
     if not path:
         raise HarvestError("voer eerst sources discover uit")
-    from company_harvest.core import read_tsv
-
-    return read_tsv(path)
+    rows = read_tsv(path)
+    normalized = [_normalize_catalog_row(row) for row in rows]
+    if migrate and rows and list(rows[0]) != SOURCE_HEADERS:
+        migrated = run.artifact_path("01", "sources_inventory_schema_2", "csv")
+        write_tsv(migrated, SOURCE_HEADERS, normalized)
+        run.register_artifact(migrated, "01", "sources_inventory")
+        run.log("INFO", "sources_inventory_migrated", from_schema="legacy", to_schema=2)
+    return normalized
 
 
 def _update_inventory(run: Run, counts: dict[str, int]) -> None:
     inventory = run.latest_artifact("01", "sources_inventory")
     if not inventory:
         return
-    rows = read_tsv(inventory)
+    rows = [_normalize_catalog_row(row) for row in read_tsv(inventory)]
     for row in rows:
         if row["source_id"] in counts:
             row["status"] = "COLLECTED"
+            row["live_measurement_status"] = "MEASURED"
             row["measured_count"] = str(counts[row["source_id"]])
     updated = run.artifact_path("01", "sources_inventory_measured", "csv")
     write_tsv(updated, SOURCE_HEADERS, rows)
     run.register_artifact(updated, "01", "sources_inventory")
 
 
-def import_source(run: Run, input_path: Path, source_id: str, name_column: str, kvk_column: str, sheet: str | None = None) -> Path:
+def import_source(
+    run: Run,
+    input_path: Path,
+    source_id: str,
+    name_column: str,
+    kvk_column: str | None = None,
+    sheet: str | None = None,
+) -> Path:
     """Importeer een expliciet gemapte lokale CSV/TSV/XLSX/HTML-tabel als bron."""
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{1,63}", source_id):
         raise HarvestError("source-id moet 2-64 veilige kleine letters/cijfers bevatten")
@@ -285,30 +412,86 @@ def import_source(run: Run, input_path: Path, source_id: str, name_column: str, 
     if not source.is_file() or source.stat().st_size > MAX_RESPONSE_BYTES:
         raise HarvestError("importbron ontbreekt of overschrijdt de maximale grootte")
     headers, values = _read_tabular(source, sheet)
-    if name_column not in headers or kvk_column not in headers:
-        raise HarvestError("expliciete naam- of KVK-kolom ontbreekt")
+    if name_column not in headers or (kvk_column and kvk_column not in headers):
+        raise HarvestError("expliciete naam- of opgegeven KVK-kolom ontbreekt")
     snapshot = run.path / "evidence" / f"{timestamp()}_02_{source_id}_input{source.suffix.lower()}"
     shutil.copyfile(source, snapshot)
     rows: list[dict[str, str]] = []
     for index, row in enumerate(values, 2):
-        try:
-            number = validate_kvk(row.get(kvk_column))
-        except ValueError:
-            continue
         name = str(row.get(name_column) or "").strip()
-        if name:
-            rows.append(_raw_row(name, number, source_id, snapshot.name, str(index)))
+        if not name:
+            continue
+        registration_raw = str(row.get(kvk_column) or "").strip() if kvk_column else ""
+        try:
+            number = validate_kvk(registration_raw)
+            validation_status = "VALID"
+        except ValueError:
+            number = ""
+            validation_status = "INVALID" if registration_raw else "MISSING"
+        rows.append(
+            _raw_row(
+                name,
+                number,
+                source_id,
+                snapshot.name,
+                str(index),
+                registration_raw,
+                validation_status,
+            )
+        )
     if not rows:
-        raise HarvestError("importadapter vond nul geldige records")
+        raise HarvestError("importadapter vond nul records met een bruikbare naam")
     run.invalidate_from(3, "source_import_changed")
     output = run.artifact_path("02", f"source_{source_id}_companies", "csv")
     write_tsv(output, RAW_HEADERS, rows)
     run.register_artifact(snapshot, "02", f"evidence_{source_id}")
     run.register_artifact(output, "02", f"source_{source_id}")
+    _upsert_imported_source(run, source_id, source.suffix.lower(), kvk_column is not None, len(rows))
     run.log("INFO", "source_import_completed", source_id=source_id, count=len(rows), adapter=source.suffix.lower(), evidence_sha256=_hash(snapshot))
     run.record_config(f"source_import:{source_id}", {"sha256": _hash(snapshot), "adapter": source.suffix.lower(), "name_column": name_column, "kvk_column": kvk_column, "sheet": sheet})
     run.update_status("IN_PROGRESS", "02")
     return output
+
+
+def _upsert_imported_source(
+    run: Run, source_id: str, adapter: str, has_registration_number: bool, count: int
+) -> None:
+    inventory = run.latest_artifact("01", "sources_inventory")
+    if inventory:
+        rows = [_normalize_catalog_row(row) for row in read_tsv(inventory)]
+    else:
+        now = datetime.now(UTC).isoformat()
+        rows = [_catalog_row(source, now) for source in CATALOG]
+    rows = [row for row in rows if row["source_id"] != source_id]
+    rows.append(
+        {
+            **{header: "" for header in SOURCE_HEADERS},
+            "catalog_schema_version": CATALOG_SCHEMA_VERSION,
+            "source_id": source_id,
+            "name": source_id,
+            "owner": "Lokale import",
+            "source_family": "manual-import",
+            "url": "lokale-evidence-snapshot",
+            "parser": f"tabular{adapter}",
+            "access_mode": "manual-import",
+            "discovered_at": datetime.now(UTC).isoformat(),
+            "refresh_info": "Per expliciete lokale import.",
+            "status": "COLLECTED",
+            "live_measurement_status": "MEASURED_LOCAL",
+            "measured_count": str(count),
+            "has_registration_number": str(has_registration_number).lower(),
+            "registration_number_type": "KVK" if has_registration_number else "",
+            "provides_legal_form": "false",
+            "provides_status": "false",
+            "inclusion_reason": "Expliciet door de gebruiker aangeleverde bron.",
+            "provenance_quality_status": "USER_PROVIDED_UNVERIFIED",
+            "candidate_layer": "raw",
+            "bias": "Dekking en selectie volgen uit de aangeleverde bron.",
+        }
+    )
+    updated = run.artifact_path("01", "sources_inventory_imported", "csv")
+    write_tsv(updated, SOURCE_HEADERS, sorted(rows, key=lambda row: row["source_id"]))
+    run.register_artifact(updated, "01", "sources_inventory")
 
 
 def _read_tabular(path: Path, sheet: str | None) -> tuple[list[str], list[dict[str, object]]]:
@@ -323,7 +506,10 @@ def _read_tabular(path: Path, sheet: str | None) -> tuple[list[str], list[dict[s
         matrix = [[html.unescape(re.sub(r"<[^>]+>", "", cell)).strip() for cell in re.findall(r"<t[hd]\b[^>]*>(.*?)</t[hd]>", row, flags=re.I | re.S)] for row in rows]
     else:
         text = path.read_text(encoding="utf-8-sig")
-        delimiter = csv.Sniffer().sniff(text[:8192], delimiters="\t,;").delimiter
+        try:
+            delimiter = csv.Sniffer().sniff(text[:8192], delimiters="\t,;").delimiter
+        except csv.Error:
+            delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
         reader = csv.DictReader(io.StringIO(text, newline=""), delimiter=delimiter)
         if not reader.fieldnames:
             raise HarvestError("importheader ontbreekt")

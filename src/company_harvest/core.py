@@ -226,6 +226,7 @@ def initialize_run(root: Path, target: int, workflow: str = "HARVEST") -> Run:
         "created_at": utc_now().isoformat(),
         "status": "INITIALIZED",
         "python": sys.version.split()[0],
+        "http_user_agent": HTTP_USER_AGENT,
         "runtime_config": {},
     }
     metadata["config_fingerprint"] = hashlib.sha256(
@@ -245,6 +246,19 @@ def initialize_run(root: Path, target: int, workflow: str = "HARVEST") -> Run:
             CREATE TABLE cooldowns(provider TEXT PRIMARY KEY, until_epoch REAL, reason TEXT);
             """
         )
+    metadata["storage_baseline"] = {
+        "sqlite_bytes": sum(
+            path.stat().st_size
+            for path in (
+                run.db_path,
+                run.db_path.with_name(run.db_path.name + "-wal"),
+                run.db_path.with_name(run.db_path.name + "-shm"),
+            )
+            if path.exists()
+        ),
+        "evidence_bytes": 0,
+    }
+    atomic_write(run_path / "run.json", json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
     run.log("INFO", "run_initialized", workflow=workflow, target=target)
     return run
 
@@ -256,7 +270,11 @@ def open_run(path: Path) -> Run:
         raise HarvestError(f"geen geldige runmap: {resolved}")
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     if metadata.get("schema_version") != RUN_SCHEMA_VERSION:
-        raise HarvestError("incompatibele runschemaversie", 7)
+        raise HarvestError(
+            f"incompatibele runschemaversie {metadata.get('schema_version')!r}; "
+            "open de run met de oorspronkelijke programmaversie of start een nieuwe run",
+            7,
+        )
     run = Run(resolved)
     with run.connect() as connection:
         connection.execute("SELECT 1")
