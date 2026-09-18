@@ -27,7 +27,7 @@ def evaluate(root: Path, report: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     rows: list[dict[str, Any]] = []
     passed = True
     for path in executable_files(root):
-        relative = str(path.relative_to(root))
+        relative = path.relative_to(root).as_posix()
         if not has_statements(path):
             rows.append({"file": relative, "statements": 0, "covered": 0, "status": "N/A"})
             continue
