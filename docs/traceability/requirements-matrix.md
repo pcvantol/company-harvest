@@ -23,3 +23,12 @@
 | CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | release/downloadbewijs |
 | CH-DIST-003 | Cross-platform wrappers/preflight | `scripts/`, `preflight.py` | wrapper/CI-smokes |
 
+## Roadmapbesluiten en outcome-gates
+
+| ID | Besluit/requirement | Canonieke bron | Bewijsstatus |
+|---|---|---|---|
+| CH-RM-001 | KVK-routemigratie en bulkverrijking blijven geparkeerd tot expliciete activatie | `ROADMAP.md` RD-001/R7 | documentatiebesluit |
+| CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + 12/12 CI |
+| CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R6 | roadmap; uitvoering gepland |
+| CH-RM-004 | Bronnen met directe registratienummers worden eerst onderzocht | `ROADMAP.md` R3-R5 | feasibility gepland |
+| CH-RM-005 | Geen productieharvest vóór representatieve sample- en schaalpoorten | `ROADMAP.md` RD-004/R8 | eigenaar-go/no-go vereist |

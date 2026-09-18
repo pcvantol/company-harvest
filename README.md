@@ -19,6 +19,8 @@ RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
 
 Zie [de gebruikershandleiding](docs/functional/user-guide.md), [technische documentatie](docs/README.md) en [releaseverificatie](docs/technical/release-and-download-verification.md).
 
+De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
+
 De onafhankelijk gereviewde publieke versie is [Company Harvest v0.1.0](https://github.com/pcvantol/company-harvest/releases/tag/v0.1.0).
 
 ## Status van externe toegang

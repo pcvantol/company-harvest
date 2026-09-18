@@ -1,0 +1,453 @@
+# Company Harvest — canonieke roadmap
+
+Statusdatum: 2026-09-18  
+Roadmap-eigenaar: repository-eigenaar  
+Status: actief  
+Dit document is de canonieke bron voor prioriteit, volgorde, scope en uitstelbesluiten. Bij strijdigheid met losse handoffs, reviews of ideeënlijsten geldt deze roadmap, tenzij een later ADR of expliciet gebruikersbesluit haar wijzigt.
+
+## 1. Productuitkomst
+
+Het doel blijft een aantoonbaar bruikbare lijst van circa 10.000 unieke, actieve Nederlandse ondernemingen zonder bevestigde eenmanszaken, met reconcilieerbare herkomst en zonder fictieve aanvulling. Een technisch werkende pipeline of succesvolle packaging is daarvoor noodzakelijk, maar niet voldoende.
+
+De eerstvolgende fase verschuift daarom van releaseceremonie naar drie meetbare productvragen:
+
+1. Welke bronnen leveren voldoende unieke Nederlandse organisaties en welke leveren direct een betrouwbaar registratienummer?
+2. Hoe gedragen deduplicatie, identiteit, reviewqueues en opslag zich op representatieve samples?
+3. Welke verificatieroute kan rechtsvorm en status aantoonbaar en verantwoord leveren voordat een schaalrun wordt toegestaan?
+
+## 2. Vaststaande besluiten
+
+### RD-001 — KVK-routemigratie is geparkeerd
+
+Een migratie naar officiële KVK-API's wordt nu niet ontworpen, gebouwd of aangevraagd. Ook wordt de bestaande publieke frontendroute niet voor bulkgebruik uitgebreid.
+
+Tot een expliciet besluit om dit onderwerp te hervatten:
+
+- blijft de huidige `public-http`/`public-browser`-implementatie bestaan;
+- worden alleen kleine, sequentiële capability- en regressiesmokes toegestaan;
+- geldt de frontendroute niet als bewezen route voor 10.000 records;
+- wordt geen productieharvest via deze route gestart;
+- worden Playwright, cooldowns en fallbacklogica nog niet verwijderd;
+- wordt geen aanname gedaan dat Zoeken rechtsvorm en ondernemingsstatus volledig levert.
+
+Het latere beslismoment staat als increment R7 in deze roadmap en blijft `PARKED` totdat de eigenaar het activeert.
+
+### RD-002 — User-Agent blijft voorlopig `company-lookup/0.1`
+
+Alle uitgaande bron- en KVK-HTTP-requests gebruiken:
+
+```text
+company-lookup/0.1
+```
+
+Er wordt geen persoonlijke GitHub-URL, gebruikersnaam, lokaal pad of contactadres in de User-Agent opgenomen. Een wijziging vereist een nieuw expliciet besluit. Er komt geen afzonderlijke patchrelease uitsluitend voor deze stringwijziging.
+
+### RD-003 — Outcome-gates gaan vóór een volgende release
+
+De volgende publieke release bundelt een betekenisvolle productverbetering, bijvoorbeeld een nieuwe gevalideerde bronadapter plus meetrapportage. `v0.1.0` wordt niet gewijzigd en het oude manifest wordt niet hergebruikt.
+
+### RD-004 — Geen automatische productieharvest
+
+Samples worden begrensd en vooraf gespecificeerd. Een 10.000-run wordt pas na de schaal- en gebruikspoorten in R8 door de eigenaar gestart; nooit automatisch tijdens ontwikkeling, CI, installatie of review.
+
+### RD-005 — Bestaande engineeringgates blijven voorlopig staan
+
+De 12-cellen-CI, per-file coveragegate, assetprovenance en onafhankelijke release-review worden niet stil verwijderd. Vereenvoudiging kan later als afzonderlijk governancebesluit worden voorgesteld. Outcome-gates worden eerst toegevoegd naast de bestaande softwaregates, zodat productkwaliteit niet ten koste gaat van technische integriteit.
+
+## 3. Statuslegenda
+
+| Status | Betekenis |
+|---|---|
+| `DONE` | Afgerond en aantoonbaar geverifieerd |
+| `ACTIVE` | Huidig increment; werk mag worden uitgevoerd |
+| `NEXT` | Eerstvolgende uitvoerbare increment |
+| `PLANNED` | Gespecificeerd, maar afhankelijk van eerdere uitkomsten |
+| `PARKED` | Bewust uitgesteld; niet uitvoeren zonder expliciet besluit |
+| `BLOCKED` | Kan niet verantwoord verder zonder externe keuze of toegang |
+
+## 4. Roadmapoverzicht
+
+| Increment | Status | Uitkomst | Afhankelijk van |
+|---|---|---|---|
+| R0 | `DONE` | Roadmap, besluiten en prioriteiten canoniek vastgelegd en onafhankelijk gereviewd | — |
+| R1 | `NEXT` | Meetcontract en rijkere broncatalogus | R0 |
+| R2 | `PLANNED` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
+| R3 | `PLANNED` | GLEIF-feasibility met go/no-go-besluit | R1 |
+| R4 | `PLANNED` | Productieadapter voor de beste bron met registratienummer | R2, R3 en een `GO` |
+| R5 | `PLANNED` | Tweede tranche gestructureerde bronnen gerangschikt en geselecteerd | R1, R3 |
+| R6 | `PLANNED` | Representatieve bron-/dedupsample van 500 met outcome-rapport | R4 of aantoonbaar gelijkwaardig volume |
+| R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
+| R8 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7 |
+| R9 | `PLANNED` | Bronnen zonder registratienummer, alleen wanneer matchroute bewezen is | R7, R8 |
+| R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
+
+De volgorde is outcome-gedreven. Een later increment mag niet worden gestart omdat het technisch aantrekkelijk is; de afhankelijkheden en exitcriteria moeten eerst zijn gehaald.
+
+## 5. R0 — Canonieke koersvastlegging
+
+Status: `DONE` — onafhankelijke review `PASS` vastgelegd.
+
+### Scope
+
+- Claude-review vertalen naar toetsbare increments.
+- KVK-migratie expliciet parkeren.
+- `company-lookup/0.1` als voorlopig vast besluit registreren.
+- Geen aparte `v0.1.1` voor alleen de User-Agent plannen.
+- Roadmap vanuit de repository- en documentatie-index vindbaar maken.
+
+### Exitcriteria
+
+- `ROADMAP.md` bestaat en is vanuit `README.md` en `docs/README.md` gelinkt.
+- ADR-001 verwijst naar het actuele parkeerbesluit.
+- De uitvoering is in het promptregister opgenomen.
+- Een onafhankelijke read-only review is met status `PASS` vastgelegd.
+
+## 6. R1 — Meetcontract en broncatalogus 2.0
+
+Status: `NEXT`.
+
+### Doel
+
+Maak productopbrengst meetbaar voordat nieuwe scrapers of releases worden gebouwd.
+
+### Werk
+
+Breid het bronmodel minimaal uit met:
+
+- `has_registration_number`;
+- `registration_number_type`;
+- `provides_legal_form`;
+- `provides_status`;
+- `access_mode` (`bulk`, `api`, `download`, `html`, `manual-import`);
+- voorwaarden-/licentieverwijzing;
+- actualiteits- of refreshinformatie indien bekend;
+- live meetstatus en gemeten aantal;
+- geschatte overlap alleen wanneer daadwerkelijk gemeten.
+
+Voeg aan runrapportage minimaal toe:
+
+- ruwe records per bron;
+- records met syntactisch geldig KVK-nummer;
+- records zonder direct registratienummer;
+- unieke kandidaten vóór en na deduplicatie;
+- identieke merges, conflicten en reviewgevallen;
+- ontbrekende rechtsvorm/status per bron;
+- doorlooptijd, piekgeheugen en SQLite-/evidencegroei;
+- volledige count-closure tussen iedere stap.
+
+### Tests
+
+- Catalogusschema- en migratietests.
+- Rapportmetriek met lege, dubbele en conflicterende fixtures.
+- Geen verlies van records door ontbrekende optionele meetvelden.
+- Bestaande run-schema's blijven leesbaar of worden expliciet geweigerd met hersteladvies.
+
+### Exitcriteria
+
+- Iedere bron heeft een expliciet registratie-ID-profiel.
+- Een synthetische sample levert een volledig outcome-rapport met sluitende aantallen.
+- Er zijn nog geen verzonnen succesdrempels; thresholds worden pas na R2/R3 met data vastgesteld.
+
+## 7. R2 — Bestaande bronnen werkelijk meten
+
+Status: `PLANNED`.
+
+### Doel
+
+Vervang aannames over IND en Wikidata door actuele, reproduceerbare capabilitymetingen.
+
+### Werk
+
+- Voer een begrensde IND-meting uit en registreer werkelijk aantal, geldige KVK-hints, duplicaten en parserafwijzingen.
+- Voer een begrensde live Wikidata-meting uit; de bestaande offline tests alleen zijn onvoldoende.
+- Meet overlap tussen IND en Wikidata op KVK-nummer.
+- Leg actualiteit, voorwaarden, rate-limitobservaties en evidence vast.
+- Classificeer rechtsvorm/status uit deze bronnen uitsluitend als brondata, niet automatisch als KVK-gevalideerd filterveld.
+
+### Grenzen
+
+- Geen bulk-KVK-verrijking.
+- Geen claim dat twee bronnen het target dekken.
+- Geen volledige Wikidata-download wanneer een kleinere meting de capabilityvraag beantwoordt.
+
+### Exitcriteria
+
+- Beide bronnen hebben `LIVE_MEASURED`, `BLOCKED` of een concrete foutstatus.
+- Werkelijke aantallen en overlap zijn aantoonbaar.
+- Er ligt een datagedreven besluit of de bestaande bronnen voldoende basisvolume voor R6 leveren.
+
+## 8. R3 — GLEIF-feasibility, nog geen productieadapter
+
+Status: `PLANNED`.
+
+### Doel
+
+Onderzoek de reviewhypothese dat GLEIF in één bulkbron Nederlandse organisaties met bruikbare registratienummers, status en rechtsvorm kan leveren.
+
+### Werk
+
+- Verifieer primaire documentatie, downloadroute, licentie/voorwaarden, updatefrequentie en bestandsformaat.
+- Filter een lokale sample op Nederlandse entiteiten.
+- Meet hoeveel nationale registratienummers exact als achtcijferig KVK-nummer valideerbaar zijn.
+- Meet duplicaten, ontbrekende identifiers, legal-formvelden en statusvelden.
+- Controleer betekenis en peildatum van GLEIF-status/rechtsvorm; behandel die niet stil als KVK-verificatie.
+- Schat downloadgrootte, verwerkingstijd, geheugen en opslag.
+
+### Go/no-go-criteria
+
+Een `GO` vereist minimaal:
+
+- juridisch/operationeel toelaatbare toegang volgens vastgelegde voorwaarden;
+- reproduceerbare bulkdownload;
+- betekenisvolle Nederlandse opbrengst;
+- aantoonbare mapping naar KVK-nummers voor een substantieel deel van de sample;
+- beheersbare verwerking zonder volledige dataset in geheugen;
+- duidelijk provenance- en refreshmodel.
+
+Bij `NO_GO` wordt alleen het bewijsdocument toegevoegd; er wordt geen halfwerkende adapter gebouwd.
+
+## 9. R4 — Productieadapter voor een bron met registratienummer
+
+Status: `PLANNED`, alleen na `GO` uit R3 of een gelijkwaardig bronbesluit.
+
+### Doel
+
+Voeg de hoogste-opbrengstbron met directe registratienummers toe zonder het fuzzy-matchprobleem te vergroten.
+
+### Werk
+
+- Streaming of chunked verwerking.
+- Begrensde download, redirect- en groottelogica passend bij bulkbestanden.
+- Lokale immutable evidence met bronversie, tijd en hash.
+- Deterministische filtering op Nederlandse entiteiten.
+- Expliciete identifier-validatie en rejected-uitvoer.
+- Bronstatus/rechtsvorm als afzonderlijke bronvelden bewaren.
+- Downstream-invalidatie en resume/hergebruik testen.
+
+### Exitcriteria
+
+- Adapter slaagt offline met realistische fixtures en live met een begrensde capabilityrun.
+- Alle aantallen sluiten.
+- Geen bronveld wordt stil als KVK-gevalideerd gepromoveerd.
+- Opbrengst en overlap zijn in het outcome-rapport zichtbaar.
+
+## 10. R5 — Tweede tranche brononderzoek
+
+Status: `PLANNED`.
+
+### Doel
+
+Selecteer aanvullende bronnen op opbrengst, identifierkwaliteit en toegestane toegang, niet op implementatiegemak.
+
+### Onderzoeksvolgorde
+
+De externe review noemt onder meer TED, TenderNed, leveranciersbestanden, sectorregisters, SBB, brancheverenigingen en exposantenlijsten. Hun identifierbeschikbaarheid, volume en geschiktheid zijn hypotheses, geen vastgestelde feiten. Daarom geldt:
+
+1. inventariseer per kandidaat welke identifiers werkelijk beschikbaar zijn;
+2. bewijs dit met primaire documentatie en een begrensde sample;
+3. rangschik pas daarna bronnen met een betrouwbaar direct registratienummer vóór bronnen die matching nodig hebben;
+4. selecteer maximaal één kandidaat tegelijk voor implementatie.
+
+### Verplichte feasibilitykaart per kandidaatbron
+
+- eigenaar en primaire URL;
+- toegangstype en updatefrequentie;
+- voorwaarden, licentie, robots/crawlbeperkingen en vereiste attributie;
+- wel/geen registratienummer;
+- verwachte bias;
+- gemeten sampleopbrengst;
+- overlap met bestaande bronnen;
+- parsercomplexiteit en onderhoudsrisico;
+- persoonsgegevens- en gebruiksrisico;
+- `GO`, `NO_GO` of `PARKED`.
+
+### Footer-crawl
+
+Een gerichte crawl naar KVK-nummers in websites wordt als afzonderlijke kandidaat behandeld, niet automatisch gebouwd. Voor een `GO` zijn eerst vereist:
+
+- een legitieme, begrensde seedset;
+- beoordeling van voorwaarden en robotsregels;
+- lage requestfrequentie, hostgrenzen en maximale omvang;
+- bewijs dat een gevonden nummer aan de juiste organisatie kan worden gekoppeld;
+- rejected/reviewpad voor conflicten;
+- expliciete eigenaarstoestemming voor live uitvoering.
+
+Common Crawl of een internetbrede `.nl`-crawl wordt niet zonder afzonderlijk ontwerp- en gebruiksbesluit gestart.
+
+### Exitcriteria
+
+- Minimaal drie kandidaatbronnen hebben een volledige feasibilitykaart.
+- Hoogstens één nieuwe bron wordt tegelijk voor implementatie geselecteerd.
+- Selectie is gemotiveerd met gemeten opbrengst en risico.
+
+## 11. R6 — Bron- en dedupsample van 500
+
+Status: `PLANNED`.
+
+### Doel
+
+Test schaalgedrag en datakwaliteit zonder de geparkeerde KVK-beslissing te omzeilen.
+
+### Werk
+
+- Bouw een deterministische sample van 500 bronrecords uit meerdere bronnen.
+- Voer verzamelen, normaliseren, voorlopige deduplicatie en conflictdetectie uit.
+- Meet per bron en totaal:
+  - geldige directe registratienummers;
+  - duplicate ratio;
+  - identieke merges;
+  - conflicten en reviewqueue;
+  - aantal unieke kandidaten;
+  - rechtsvorm-/statusdekking als brondata;
+  - tijd, geheugen, database- en evidencegroei.
+- Laat een handmatig gestratificeerde steekproef van mergebeslissingen beoordelen voordat thresholds worden vastgezet.
+
+### Grenzen
+
+- Geen 500 KVK-frontendcalls zolang R7 geparkeerd is.
+- Geen bronstatus of GLEIF-status presenteren als KVK-gevalideerde ondernemingsstatus.
+- Geen releaseclaim dat het einddoel is bewezen.
+
+### Exitcriteria
+
+- 100% count-closure en nul stil verloren records.
+- Geen onverklaarde false merge in de beoordeelde steekproef.
+- Meetrapport bevat reproduceerbare sampledefinitie.
+- Op basis van de meting worden expliciete thresholds voorgesteld voor R8; niet eerder.
+
+## 12. R7 — KVK-verificatiebesluit
+
+Status: `PARKED`.
+
+Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
+
+### Te beantwoorden vragen
+
+- Welke officiële en publieke routes zijn op dat moment beschikbaar en toegestaan?
+- Welke route levert naam, KVK-nummer, Nederlandse vestiging, rechtsvorm en ondernemingsstatus met bewezen semantiek?
+- Is een afzonderlijk basis-/vestigingsprofiel nodig?
+- Wat zijn actuele kosten, limieten, voorwaarden en secretbeheervereisten?
+- Welke bestaande frontendprovidercode kan na succesvolle migratie veilig vervallen?
+
+### Gefaseerde aanpak wanneer geactiveerd
+
+1. Alleen primaire KVK-documentatie en testomgeving onderzoeken.
+2. Providercontract en kostenmodel documenteren; nog geen productiekey committen of loggen.
+3. Sample van maximaal 200 records uitvoeren met vooraf bepaalde metrics.
+4. Rechtsvorm-, status-, match- en unresolved-dekking meten.
+5. Go/no-go en nieuwe ADR vastleggen.
+6. Pas bij `GO` provider implementeren en oude code gecontroleerd uitfaseren.
+
+### Blokkade voor bulk
+
+Zolang R7 `PARKED` is, is volledige KVK-verrijking op 500/10.000 records niet release- of productiegekwalificeerd.
+
+## 13. R8 — Volledige sample- en schaalvalidatie
+
+Status: `PLANNED`, afhankelijk van R6 en een afgerond R7-besluit.
+
+### Fase A — volledige sample van 500
+
+Meet minimaal:
+
+- match rate;
+- no-match, ambigu en technische foutpercentages;
+- reviewqueuegrootte;
+- dedup-ratio vóór en na verificatie;
+- unieke canonieke bedrijven;
+- percentage met bewezen rechtsvorm;
+- percentage met bewezen ondernemingsstatus;
+- verdeling actief/inactief/unknown;
+- verdeling eenmanszaak/non-sole/unknown;
+- tijd, throughput, retries, opslag en evidencegroei;
+- volledige closure van kandidaten naar iedere terminale uitkomst.
+
+Thresholds worden vastgesteld op basis van R6/R7-data en handmatige kwaliteitscontrole. Ze worden niet achteraf aangepast om een slechte run groen te maken.
+
+### Fase B — schaalstappen
+
+Na een geslaagde sample:
+
+1. synthetische of lokale 2.000-record belastingstest;
+2. synthetische of lokale 10.000-record belastingstest;
+3. pas daarna een eigenaar-go/no-go voor een echte 10.000-run.
+
+### Exitcriteria
+
+- Outcome-thresholds gehaald.
+- Geen niet-lineaire fout in tijd, geheugen of SQLitegedrag.
+- Externe routecapaciteit en voorwaarden aantoonbaar passend.
+- Operationele en juridische checklist door eigenaar geaccepteerd.
+
+## 14. R9 — Bronnen zonder registratienummer
+
+Status: `PLANNED`, maar pas na bewijs van de matchroute.
+
+De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. R5 moet eerst vaststellen of een kandidaat werkelijk geen bruikbaar registratienummer levert. Alleen kandidaten waarvoor dat is bewezen, vallen in R9. Voor die bronnen worden de extra match- en reviewkosten gemeten in plaats van vooraf aangenomen.
+
+Per adapter zijn verplicht:
+
+- expliciet Nederlandse relatie-evidence;
+- oorspronkelijke naam en bronlocatie;
+- geen automatische merge op alleen naam of domein;
+- meetbare match- en reviewopbrengst;
+- bronvoorwaarden en bias;
+- een stopcriterium wanneer onderhoud of reviewkosten hoger zijn dan opbrengst.
+
+## 15. R10 — Volgende release
+
+Status: `PLANNED`.
+
+Er komt geen standalone `v0.1.1` uitsluitend voor de User-Agent. De eerstvolgende release volgt pas na een betekenisvol productincrement en gebruikt de versie-impact daarvan; een nieuwe bron- en metriekcapability kan bijvoorbeeld een nieuwe minorversie rechtvaardigen.
+
+### Verplichte gates
+
+- relevante roadmap-exitcriteria gehaald;
+- outcome-rapport aanwezig;
+- volledige lokale qualitygate;
+- toepasselijke CI-matrix groen;
+- onafhankelijke read-only review van exacte commit en distributiebytes;
+- nieuw commitgebonden manifest;
+- nieuwe tag; bestaande tags nooit verplaatsen;
+- anonieme herdownload, hashcontrole en verse installatiekwalificatie;
+- release notes maken expliciet onderscheid tussen offline, live bewezen, parked en niet getest.
+
+## 16. Parallelle werkstroom — voorwaarden, privacy en gebruik
+
+Deze werkstroom blokkeert geen offline ontwerp, maar wel operationeel gebruik wanneer open punten materieel zijn.
+
+Per bron en beoogd gebruik moet worden vastgelegd:
+
+- voorwaarden/licentie en attributie;
+- toegestane download-/crawlwijze;
+- bewaartermijn en verwijder-/refreshstrategie;
+- aanwezigheid van persoonsgegevens;
+- beoogd gebruik van de uiteindelijke lijst;
+- organisatorische beoordeling van AVG, direct-marketing- en belregels;
+- wie eigenaar is van het finale gebruiksbesluit.
+
+De repository doet geen juridische garantie. Bij twijfel is beoordeling door een bevoegde privacy-/juridische verantwoordelijke nodig vóór operationeel gebruik.
+
+## 17. Bewust uitgesteld
+
+De volgende onderwerpen zijn lager geprioriteerd totdat bronopbrengst en verificatie zijn bewezen:
+
+- orphan-outputdirectory automatisch herstellen;
+- CI-matrix reduceren;
+- packagingceremonie verder optimaliseren;
+- opnieuw publiceren uitsluitend voor documentatie of User-Agent;
+- publieke/private repositorystrategie wijzigen;
+- internetbrede footer-crawl;
+- volledige 10.000-bedrijvenproductierun.
+
+## 18. Roadmapwijzigingen
+
+Een roadmapwijziging vermeldt minimaal:
+
+- datum en aanleiding;
+- gewijzigd besluit of increment;
+- effect op afhankelijkheden en exitcriteria;
+- eventuele nieuwe ADR;
+- wie de wijziging expliciet heeft geautoriseerd.
+
+Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral R7 mag niet impliciet worden geactiveerd door technisch onderzoek of een implementatievoorstel.
