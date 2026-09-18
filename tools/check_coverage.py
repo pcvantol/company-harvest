@@ -24,6 +24,7 @@ def evaluate(root: Path, report: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     report_files = report.get("files")
     if not isinstance(report_files, dict):
         raise ValueError("coverage JSON mist files")
+    normalized_report_files = {str(name).replace("\\", "/"): entry for name, entry in report_files.items()}
     rows: list[dict[str, Any]] = []
     passed = True
     for path in executable_files(root):
@@ -31,7 +32,7 @@ def evaluate(root: Path, report: dict[str, Any]) -> tuple[list[dict[str, Any]], 
         if not has_statements(path):
             rows.append({"file": relative, "statements": 0, "covered": 0, "status": "N/A"})
             continue
-        entry = report_files.get(relative)
+        entry = normalized_report_files.get(relative)
         if not isinstance(entry, dict):
             rows.append({"file": relative, "statements": None, "covered": None, "status": "MISSING"})
             passed = False

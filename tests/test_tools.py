@@ -28,6 +28,8 @@ def test_coverage_gate(tmp_path: Path) -> None:
     assert passed and rows[0]["status"] == "PASS" and "Coverage" in module.markdown(rows)
     report["files"]["src/x.py"]["summary"]["covered_lines"] = 4
     assert not module.evaluate(tmp_path, report)[1]
+    report["files"]["src\\x.py"] = report["files"].pop("src/x.py")
+    assert not module.evaluate(tmp_path, report)[1]
     with pytest.raises(ValueError):
         module.evaluate(tmp_path, {})
     report_path = tmp_path / "coverage.json"; report_path.write_text(json.dumps(report))
