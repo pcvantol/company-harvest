@@ -50,9 +50,13 @@ De volgende publieke release bundelt een betekenisvolle productverbetering, bijv
 
 Samples worden begrensd en vooraf gespecificeerd. Een 10.000-run wordt pas na de schaal- en gebruikspoorten in R9 door de eigenaar gestart; nooit automatisch tijdens ontwikkeling, CI, installatie of review.
 
-### RD-005 — Bestaande engineeringgates blijven voorlopig staan
+### RD-005 — Gefocuste engineeringgates
 
-De 12-cellen-CI, per-file coveragegate, assetprovenance en onafhankelijke release-review worden niet stil verwijderd. Vereenvoudiging kan later als afzonderlijk governancebesluit worden voorgesteld. Outcome-gates worden eerst toegevoegd naast de bestaande softwaregates, zodat productkwaliteit niet ten koste gaat van technische integriteit.
+Op expliciet besluit van de repository-eigenaar bestaat de actieve CI-matrix uit Python
+3.14 op macOS en Windows. Ubuntu en Python 3.11–3.13 zijn geen doorlopende CI-gates
+meer en gelden voor nieuwe wijzigingen als `NOT_TESTED`. De per-file coveragegate,
+assetprovenance en onafhankelijke release-review blijven ongewijzigd. Een toekomstige
+release beschrijft ondersteuning afzonderlijk van de werkelijk uitgevoerde CI-matrix.
 
 ### RD-006 — Breed verzamelen, gecontroleerd verkleinen
 
@@ -502,7 +506,6 @@ De repository doet geen juridische garantie. Bij twijfel is beoordeling door een
 De volgende onderwerpen zijn lager geprioriteerd totdat bronopbrengst en verificatie zijn bewezen:
 
 - orphan-outputdirectory automatisch herstellen;
-- CI-matrix reduceren;
 - packagingceremonie verder optimaliseren;
 - opnieuw publiceren uitsluitend voor documentatie of User-Agent;
 - publieke/private repositorystrategie wijzigen;
@@ -523,5 +526,6 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — CI-matrix gericht verkleind:** op expliciet besluit van de repository-eigenaar is RD-005 gewijzigd. Doorlopende CI valideert voortaan uitsluitend Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 zijn voor nieuwe wijzigingen `NOT_TESTED`. De overige kwaliteits- en releasegates blijven staan.
 - **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.
 - **2026-09-18 — KVK-nummermatching toegestaan:** op expliciet besluit van de repository-eigenaar is RD-007 toegevoegd. Kandidaten zonder initieel KVK-nummer mogen regulier worden gematcht en verrijkt; R8 vereist daarom niet langer R7. Alleen providerbulk, routemigratie en volledige rechtsvorm-/statusverificatie blijven onder RD-001/R7 geparkeerd.

@@ -28,7 +28,7 @@
 | ID | Besluit/requirement | Canonieke bron | Bewijsstatus |
 |---|---|---|---|
 | CH-RM-001 | KVK-routemigratie, providerbulk en volledige bulkverificatie blijven geparkeerd tot expliciete activatie | `ROADMAP.md` RD-001/R7 | documentatiebesluit |
-| CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + 12/12 CI |
+| CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + toepasselijke CI |
 | CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R6 | roadmap; uitvoering gepland |
 | CH-RM-004 | Een brede set goede bronfamilies wordt vroeg verzameld; registratienummers bepalen routing, niet vroege toelating | `ROADMAP.md` RD-006/R3-R6 | portfolio-opbouw gepland |
 | CH-RM-005 | Geen productieharvest vóór representatieve pilot-, sample- en schaalpoorten | `ROADMAP.md` RD-004/R8-R9 | eigenaar-go/no-go vereist |
@@ -38,3 +38,4 @@
 | CH-R1-002 | Bronnen zonder KVK-kolom en ontbrekende/ongeldige nummers blijven verliesvrij als kandidaten behouden | `sources.import_source`, `RAW_HEADERS` | import- en parserfixtures |
 | CH-R1-003 | Outcome-rapportage meet per bron, dedup/conflict/review, kandidaatdiversiteit/-overlap, resourcegroei en closure per procesovergang | `workflow.outcome_metrics`, `workflow.report` | lege/dubbele/conflict- en volledige-pipelinefixtures |
 | CH-R1-004 | `company-lookup/0.1` is zichtbaar in directe en browserrequests, runmetadata en rapportage | `core.HTTP_USER_AGENT`, browsercontext, `initialize_run`, outcome-rapport | bron/KVK-browser/run/rapporttests |
+| CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |
