@@ -19,6 +19,7 @@ from company_harvest.kvk import (
     _choose_provider,
     _extract_dom_hits,
     _extract_hits,
+    _has_source_conflict,
     _match,
     preflight,
     resolve,
@@ -60,6 +61,8 @@ def test_retry_extract_match_and_cooldown(run) -> None:
     result = ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")
     assert _match(candidate, result)["KVK-nummer"] == "01234567"
     assert _match(candidate, ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "01234567"}], True, "mock", "x")) is None
+    conflict = ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "99999999", "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")
+    assert _has_source_conflict(candidate, conflict)
     with run.connect() as connection:
         connection.execute("INSERT INTO cooldowns VALUES('kvk', ?, 'test')", (time.time() + 100,))
     with pytest.raises(HarvestError):
@@ -199,6 +202,20 @@ def test_resume_and_limit(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert read_tsv(unresolved)[0]["reason"] == "NOT_PROCESSED_LIMIT"
     matches2, _ = resolve(run, "auto", 1, True, False, False, 0)
     assert len(read_tsv(matches2)) >= 1
+
+
+def test_incomplete_and_unknown_outcome_not_resent(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    _candidates(run, ["Alpha"])
+    provider = FakeProvider()
+    monkeypatch.setattr(provider, "search", lambda *args, **kwargs: ProviderResult("Alpha", [], False, "fake", "x"))
+    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: provider)
+    _, unresolved = resolve(run, "auto", None, False, False, False, 0)
+    assert read_tsv(unresolved)[0]["reason"] == "TRUNCATED_RESULTS"
+    with run.connect() as connection:
+        connection.execute("UPDATE kvk_requests SET state='SENT_OUTCOME_UNKNOWN'")
+    monkeypatch.setattr(provider, "search", lambda *args, **kwargs: pytest.fail("unknown request was resent"))
+    _, unresolved2 = resolve(run, "auto", None, True, False, False, 0)
+    assert read_tsv(unresolved2)[0]["reason"] == "SENT_OUTCOME_UNKNOWN"
 
 
 def test_preflight_and_cli(tmp_path: Path, run, capsys: pytest.CaptureFixture[str]) -> None:

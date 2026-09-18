@@ -103,7 +103,7 @@ class PublicHttpProvider:
         start, total = 0, None
         with httpx.Client(timeout=timeout, follow_redirects=False, headers=headers) as client:
             for _page in range(20):
-                params = {self.query_parameter: query, "language": "nl", "site": "kvk2014", "size": "10", "start": str(start), "inschrijvingsstatus": "ingeschreven"}
+                params = {self.query_parameter: query, "language": "nl", "site": "kvk2014", "size": "10", "start": str(start)}
                 response = self._get_with_retries(client, params)
                 if response.status_code in {401, 403}:
                     raise KvkError("PUBLIC_ACCESS_BLOCKED", "publieke KVK-toegang geweigerd", 4)
@@ -368,6 +368,14 @@ class ProviderLock:
 
     def __enter__(self) -> ProviderLock:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.exists():
+            try:
+                owner = json.loads(self.path.read_text(encoding="utf-8"))
+                os.kill(int(owner["pid"]), 0)
+            except ProcessLookupError:
+                self.path.unlink(missing_ok=True)
+            except (OSError, ValueError, KeyError, json.JSONDecodeError):
+                pass
         try:
             self.descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             os.write(self.descriptor, json.dumps({"pid": os.getpid(), "time": time.time()}).encode())
@@ -400,6 +408,9 @@ def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refre
             if prior and prior["state"] == "SUCCEEDED" and resume and not refresh:
                 resolved.append(json.loads(prior["result_json"]))
                 continue
+            if prior and prior["state"] == "SENT_OUTCOME_UNKNOWN" and not refresh:
+                unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"], "reason": "SENT_OUTCOME_UNKNOWN", "detail": "expliciete --refresh vereist voor veilige herhaling", "resumable": "true", "checked_at": ""})
+                continue
             if limit is not None and processed >= limit:
                 unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"], "reason": "NOT_PROCESSED_LIMIT", "detail": "kandidaatlimiet bereikt", "resumable": "true", "checked_at": ""})
                 continue
@@ -413,13 +424,19 @@ def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refre
                 )
             try:
                 result = provider.search(candidate["original_name"], headed=headed)
-                record = _match(candidate, result)
+                record = _match(candidate, result) if result.complete else None
                 if record:
                     resolved.append(record)
                     state, error = "SUCCEEDED", None
                 else:
-                    unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"], "reason": "NOT_FOUND", "detail": "voltooide zoekactie zonder onderbouwde unieke match", "resumable": "false", "checked_at": datetime.now(UTC).isoformat()})
-                    state, error = "UNRESOLVED", "NOT_FOUND"
+                    if not result.complete:
+                        reason, detail, resumable = "TRUNCATED_RESULTS", "zoekresultaat niet aantoonbaar volledig", "true"
+                    elif _has_source_conflict(candidate, result):
+                        reason, detail, resumable = "SOURCE_CONFLICT", "exacte naam met ander KVK-nummer dan bronhint", "false"
+                    else:
+                        reason, detail, resumable = "NOT_FOUND", "voltooide zoekactie zonder onderbouwde unieke match", "false"
+                    unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"], "reason": reason, "detail": detail, "resumable": resumable, "checked_at": datetime.now(UTC).isoformat()})
+                    state, error = "UNRESOLVED", reason
                 with run.connect() as connection:
                     connection.execute("UPDATE kvk_requests SET state=?,checked_at=?,result_json=?,evidence_path=?,error=? WHERE candidate_id=?", (state, datetime.now(UTC).isoformat(), json.dumps(record) if record else None, result.evidence, error, candidate_id))
             except KvkError as exc:
@@ -494,3 +511,20 @@ def _match(candidate: dict[str, str], result: ProviderResult) -> dict[str, Any] 
     if normalize_name(country) not in {"nederland", "netherlands"} or not city:
         return None
     return {"candidate_id": candidate["candidate_id"], "Bedrijfsnaam": name, "KVK-nummer": number, "raw_legal_form": legal_form, "raw_status": status, "city": city, "country": country, "match_method": method, "provider": result.transport, "checked_at": datetime.now(UTC).isoformat(), "response_json": json.dumps([item for item, _ in variants], ensure_ascii=False, separators=(",", ":")), "source_relations": candidate.get("source_relations", "")}
+
+
+def _has_source_conflict(candidate: dict[str, str], result: ProviderResult) -> bool:
+    from company_harvest.core import normalize_name, validate_kvk
+
+    hint = candidate.get("source_kvk_hint", "")
+    if not hint:
+        return False
+    for hit in result.hits:
+        name = next((hit.get(key) for key in ("naam", "name", "handelsnaam") if hit.get(key)), None)
+        number = next((hit.get(key) for key in ("kvkNummer", "kvk_number", "kvk", "nummer") if hit.get(key)), None)
+        try:
+            if name and normalize_name(str(name)) == normalize_name(candidate["original_name"]) and validate_kvk(number) != hint:
+                return True
+        except ValueError:
+            continue
+    return False

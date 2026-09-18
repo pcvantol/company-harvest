@@ -37,6 +37,9 @@ def test_coverage_gate(tmp_path: Path) -> None:
 
 def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     module = load("release")
+    assert module.git(ROOT, "rev-parse", "--show-toplevel") == str(ROOT)
+    with pytest.raises(RuntimeError):
+        module.git(ROOT, "rev-parse", "--verify", "refs/tags/does-not-exist")
     file = tmp_path / "asset.whl"; file.write_bytes(b"wheel")
     manifest_path = tmp_path / "manifest.json"
     manifest = {"assets": [{"name": file.name, "path": str(file), "sha256": module.digest(file), "size": 5}]}
@@ -68,7 +71,8 @@ def test_release_build_publish_and_main(tmp_path: Path, monkeypatch: pytest.Monk
             with tarfile.open(out / "company_harvest-0.1.0.tar.gz", "w:gz") as archive:
                 archive.add(source, arcname="company_harvest-0.1.0/source.txt")
             source.unlink()
-        return subprocess.CompletedProcess(command, 1 if command[:3] == ["gh", "release", "view"] else 0)
+        missing = command[:3] == ["gh", "release", "view"] or command[:3] == ["git", "rev-parse", "--verify"]
+        return subprocess.CompletedProcess(command, 1 if missing else 0)
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
     monkeypatch.setattr(module, "qualify_wheel", lambda wheel: {"version": "0.1.0", "import_location": str(tmp_path / "site-packages" / "company_harvest"), "status": "PASS"})
@@ -97,6 +101,11 @@ def test_release_scan_asset(tmp_path: Path) -> None:
         archive.writestr("runs/data.csv", "bad")
     with pytest.raises(RuntimeError):
         module.scan_asset(unsafe)
+    secret = tmp_path / "secret.zip"
+    with zipfile.ZipFile(secret, "w") as archive:
+        archive.writestr("config.txt", "ghp_" + "A" * 30)
+    with pytest.raises(RuntimeError):
+        module.scan_asset(secret)
 
 
 def test_package_main(monkeypatch: pytest.MonkeyPatch) -> None:

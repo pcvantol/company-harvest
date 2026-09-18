@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import zipfile
 from datetime import UTC, datetime
@@ -33,17 +35,23 @@ def git(root: Path, *args: str) -> str:
 
 def scan_asset(path: Path) -> None:
     forbidden = {".env", "state.sqlite3", "storage-state.json"}
-    names: list[str] = []
+    secret_patterns = (
+        re.compile(rb"gh[pousr]_[A-Za-z0-9_]{20,}"),
+        re.compile(rb"AKIA[0-9A-Z]{16}"),
+        re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    )
+    members: list[tuple[str, bytes]] = []
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
-            names = archive.namelist()
+            members = [(info.filename, archive.read(info)) for info in archive.infolist() if not info.is_dir() and info.file_size <= 5 * 1024 * 1024]
     elif path.suffix == ".gz":
-        import tarfile
-
         with tarfile.open(path) as archive:
-            names = archive.getnames()
+            members = [(member.name, extracted.read()) for member in archive.getmembers() if member.isfile() and member.size <= 5 * 1024 * 1024 and (extracted := archive.extractfile(member))]
+    names = [name for name, _content in members]
     if any(Path(name).name in forbidden or "runs/" in name or name.endswith((".har", ".log", ".jsonl", ".sqlite3")) for name in names):
         raise RuntimeError(f"verboden inhoud in distributieasset: {path.name}")
+    if any(pattern.search(content) for _name, content in members for pattern in secret_patterns):
+        raise RuntimeError(f"geheimpatroon in distributieasset: {path.name}")
 
 
 def qualify_wheel(wheel: Path) -> dict[str, str]:
@@ -56,7 +64,17 @@ def qualify_wheel(wheel: Path) -> dict[str, str]:
         version = subprocess.run([str(cli), "--version"], check=True, capture_output=True, text=True).stdout.strip()
         subprocess.run([str(cli), "--help"], check=True, capture_output=True, text=True)
         location = subprocess.run([str(python), "-c", "import company_harvest; print(company_harvest.__file__)"], check=True, capture_output=True, text=True).stdout.strip()
-    return {"version": version, "import_location": location, "status": "PASS"}
+        data = Path(temporary) / "data"
+        left, right = Path(temporary) / "left.csv", Path(temporary) / "right.csv"
+        left.write_text("Bedrijfsnaam,KVK-nummer\nAlpha BV,01234567\n", encoding="utf-8")
+        right.write_text("Bedrijfsnaam,KVK-nummer\nBeta BV,12345678\n", encoding="utf-8")
+        subprocess.run([str(cli), "--data-dir", str(data), "doctor"], check=True, capture_output=True, text=True)
+        merged = subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge-lists", "--left", str(left), "--right", str(right)], check=True, capture_output=True, text=True)
+        run_dir = sorted((data / "runs").iterdir())[0]
+        audit = subprocess.run([str(cli), "--data-dir", str(data), "audit", "verify", "--run-dir", str(run_dir)], check=True, capture_output=True, text=True)
+        if '"valid": true' not in audit.stdout or "merged.csv" not in merged.stdout:
+            raise RuntimeError("verse-installatiekwalificatie leverde geen geldig auditresultaat")
+    return {"version": version, "import_location": location, "workflow": "MERGE_LISTS", "audit": "PASS", "status": "PASS"}
 
 
 def build(root: Path, output_root: Path) -> Path:
@@ -78,6 +96,19 @@ def build(root: Path, output_root: Path) -> Path:
             destination = stage / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
+        for relative in ("requirements/runtime.txt", "requirements/constraints.txt"):
+            destination = stage / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(root / relative, destination)
+        bundle_manifest = {
+            "version": version,
+            "source_commit": git(root, "rev-parse", "HEAD"),
+            "wheel": wheel.name,
+            "wheel_sha256": digest(wheel),
+            "offline_install": f"python -m pip install {wheel.name}",
+        }
+        (stage / "BUNDLE-MANIFEST.json").write_text(json.dumps(bundle_manifest, indent=2) + "\n", encoding="utf-8")
+        (stage / "SHA256SUMS.txt").write_text(f"{digest(wheel)}  {wheel.name}\n", encoding="utf-8")
         shutil.make_archive(str(bundle.with_suffix("")), "zip", Path(temporary), stage.name)
     assets.append(bundle)
     for asset in assets:
@@ -118,10 +149,17 @@ def publish(root: Path, manifest_path: Path) -> None:
     existing = subprocess.run(["gh", "release", "view", tag, "--json", "tagName"], cwd=root, capture_output=True, text=True)
     if existing.returncode == 0:
         raise RuntimeError("releaseversie bestaat al; assets worden niet overschreven")
-    subprocess.run(["git", "tag", "-a", tag, "-m", f"Company Harvest {manifest['version']}"], cwd=root, check=True)
+    tag_check = subprocess.run(["git", "rev-parse", "--verify", f"refs/tags/{tag}"], cwd=root, capture_output=True, text=True)
+    if tag_check.returncode == 0:
+        tagged_commit = git(root, "rev-list", "-n", "1", tag)
+        if tagged_commit != manifest["source_commit"]:
+            raise RuntimeError("bestaande tag wijst niet naar de gekwalificeerde broncommit")
+    else:
+        subprocess.run(["git", "tag", "-a", tag, "-m", f"Company Harvest {manifest['version']}"], cwd=root, check=True)
     subprocess.run(["git", "push", "origin", tag], cwd=root, check=True)
     assets = [entry["path"] for entry in manifest["assets"]] + [str(manifest_path)]
-    subprocess.run(["gh", "release", "create", tag, *assets, "--verify-tag", "--title", f"Company Harvest {manifest['version']}", "--notes-file", str(root / "docs" / "releases" / f"v{manifest['version']}.md")], cwd=root, check=True)
+    subprocess.run(["gh", "release", "create", tag, *assets, "--draft", "--verify-tag", "--title", f"Company Harvest {manifest['version']}", "--notes-file", str(root / "docs" / "releases" / f"v{manifest['version']}.md")], cwd=root, check=True)
+    subprocess.run(["gh", "release", "edit", tag, "--draft=false"], cwd=root, check=True)
 
 
 def main(argv: list[str] | None = None) -> int:
