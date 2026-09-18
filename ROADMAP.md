@@ -108,8 +108,8 @@ Daarbij gelden de volgende grenzen:
 | R0 | `DONE` | Roadmap, besluiten en prioriteiten canoniek vastgelegd en onafhankelijk gereviewd | — |
 | R1 | `DONE` | Meetcontract en rijkere broncatalogus | R0 |
 | R2 | `DONE` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
-| R3 | `NEXT` | GLEIF-feasibility met go/no-go-besluit | R1 |
-| R4 | `PLANNED` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
+| R3 | `DONE` | GLEIF-feasibility met gereviewd `GO`-besluit | R1 |
+| R4 | `NEXT` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
 | R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
@@ -234,7 +234,7 @@ Vervang aannames over IND en Wikidata door actuele, reproduceerbare capabilityme
 
 ## 8. R3 — GLEIF-feasibility, nog geen productieadapter
 
-Status: `NEXT`.
+Status: `DONE` — feasibilitybesluit `GO`, onafhankelijk gereviewd met `PASS`.
 
 ### Doel
 
@@ -262,9 +262,27 @@ Een `GO` vereist minimaal:
 
 Bij `NO_GO` wordt alleen het bewijsdocument toegevoegd; er wordt geen halfwerkende adapter gebouwd.
 
+### Besluit en gerealiseerd bewijs
+
+`GO` voor een streaming GLEIF Level 1 Golden Copy-adapter in R4. De officiële route is
+gratis, CC0, driemaal daags bijgewerkt en reproduceerbaar als CSV-ZIP. De live index
+rapporteerde 197.093 Nederlandse records. Een begrensde, statusgestratificeerde sample
+van 100 `ACTIVE` en 100 `INACTIVE` records bevatte 200 unieke achtcijferige
+`registeredAs`-waarden, alle gekoppeld aan registratieautoriteit `RA000463` (KVK).
+Een volledige streaming kwalificatiescan van de actuele CSV-ZIP vond 194.884 unieke
+geldige KVK-nummers onder autoriteitscode `RA000463` en complete legal-form- en statusvelden voor alle 197.093 Nederlandse
+records. De 504.128.840-byte ZIP (4.987.509.988 bytes ongecomprimeerd) werd in 47,49
+seconden verwerkt met 24.150.016 bytes piek-RSS en 2.805.760 bytes tijdelijke SQLite.
+
+De steekproef is doelbewust niet representatief voor statusverhoudingen. GLEIF
+`entity.status` en LEI-`registration.status` blijven bronsemantiek en bewijzen niet zonder
+meer actuele KVK-activiteit. De gemeten grootte-, geheugen- en opslagprofielen sturen de
+gates die in R4 worden geïmplementeerd. Volledig bewijs en hashes staan in
+[`docs/measurements/20260918-r3-gleif-feasibility.md`](docs/measurements/20260918-r3-gleif-feasibility.md).
+
 ## 9. R4 — Eerste nieuwe bronadapter en brede-innamebasis
 
-Status: `PLANNED`, alleen na `GO` uit R3 of een gelijkwaardig bronbesluit.
+Status: `NEXT`, geactiveerd door het gereviewde `GO` uit R3.
 
 ### Doel
 

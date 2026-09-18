@@ -41,4 +41,7 @@
 | CH-R2-001 | IND en Wikidata eindigen per capabilitymeting aantoonbaar als `LIVE_MEASURED`, `BLOCKED` of `FAILED` | `sources.measure_sources`, CLI `sources measure` | terminale succes-/foutpadtests + live aggregaatmeting |
 | CH-R2-002 | Bronopbrengst, identifierkwaliteit, duplicaten en exacte KVK-overlap sluiten reproduceerbaar | capabilityrapport schema 1 | parser-/paginering-/closuretests + `docs/measurements/20260918-r2-source-capability.md` |
 | CH-R2-003 | Actualiteit, voorwaarden, bias, begrenzing en request-/rate-limitobservaties zijn expliciet | broncatalogus + capabilityrapport | catalogusasserties + live meetdocument |
+| CH-R3-001 | GLEIF-feasibility verifieert officiële voorwaarden, bulkroute, formaat, actualiteit en omvang vóór adapterbouw | `ROADMAP.md` R3 | `docs/measurements/20260918-r3-gleif-feasibility.md` + lokale hashes |
+| CH-R3-002 | Nederlandse identifier-, legal-form- en statusvelden zijn begrensd gemeten zonder GLEIF-status als KVK-verificatie te behandelen | R3 meetcontract | statusgestratificeerde live sample van 200 + onafhankelijk reviewbewijs |
+| CH-R3-003 | Adapterbouw start alleen na expliciet, onderbouwd go/no-go | `ROADMAP.md` R3/R4 | `GO`; R4 is `NEXT` |
 | CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |

@@ -10,6 +10,8 @@
 - Uitgaande bron- en KVK-requests, runmetadata en rapportage gebruiken `company-lookup/0.1` zonder persoonlijke verwijzing.
 - Begrensde live capabilitymeting voor IND en Wikidata met terminale foutstatussen,
   identifierclosure, duplicaten, exacte overlap, bronactualiteit en request-/rate-limitobservaties.
+- GLEIF Level 1 Golden Copy-feasibility met `GO`: officiële CC0-bulkroute, actuele
+  omvang en begrensde Nederlandse identifier-/rechtsvorm-/statusmeting vastgelegd.
 
 ## 0.1.0 - 2026-09-18
 

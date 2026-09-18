@@ -15,3 +15,10 @@ KVK gebruikt uitsluitend de functionaliteit achter `https://www.kvk.nl/zoeken/`.
 Zowel de directe bron-/KVK-clients als de Playwright-browsercontext gebruiken `company-lookup/0.1`. De browsertest controleert de contextoptie expliciet; er wordt geen persoonlijke URL of gebruikersnaam meegestuurd.
 
 Geraadpleegd 2026-09-18: KVK-gebruikersvoorwaarden (bijgewerkt 2026-06-17) vermelden aanvullende voorwaarden voor grootschalig opvragen/hergebruik; de IND-bronpagina meldt maandelijkse actualisatie en op 2026-09-03 bijgewerkte data, terwijl de IND-proclaimer hergebruik met bronvermelding toestaat; Wikidata beschrijft de gestructureerde data als CC0 en verlangt herkenbare, beheerste toegang; Playwright documenteert response-observatie. Live veldsemantiek blijft `UNKNOWN` totdat gemeten.
+
+R3 kwalificeert GLEIF Level 1 Golden Copy als nieuwe bulkbron voor R4. De officiële
+CSV-ZIP-route, data-API en voorwaarden zijn geschikt bevonden; `registeredAs` onder
+registratieautoriteit `RA000463` is een sterke KVK-hint. `entity.status`,
+`registration.status` en ISO-20275-legal-formcode worden als afzonderlijke bronvelden
+bewaard. Zij vervangen geen actuele KVK-verificatie. R4 moet de ZIP en CSV streamen,
+vrije schijfruimte vooraf controleren en onbekende kolommen tolerant behandelen.
