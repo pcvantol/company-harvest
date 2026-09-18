@@ -11,7 +11,7 @@ Het doel blijft een aantoonbaar bruikbare lijst van circa 10.000 unieke, actieve
 
 De eerstvolgende fase verschuift daarom van releaseceremonie naar drie meetbare productvragen:
 
-1. Welke bronnen leveren voldoende unieke Nederlandse organisaties en welke leveren direct een betrouwbaar registratienummer?
+1. Welke brede combinatie van goede, onafhankelijke bronnen levert voldoende unieke Nederlandse organisaties, en welke identificatievelden levert iedere bron werkelijk?
 2. Hoe gedragen deduplicatie, identiteit, reviewqueues en opslag zich op representatieve samples?
 3. Welke verificatieroute kan rechtsvorm en status aantoonbaar en verantwoord leveren voordat een schaalrun wordt toegestaan?
 
@@ -48,11 +48,27 @@ De volgende publieke release bundelt een betekenisvolle productverbetering, bijv
 
 ### RD-004 — Geen automatische productieharvest
 
-Samples worden begrensd en vooraf gespecificeerd. Een 10.000-run wordt pas na de schaal- en gebruikspoorten in R8 door de eigenaar gestart; nooit automatisch tijdens ontwikkeling, CI, installatie of review.
+Samples worden begrensd en vooraf gespecificeerd. Een 10.000-run wordt pas na de schaal- en gebruikspoorten in R9 door de eigenaar gestart; nooit automatisch tijdens ontwikkeling, CI, installatie of review.
 
 ### RD-005 — Bestaande engineeringgates blijven voorlopig staan
 
 De 12-cellen-CI, per-file coveragegate, assetprovenance en onafhankelijke release-review worden niet stil verwijderd. Vereenvoudiging kan later als afzonderlijk governancebesluit worden voorgesteld. Outcome-gates worden eerst toegevoegd naast de bestaande softwaregates, zodat productkwaliteit niet ten koste gaat van technische integriteit.
+
+### RD-006 — Breed verzamelen, gecontroleerd verkleinen
+
+De bronfase optimaliseert eerst op brede, herleidbare dekking (`recall`) en pas later op definitieve selectie (`precision`). Het is beter om kandidaten met onzekerheden traceerbaar te bewaren dan ze vroeg weg te filteren en later niet meer te kunnen herstellen.
+
+Daarom:
+
+- worden meerdere onafhankelijke bronfamilies vroeg onderzocht en, na een positieve feasibility, verzameld;
+- is een direct KVK-/registratienummer een waardevol routerings- en kwaliteitskenmerk, maar geen voorwaarde om een goede bron vroeg op te nemen;
+- blijven originele bronrecords, ontbrekende velden en onzekerheden behouden;
+- worden kandidaten zonder registratienummer vroeg in een afzonderlijke kandidaatlaag opgenomen, maar pas na R7 extern gematcht/verrijkt;
+- vinden rechtsvorm-, status- en definitieve identiteitsfilters pas plaats wanneer de benodigde verificatie aantoonbaar beschikbaar is;
+- worden commerciële geschiktheid, sector, werknemersaantal of lage bronfrequentie niet als vroege uitsluitingsreden gebruikt;
+- betekent “breed” niet onbegrensd of willekeurig: iedere bron moet herleidbaar, relevant, technisch beheersbaar en volgens vastgelegde voorwaarden toegankelijk zijn.
+
+De architectuur onderscheidt voortaan drie lagen: **ruwe brondekking**, **voorlopige kandidaten** en **geverifieerde levering**. Verkleining is een expliciete, meetbare overgang tussen lagen en nooit stil dataverlies.
 
 ## 3. Statuslegenda
 
@@ -73,12 +89,12 @@ De 12-cellen-CI, per-file coveragegate, assetprovenance en onafhankelijke releas
 | R1 | `NEXT` | Meetcontract en rijkere broncatalogus | R0 |
 | R2 | `PLANNED` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
 | R3 | `PLANNED` | GLEIF-feasibility met go/no-go-besluit | R1 |
-| R4 | `PLANNED` | Productieadapter voor de beste bron met registratienummer | R2, R3 en een `GO` |
-| R5 | `PLANNED` | Tweede tranche gestructureerde bronnen gerangschikt en geselecteerd | R1, R3 |
-| R6 | `PLANNED` | Representatieve bron-/dedupsample van 500 met outcome-rapport | R4 of aantoonbaar gelijkwaardig volume |
+| R4 | `PLANNED` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
+| R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
+| R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
-| R8 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7 |
-| R9 | `PLANNED` | Bronnen zonder registratienummer, alleen wanneer matchroute bewezen is | R7, R8 |
+| R8 | `PLANNED` | Begrensde matching- en verrijkingspilot voor kandidaten zonder registratienummer | R5, succesvol afgerond R7 |
+| R9 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
 | R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
 
 De volgorde is outcome-gedreven. Een later increment mag niet worden gestart omdat het technisch aantrekkelijk is; de afhankelijkheden en exitcriteria moeten eerst zijn gehaald.
@@ -123,6 +139,8 @@ Breid het bronmodel minimaal uit met:
 - actualiteits- of refreshinformatie indien bekend;
 - live meetstatus en gemeten aantal;
 - geschatte overlap alleen wanneer daadwerkelijk gemeten.
+- `source_family`, `inclusion_reason` en kwaliteits-/herkomststatus;
+- de kandidaatlaag waarin het record zich bevindt (`raw`, `candidate`, `verified`).
 
 Voeg aan runrapportage minimaal toe:
 
@@ -132,6 +150,7 @@ Voeg aan runrapportage minimaal toe:
 - unieke kandidaten vóór en na deduplicatie;
 - identieke merges, conflicten en reviewgevallen;
 - ontbrekende rechtsvorm/status per bron;
+- brondiversiteit, overlap en concentratie van kandidaten per onafhankelijke bronfamilie;
 - doorlooptijd, piekgeheugen en SQLite-/evidencegroei;
 - volledige count-closure tussen iedere stap.
 
@@ -174,7 +193,7 @@ Vervang aannames over IND en Wikidata door actuele, reproduceerbare capabilityme
 
 - Beide bronnen hebben `LIVE_MEASURED`, `BLOCKED` of een concrete foutstatus.
 - Werkelijke aantallen en overlap zijn aantoonbaar.
-- Er ligt een datagedreven besluit of de bestaande bronnen voldoende basisvolume voor R6 leveren.
+- Bijdrage, overlap en bias van beide bronnen binnen de brede kandidaatlaag zijn datagedreven vastgelegd.
 
 ## 8. R3 — GLEIF-feasibility, nog geen productieadapter
 
@@ -206,13 +225,13 @@ Een `GO` vereist minimaal:
 
 Bij `NO_GO` wordt alleen het bewijsdocument toegevoegd; er wordt geen halfwerkende adapter gebouwd.
 
-## 9. R4 — Productieadapter voor een bron met registratienummer
+## 9. R4 — Eerste nieuwe bronadapter en brede-innamebasis
 
 Status: `PLANNED`, alleen na `GO` uit R3 of een gelijkwaardig bronbesluit.
 
 ### Doel
 
-Voeg de hoogste-opbrengstbron met directe registratienummers toe zonder het fuzzy-matchprobleem te vergroten.
+Voeg de eerste nieuwe bron met aantoonbare kwaliteit en opbrengst toe en maak de innamebasis geschikt om daarna meerdere onafhankelijke bronfamilies naast elkaar te verwerken. Een direct registratienummer heeft voorkeur wanneer kwaliteit en opbrengst vergelijkbaar zijn, maar is geen algemene toelatingseis voor de brede kandidaatlaag.
 
 ### Werk
 
@@ -221,7 +240,10 @@ Voeg de hoogste-opbrengstbron met directe registratienummers toe zonder het fuzz
 - Lokale immutable evidence met bronversie, tijd en hash.
 - Deterministische filtering op Nederlandse entiteiten.
 - Expliciete identifier-validatie en rejected-uitvoer.
+- Het ongewijzigde ruwe record en iedere afwijzingsreden blijven bewaard.
+- Een overigens relevante organisatie met ontbrekend of syntactisch ongeldig registratienummer blijft kandidaat/reviewgeval; alleen het identifierpad wordt afgewezen.
 - Bronstatus/rechtsvorm als afzonderlijke bronvelden bewaren.
+- Records zonder registratienummer bewaren in de kandidaatlaag met expliciete matchbehoefte; niet vroeg verwijderen.
 - Downstream-invalidatie en resume/hergebruik testen.
 
 ### Exitcriteria
@@ -231,13 +253,13 @@ Voeg de hoogste-opbrengstbron met directe registratienummers toe zonder het fuzz
 - Geen bronveld wordt stil als KVK-gevalideerd gepromoveerd.
 - Opbrengst en overlap zijn in het outcome-rapport zichtbaar.
 
-## 10. R5 — Tweede tranche brononderzoek
+## 10. R5 — Brede bronportfolio
 
 Status: `PLANNED`.
 
 ### Doel
 
-Selecteer aanvullende bronnen op opbrengst, identifierkwaliteit en toegestane toegang, niet op implementatiegemak.
+Verzamel een brede set goede bronnen voordat definitieve verkleining begint. Selecteer op herleidbaarheid, relevante Nederlandse organisatie-evidence, voorwaarden, opbrengst en onderhoudbaarheid. Identifierkwaliteit bepaalt het latere verwerkingspad, niet of een bron bij voorbaat wordt genegeerd.
 
 ### Onderzoeksvolgorde
 
@@ -245,8 +267,11 @@ De externe review noemt onder meer TED, TenderNed, leveranciersbestanden, sector
 
 1. inventariseer per kandidaat welke identifiers werkelijk beschikbaar zijn;
 2. bewijs dit met primaire documentatie en een begrensde sample;
-3. rangschik pas daarna bronnen met een betrouwbaar direct registratienummer vóór bronnen die matching nodig hebben;
-4. selecteer maximaal één kandidaat tegelijk voor implementatie.
+3. geef bronnen met een betrouwbaar direct registratienummer binnen een implementatiegolf voorrang wanneer overige kwaliteit vergelijkbaar is;
+4. implementeer adapters beheerst één voor één, maar blijf feasibility en portfolio-opbouw over meerdere onafhankelijke bronfamilies sturen;
+5. neem ook bewezen goede bronnen zonder registratienummer vroeg op in de kandidaatlaag; stel alleen hun externe matching uit tot R7.
+
+Feasibilitykaarten en bronselectie mogen vanaf R1 parallel worden voorbereid. Implementatie van de tweede en volgende adapters start pas nadat R4 de gedeelde brede-innamebasis heeft bewezen.
 
 ### Verplichte feasibilitykaart per kandidaatbron
 
@@ -276,9 +301,11 @@ Common Crawl of een internetbrede `.nl`-crawl wordt niet zonder afzonderlijk ont
 
 ### Exitcriteria
 
-- Minimaal drie kandidaatbronnen hebben een volledige feasibilitykaart.
-- Hoogstens één nieuwe bron wordt tegelijk voor implementatie geselecteerd.
-- Selectie is gemotiveerd met gemeten opbrengst en risico.
+- Minimaal zes kandidaatbronnen uit meerdere bronfamilies hebben een volledige feasibilitykaart.
+- De actieve portfolio bevat als richtinggevend minimum vijf bruikbare bronnen van minimaal drie onafhankelijke eigenaren of bronfamilies, tenzij meetbewijs een expliciet roadmapbesluit voor een andere grens onderbouwt.
+- Adapters zijn beheerst één voor één geïmplementeerd, maar de portfolio als geheel is op dekking en diversiteit gestuurd.
+- Zowel records mét als zonder direct registratienummer blijven herleidbaar in de kandidaatlaag.
+- Selectie en eventuele afwijzing per bron zijn gemotiveerd met gemeten opbrengst, overlap, voorwaarden en risico.
 
 ## 11. R6 — Bron- en dedupsample van 500
 
@@ -286,11 +313,11 @@ Status: `PLANNED`.
 
 ### Doel
 
-Test schaalgedrag en datakwaliteit zonder de geparkeerde KVK-beslissing te omzeilen.
+Test schaalgedrag en datakwaliteit op een doorsnede van de brede kandidaatlaag zonder de geparkeerde KVK-beslissing te omzeilen. De sample is een kwaliteitsinstrument en geen plafond op hoeveel brondata wordt verzameld.
 
 ### Werk
 
-- Bouw een deterministische sample van 500 bronrecords uit meerdere bronnen.
+- Bouw een deterministische, gestratificeerde sample van 500 bronrecords uit alle actieve bronfamilies, inclusief records met en zonder direct registratienummer.
 - Voer verzamelen, normaliseren, voorlopige deduplicatie en conflictdetectie uit.
 - Meet per bron en totaal:
   - geldige directe registratienummers;
@@ -307,13 +334,14 @@ Test schaalgedrag en datakwaliteit zonder de geparkeerde KVK-beslissing te omzei
 - Geen 500 KVK-frontendcalls zolang R7 geparkeerd is.
 - Geen bronstatus of GLEIF-status presenteren als KVK-gevalideerde ondernemingsstatus.
 - Geen releaseclaim dat het einddoel is bewezen.
+- Geen vroege verwijdering omdat een record nog geen KVK-nummer, rechtsvorm of status heeft; het blijft kandidaat of reviewgeval.
 
 ### Exitcriteria
 
 - 100% count-closure en nul stil verloren records.
 - Geen onverklaarde false merge in de beoordeelde steekproef.
 - Meetrapport bevat reproduceerbare sampledefinitie.
-- Op basis van de meting worden expliciete thresholds voorgesteld voor R8; niet eerder.
+- Op basis van de meting worden expliciete thresholds voorgesteld voor R9; niet eerder.
 
 ## 12. R7 — KVK-verificatiebesluit
 
@@ -342,9 +370,32 @@ Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
 
 Zolang R7 `PARKED` is, is volledige KVK-verrijking op 500/10.000 records niet release- of productiegekwalificeerd.
 
-## 13. R8 — Volledige sample- en schaalvalidatie
+## 13. R8 — Matching- en verrijkingspilot zonder direct registratienummer
 
-Status: `PLANNED`, afhankelijk van R6 en een afgerond R7-besluit.
+Status: `PLANNED`, maar uitsluitend na een succesvol afgerond en expliciet geactiveerd R7-besluit.
+
+De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. R5 stelt eerst vast welke identifiers zij werkelijk leveren en mag bewezen goede bronnen al vóór R7 in de brede kandidaatlaag opnemen. R8 verzamelt die bronnen dus niet pas achteraf; R8 activeert voor een begrensde, gestratificeerde pilot de uitgestelde matching, verificatie en verrijking van hun kandidaten zodra de matchroute bewezen is.
+
+### Werk
+
+- Selecteer een reproduceerbare pilot uit meerdere bronfamilies en volg de maximale omvang uit het R7-besluit.
+- Meet match, no-match, ambigu, review en technische terminale uitkomsten.
+- Meet rechtsvorm- en statusdekking met bewezen veldsemantiek.
+- Bewaar ieder origineel bronrecord en iedere matchbeslissing; een mislukte match verwijdert de kandidaat niet.
+- Automatiseer geen merge op alleen naam, domein of fuzzy score.
+- Leg per bron matchopbrengst, reviewkosten en stopcriteria vast.
+
+### Exitcriteria
+
+- Iedere pilotkandidaat heeft exact één reconcilieerbare terminale uitkomst.
+- Identiteit, rechtsvorm en status zijn alleen gevuld uit de in R7 goedgekeurde verificatiesemantiek.
+- Handmatige controle van een gestratificeerde steekproef toont geen onverklaarde false merge.
+- De pilot levert vooraf vast te leggen thresholds en capaciteitsevidence voor R9.
+- Buiten de begrensde R8-pilot blijft externe matching uitgeschakeld totdat R9 expliciet start.
+
+## 14. R9 — Volledige sample- en schaalvalidatie
+
+Status: `PLANNED`, afhankelijk van R6, een afgerond R7-besluit en een geslaagde R8-pilot.
 
 ### Fase A — volledige sample van 500
 
@@ -362,7 +413,7 @@ Meet minimaal:
 - tijd, throughput, retries, opslag en evidencegroei;
 - volledige closure van kandidaten naar iedere terminale uitkomst.
 
-Thresholds worden vastgesteld op basis van R6/R7-data en handmatige kwaliteitscontrole. Ze worden niet achteraf aangepast om een slechte run groen te maken.
+Thresholds worden vastgesteld op basis van R6-R8-data en handmatige kwaliteitscontrole. Ze worden niet achteraf aangepast om een slechte run groen te maken.
 
 ### Fase B — schaalstappen
 
@@ -378,21 +429,6 @@ Na een geslaagde sample:
 - Geen niet-lineaire fout in tijd, geheugen of SQLitegedrag.
 - Externe routecapaciteit en voorwaarden aantoonbaar passend.
 - Operationele en juridische checklist door eigenaar geaccepteerd.
-
-## 14. R9 — Bronnen zonder registratienummer
-
-Status: `PLANNED`, maar pas na bewijs van de matchroute.
-
-De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. R5 moet eerst vaststellen of een kandidaat werkelijk geen bruikbaar registratienummer levert. Alleen kandidaten waarvoor dat is bewezen, vallen in R9. Voor die bronnen worden de extra match- en reviewkosten gemeten in plaats van vooraf aangenomen.
-
-Per adapter zijn verplicht:
-
-- expliciet Nederlandse relatie-evidence;
-- oorspronkelijke naam en bronlocatie;
-- geen automatische merge op alleen naam of domein;
-- meetbare match- en reviewopbrengst;
-- bronvoorwaarden en bias;
-- een stopcriterium wanneer onderhoud of reviewkosten hoger zijn dan opbrengst.
 
 ## 15. R10 — Volgende release
 
@@ -451,3 +487,7 @@ Een roadmapwijziging vermeldt minimaal:
 - wie de wijziging expliciet heeft geautoriseerd.
 
 Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral R7 mag niet impliciet worden geactiveerd door technisch onderzoek of een implementatievoorstel.
+
+### Wijzigingslog
+
+- **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. Externe matching blijft geparkeerd onder R7; na activering volgt eerst een begrensde R8-pilot en pas daarna R9-schaalvalidatie.

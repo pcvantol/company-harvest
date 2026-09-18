@@ -30,5 +30,6 @@
 | CH-RM-001 | KVK-routemigratie en bulkverrijking blijven geparkeerd tot expliciete activatie | `ROADMAP.md` RD-001/R7 | documentatiebesluit |
 | CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + 12/12 CI |
 | CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R6 | roadmap; uitvoering gepland |
-| CH-RM-004 | Bronnen met directe registratienummers worden eerst onderzocht | `ROADMAP.md` R3-R5 | feasibility gepland |
-| CH-RM-005 | Geen productieharvest vóór representatieve sample- en schaalpoorten | `ROADMAP.md` RD-004/R8 | eigenaar-go/no-go vereist |
+| CH-RM-004 | Een brede set goede bronfamilies wordt vroeg verzameld; registratienummers bepalen routing, niet vroege toelating | `ROADMAP.md` RD-006/R3-R6 | portfolio-opbouw gepland |
+| CH-RM-005 | Geen productieharvest vóór representatieve pilot-, sample- en schaalpoorten | `ROADMAP.md` RD-004/R8-R9 | eigenaar-go/no-go vereist |
+| CH-RM-006 | Verkleining gebeurt expliciet tussen raw-, candidate- en verified-lagen; onzekerheid veroorzaakt geen stil dataverlies | `ROADMAP.md` RD-006/R6/R8-R9 | ontwerpbesluit; implementatie gepland |
