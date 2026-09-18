@@ -124,9 +124,31 @@ def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     outputs = collect(run, limit=1)
     assert len(outputs) == 2 and all(read_tsv(path) for path in outputs)
     assert collect(run, limit=1) == outputs
+    downstream = run.artifact_path("03", "downstream", "csv"); write_tsv(downstream, ["x"], [{"x": "1"}]); run.register_artifact(downstream, "03", "downstream")
+    assert len(collect(run, only=["ind_arbeid"], limit=1, refresh=True)) == 1
+    assert run.latest_artifact("03", "downstream") is None
     client = FakeClient()
     with pytest.raises(HarvestError):
         _bounded_get(client, "http://localhost/private")
+
+
+def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    class PagingClient(FakeClient):
+        def get(self, url, **kwargs):
+            calls.append(kwargs)
+            if len(calls) == 1:
+                bindings = [{"orgLabel": {"value": f"Org {index}"}, "kvk": {"value": f"{index:08d}"}} for index in range(100)]
+                bindings[0]["kvk"]["value"] = "invalid"
+            else:
+                bindings = []
+            return FakeResponse(json.dumps({"results": {"bindings": bindings}}).encode(), "https://query.wikidata.org/sparql")
+
+    discover(run)
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", PagingClient)
+    output = collect(run, only=["wikidata_nl_companies"])[0]
+    assert len(calls) == 2 and len(read_tsv(output)) == 99
 
 
 def test_generic_source_import_adapters(run, tmp_path: Path) -> None:

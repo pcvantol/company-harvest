@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 import httpx
 from openpyxl import load_workbook
 
-from company_harvest.core import HarvestError, Run, timestamp, validate_kvk, write_tsv
+from company_harvest.core import HarvestError, Run, read_tsv, timestamp, validate_kvk, write_tsv
 
 MAX_RESPONSE_BYTES = 20 * 1024 * 1024
 MAX_SOURCE_PAGES = 100
@@ -175,10 +175,14 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
 
 def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None, refresh: bool = False) -> list[Path]:
     outputs: list[Path] = []
+    enabled = _enabled(only, skip)
+    run.record_config("sources_collect", {"only": sorted(only), "skip": sorted(skip), "limit": limit, "refresh": refresh})
+    if refresh and any(run.latest_artifact("02", f"source_{source.source_id}") for source in enabled):
+        run.invalidate_from(3, "source_refresh")
     timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
     headers = {"User-Agent": "company-harvest/0.1 (+local audited collection)"}
     with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
-        for source in _enabled(only, skip):
+        for source in enabled:
             prior = run.latest_artifact("02", f"source_{source.source_id}")
             if prior and not refresh:
                 run.log("INFO", "source_collect_reused", source_id=source.source_id, path=str(prior.relative_to(run.path)))
@@ -202,16 +206,23 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                     query = f"SELECT ?org ?orgLabel ?kvk WHERE {{?org wdt:P31/wdt:P279* wd:Q4830453; wdt:P17 wd:Q55; wdt:P3821 ?kvk. SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'nl,en'. }} }} ORDER BY ?orgLabel LIMIT {page_size} OFFSET {page * WIKIDATA_PAGE_SIZE}"
                     response = client.get(source.url, params={"query": query, "format": "json"})
                     response.raise_for_status()
+                    if response.url.host not in ALLOWED_HOSTS:
+                        raise HarvestError("Wikidata-redirect naar niet-toegestane host")
                     if len(response.content) > MAX_RESPONSE_BYTES:
                         raise HarvestError("Wikidata-response overschrijdt de maximale grootte")
                     snapshot = run.path / "evidence" / f"{timestamp()}_02_wikidata_source_page_{page + 1}.json"
                     snapshot.write_bytes(response.content)
                     snapshots.append(snapshot)
-                    page_rows = parse_wikidata(response.json(), str(response.url), page_size)
+                    payload = response.json()
+                    results = payload.get("results") if isinstance(payload, dict) else None
+                    bindings = results.get("bindings", []) if isinstance(results, dict) else []
+                    if not isinstance(bindings, list):
+                        raise HarvestError("Wikidata-responseschema is ongeldig")
+                    page_rows = parse_wikidata(payload, str(response.url), page_size)
                     for row in page_rows:
                         row["source_row"] = str(page * WIKIDATA_PAGE_SIZE + int(row["source_row"]))
                     rows.extend(page_rows)
-                    if len(page_rows) < page_size:
+                    if len(bindings) < page_size:
                         break
                 else:
                     raise HarvestError("Wikidata-paginering bereikte de veiligheidslimiet; resultaat is niet aantoonbaar compleet")
@@ -223,6 +234,7 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                 run.register_artifact(snapshot, "02", f"evidence_{source.source_id}")
             run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=[_hash(snapshot) for snapshot in snapshots], refreshed=refresh)
             outputs.append(path)
+    _update_inventory(run, {path.name.split("_source_", 1)[1].rsplit("_companies", 1)[0]: len(read_tsv(path)) for path in outputs})
     run.update_status("IN_PROGRESS", "02")
     return outputs
 
@@ -240,6 +252,20 @@ def list_sources(run: Run) -> list[dict[str, str]]:
     from company_harvest.core import read_tsv
 
     return read_tsv(path)
+
+
+def _update_inventory(run: Run, counts: dict[str, int]) -> None:
+    inventory = run.latest_artifact("01", "sources_inventory")
+    if not inventory:
+        return
+    rows = read_tsv(inventory)
+    for row in rows:
+        if row["source_id"] in counts:
+            row["status"] = "COLLECTED"
+            row["measured_count"] = str(counts[row["source_id"]])
+    updated = run.artifact_path("01", "sources_inventory_measured", "csv")
+    write_tsv(updated, SOURCE_HEADERS, rows)
+    run.register_artifact(updated, "01", "sources_inventory")
 
 
 def import_source(run: Run, input_path: Path, source_id: str, name_column: str, kvk_column: str, sheet: str | None = None) -> Path:

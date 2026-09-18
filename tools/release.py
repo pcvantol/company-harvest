@@ -54,13 +54,14 @@ def scan_asset(path: Path) -> None:
         raise RuntimeError(f"geheimpatroon in distributieasset: {path.name}")
 
 
-def qualify_wheel(wheel: Path) -> dict[str, str]:
+def qualify_wheel(wheel: Path, root: Path) -> dict[str, str]:
     with tempfile.TemporaryDirectory(prefix="company-harvest-install-") as temporary:
         environment = Path(temporary) / "venv"
-        subprocess.run([sys.executable, "-m", "venv", str(environment)], check=True)
+        install_log = Path(temporary) / "install.log"
+        installer = ["pwsh", "-File", str(root / "scripts" / "install.ps1"), "-Wheel", str(wheel), "-Venv", str(environment), "-Sha256", digest(wheel), "-Log", str(install_log)] if sys.platform == "win32" else ["sh", str(root / "scripts" / "install.sh"), str(wheel), str(environment), "--sha256", digest(wheel), "--log", str(install_log)]
+        subprocess.run(installer, check=True)
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
         cli = environment / ("Scripts/company-harvest.exe" if sys.platform == "win32" else "bin/company-harvest")
-        subprocess.run([str(python), "-m", "pip", "install", str(wheel)], check=True)
         version = subprocess.run([str(cli), "--version"], check=True, capture_output=True, text=True).stdout.strip()
         subprocess.run([str(cli), "--help"], check=True, capture_output=True, text=True)
         location = subprocess.run([str(python), "-c", "import company_harvest; print(company_harvest.__file__)"], check=True, capture_output=True, text=True).stdout.strip()
@@ -73,6 +74,15 @@ def qualify_wheel(wheel: Path) -> dict[str, str]:
         preflight = subprocess.run([str(cli), "--data-dir", str(data), "run", "preflight", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
         subprocess.run([str(cli), "--data-dir", str(data), "sources", "import", "--run-dir", str(harvest_run), "--input", str(left), "--source-id", "qualification", "--name-column", "Bedrijfsnaam", "--kvk-column", "KVK-nummer"], check=True, capture_output=True, text=True)
         subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
+        synthetic_export = """import sys
+from pathlib import Path
+from company_harvest.core import open_run,read_tsv,write_tsv
+from company_harvest.workflow import consolidate,exclude_sole_proprietorships,active_only,export
+r=open_run(Path(sys.argv[1])); c=read_tsv(r.latest_artifact('03','candidates'))[0]
+p=r.artifact_path('04','kvk_matches','csv'); row={'candidate_id':c['candidate_id'],'Bedrijfsnaam':c['original_name'],'KVK-nummer':c['source_kvk_hint'],'raw_legal_form':'Besloten Vennootschap','raw_status':'Actief','city':'Utrecht','country':'Nederland','match_method':'QUALIFICATION_SYNTHETIC','provider':'qualification','checked_at':'synthetic','response_json':'{}','source_relations':c['source_relations']}
+write_tsv(p,list(row),[row]); r.register_artifact(p,'04','kvk_matches'); consolidate(r); exclude_sole_proprietorships(r); active_only(r); export(r,1)
+"""
+        subprocess.run([str(python), "-c", synthetic_export, str(harvest_run)], check=True, capture_output=True, text=True)
         harvest_audit = subprocess.run([str(cli), "--data-dir", str(data), "audit", "verify", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
         merged = subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge-lists", "--left", str(left), "--right", str(right)], check=True, capture_output=True, text=True)
         run_dir = next(path for path in sorted((data / "runs").iterdir()) if path != harvest_run)
@@ -81,7 +91,7 @@ def qualify_wheel(wheel: Path) -> dict[str, str]:
             raise RuntimeError("verse-installatiekwalificatie leverde geen geldig auditresultaat")
     if "site-packages" not in location.replace("\\", "/"):
         raise RuntimeError("wheelimport kwam niet uit de geïsoleerde site-packages")
-    return {"version": version, "import_scope": "isolated-site-packages", "workflows": "HARVEST_PREFLIGHT_IMPORT_DEDUP,MERGE_LISTS", "audit": "PASS", "status": "PASS"}
+    return {"version": version, "import_scope": "isolated-site-packages", "installer": "PASS", "workflows": "HARVEST_PREFLIGHT_IMPORT_DEDUP_FILTER_EXPORT,MERGE_LISTS", "audit": "PASS", "status": "PASS"}
 
 
 def build(root: Path, output_root: Path) -> Path:
@@ -121,7 +131,7 @@ def build(root: Path, output_root: Path) -> Path:
     for asset in assets:
         scan_asset(asset)
     wheel = next(path for path in assets if path.suffix == ".whl")
-    installation = qualify_wheel(wheel)
+    installation = qualify_wheel(wheel, root)
     manifest: dict[str, Any] = {"schema": 1, "version": version, "tag": f"v{version}", "source_commit": git(root, "rev-parse", "HEAD"), "built_at": datetime.now(UTC).isoformat(), "clean_install": installation, "assets": [{"name": path.name, "sha256": digest(path), "size": path.stat().st_size} for path in assets]}
     manifest_path = folder / "distribution-manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

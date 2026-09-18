@@ -58,6 +58,9 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     with pytest.raises(RuntimeError):
         module.build(ROOT, tmp_path / "dirty-build")
     monkeypatch.setattr(module, "git", lambda root, *args: "x" if args[:2] == ("rev-parse", "HEAD") else ("" if args[0] == "status" else "different"))
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 0))
+    with pytest.raises(RuntimeError):
+        module.publish(ROOT, manifest_path)
     monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 1 if args[0][0] == "gh" else 0))
     with pytest.raises(RuntimeError):
         module.publish(ROOT, manifest_path)
@@ -83,7 +86,7 @@ def test_release_build_publish_and_main(tmp_path: Path, monkeypatch: pytest.Monk
         return subprocess.CompletedProcess(command, 1 if missing else 0)
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    monkeypatch.setattr(module, "qualify_wheel", lambda wheel: {"version": "0.1.0", "import_location": str(tmp_path / "site-packages" / "company_harvest"), "status": "PASS"})
+    monkeypatch.setattr(module, "qualify_wheel", lambda wheel, root: {"version": "0.1.0", "import_scope": "isolated-site-packages", "status": "PASS"})
     manifest_path = module.build(ROOT, tmp_path)
     manifest = module.verify(manifest_path)
     assert len(manifest["assets"]) == 4

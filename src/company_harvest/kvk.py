@@ -401,6 +401,7 @@ class ProviderLock:
 
 
 def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refresh: bool, headed: bool, interval: float = 2.0) -> tuple[Path, Path]:
+    run.record_config("kvk_resolve", {"provider": provider_name, "limit": limit, "resume": resume, "refresh": refresh, "headed": headed, "interval": interval})
     candidates_path = run.latest_artifact("03", "candidates")
     if not candidates_path:
         raise HarvestError("voer eerst companies merge uit")

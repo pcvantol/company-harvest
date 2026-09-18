@@ -136,6 +136,20 @@ class Run:
             metadata["last_completed_step"] = step
         atomic_write(self.path / "run.json", json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
 
+    def record_config(self, key: str, value: Any) -> None:
+        metadata = self.metadata()
+        runtime = metadata.setdefault("runtime_config", {})
+        runtime[key] = value
+        metadata["config_fingerprint"] = hashlib.sha256(json.dumps({"workflow": metadata["workflow"], "target": metadata["target"], "runtime_config": runtime}, sort_keys=True).encode()).hexdigest()
+        atomic_write(self.path / "run.json", json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
+
+    def invalidate_from(self, step: int, reason: str) -> None:
+        with self.connect() as connection:
+            connection.execute("UPDATE artifacts SET status='STALE' WHERE CAST(step AS INTEGER)>=? AND status IN ('COMPLETE','PARTIAL')", (step,))
+            if step <= 3:
+                connection.execute("DELETE FROM kvk_requests")
+        self.log("INFO", "downstream_invalidated", from_step=step, reason=reason)
+
     def artifact_path(self, step: str, description: str, suffix: str) -> Path:
         return self.path / "artifacts" / f"{timestamp()}_{step}_{description}.{suffix}"
 
@@ -211,9 +225,10 @@ def initialize_run(root: Path, target: int, workflow: str = "HARVEST") -> Run:
         "created_at": utc_now().isoformat(),
         "status": "INITIALIZED",
         "python": sys.version.split()[0],
+        "runtime_config": {},
     }
     metadata["config_fingerprint"] = hashlib.sha256(
-        json.dumps({"workflow": workflow, "target": target}, sort_keys=True).encode()
+        json.dumps({"workflow": workflow, "target": target, "runtime_config": {}}, sort_keys=True).encode()
     ).hexdigest()
     atomic_write(run_path / "run.json", json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
     run = Run(run_path)

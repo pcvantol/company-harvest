@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,7 @@ from company_harvest.core import (
     normalize_name,
     read_tsv,
     sha256,
+    timestamp,
     validate_kvk,
     write_tsv,
 )
@@ -175,6 +178,7 @@ def write_xlsx(path: Path, headers: list[str], rows: list[dict[str, Any]]) -> No
 
 
 def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
+    run.record_config("export", {"limit": limit, "allow_partial": allow_partial})
     source = run.latest_artifact("07", "active")
     if not source:
         raise HarvestError("voer eerst active-only uit")
@@ -188,19 +192,28 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
     selected.sort(key=lambda row: (normalize_name(row["Bedrijfsnaam"]), row["KVK-nummer"]))
     headers = list(rows[0]) if rows else ["Bedrijfsnaam", "KVK-nummer"]
     minimal = ["Bedrijfsnaam", "KVK-nummer"]
-    paths = [
-        run.artifact_path("08", "companies_delivery", "csv"), run.artifact_path("08", "companies_delivery", "xlsx"),
-        run.artifact_path("08", "companies_delivery_full", "csv"), run.artifact_path("08", "companies_delivery_full", "xlsx"),
-        run.artifact_path("08", "companies_reserve", "csv"),
-    ]
-    write_tsv(paths[0], minimal, selected)
-    write_xlsx(paths[1], minimal, selected)
-    write_tsv(paths[2], headers, selected)
-    write_xlsx(paths[3], headers, selected)
-    write_tsv(paths[4], headers, reserve)
+    set_name = f"{timestamp()}_08_delivery_outputset"
+    staging = run.path / "artifacts" / f".{set_name}.tmp"
+    final = run.path / "artifacts" / set_name
+    staging.mkdir()
+    names = ("companies_delivery.csv", "companies_delivery.xlsx", "companies_delivery_full.csv", "companies_delivery_full.xlsx", "companies_reserve.csv")
+    staged = [staging / name for name in names]
+    try:
+        write_tsv(staged[0], minimal, selected)
+        write_xlsx(staged[1], minimal, selected)
+        write_tsv(staged[2], headers, selected)
+        write_xlsx(staged[3], headers, selected)
+        write_tsv(staged[4], headers, reserve)
+        kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
+        manifest_staged = staging / "outputset_manifest.json"
+        manifest_staged.write_text(json.dumps({"schema": 1, "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(staged, kinds, strict=True)]}, indent=2) + "\n", encoding="utf-8")
+        os.replace(staging, final)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    paths = [final / name for name in names]
     kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
-    manifest = run.artifact_path("08", "outputset_manifest", "json")
-    manifest.write_text(json.dumps({"schema": 1, "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(paths, kinds, strict=True)]}, indent=2) + "\n", encoding="utf-8")
+    manifest = final / "outputset_manifest.json"
     status = "PARTIAL" if allow_partial else "COMPLETE"
     run.register_artifact_set([(path, "08", kind, status) for path, kind in zip(paths, kinds, strict=True)] + [(manifest, "08", "outputset_manifest", status)])
     run.update_status("PARTIAL_EXPORTED" if allow_partial else "EXPORT_COMPLETE", "08")

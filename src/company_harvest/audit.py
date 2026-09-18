@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from typing import Any
 
 from company_harvest.core import HarvestError, Run, read_tsv, sha256, validate_kvk
@@ -14,6 +15,8 @@ def verify(run: Run) -> dict[str, Any]:
     checked = 0
     with run.connect() as connection:
         artifacts = connection.execute("SELECT path,sha256,size,status FROM artifacts ORDER BY id").fetchall()
+        latest_statuses = connection.execute("SELECT a.kind,a.status FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
+    errors.extend(f"STALE:{row['kind']}" for row in latest_statuses if row["status"] == "STALE")
     for row in artifacts:
         path = run.path / row["path"]
         checked += 1
@@ -25,7 +28,7 @@ def verify(run: Run) -> dict[str, Any]:
         if sha256(path) != row["sha256"]:
             errors.append(f"HASH:{row['path']}")
     metadata = run.metadata()
-    expected_config = hashlib.sha256(json.dumps({"workflow": metadata["workflow"], "target": metadata["target"]}, sort_keys=True).encode()).hexdigest()
+    expected_config = hashlib.sha256(json.dumps({"workflow": metadata["workflow"], "target": metadata["target"], "runtime_config": metadata.get("runtime_config", {})}, sort_keys=True).encode()).hexdigest()
     if metadata.get("config_fingerprint") != expected_config:
         errors.append("CONFIG:fingerprint_mismatch")
     registered_paths = {row["path"] for row in artifacts}
@@ -52,31 +55,59 @@ def verify(run: Run) -> dict[str, Any]:
         delivery = run.latest_artifact("08", "delivery_full_csv")
         reserve = run.latest_artifact("08", "reserve")
         if active and delivery and reserve:
-            active_numbers = {row["KVK-nummer"] for row in read_tsv(active)}
-            exported_numbers = {row["KVK-nummer"] for row in read_tsv(delivery)} | {row["KVK-nummer"] for row in read_tsv(reserve)}
-            if active_numbers != exported_numbers:
+            active_numbers = Counter(row["KVK-nummer"] for row in read_tsv(active))
+            delivery_rows, reserve_rows = read_tsv(delivery), read_tsv(reserve)
+            exported_numbers = Counter(row["KVK-nummer"] for row in delivery_rows + reserve_rows)
+            if active_numbers != exported_numbers or set(row["KVK-nummer"] for row in delivery_rows).intersection(row["KVK-nummer"] for row in reserve_rows):
                 errors.append("RELATION:active_delivery_reserve_mismatch")
         canonical = run.latest_artifact("05", "canonical")
         non_sole = run.latest_artifact("06", "non_sole")
         sole = run.latest_artifact("06", "sole_excluded")
         legal_review = run.latest_artifact("06", "legal_form_review")
         if canonical and non_sole and sole and legal_review:
-            before = {row["KVK-nummer"] for row in read_tsv(canonical)}
-            after = {row["KVK-nummer"] for path in (non_sole, sole, legal_review) for row in read_tsv(path)}
-            if before != after:
+            partitions = [read_tsv(path) for path in (non_sole, sole, legal_review)]
+            before = Counter(row["KVK-nummer"] for row in read_tsv(canonical))
+            after = Counter(row["KVK-nummer"] for rows in partitions for row in rows)
+            if before != after or _overlap(partitions):
                 errors.append("RELATION:legal_form_partition_mismatch")
         inactive = run.latest_artifact("07", "inactive_excluded")
         status_review = run.latest_artifact("07", "status_review")
         if non_sole and active and inactive and status_review:
-            before = {row["KVK-nummer"] for row in read_tsv(non_sole)}
-            after = {row["KVK-nummer"] for path in (active, inactive, status_review) for row in read_tsv(path)}
-            if before != after:
+            partitions = [read_tsv(path) for path in (active, inactive, status_review)]
+            before = Counter(row["KVK-nummer"] for row in read_tsv(non_sole))
+            after = Counter(row["KVK-nummer"] for rows in partitions for row in rows)
+            if before != after or _overlap(partitions):
                 errors.append("RELATION:status_partition_mismatch")
+        candidates = run.latest_artifact("03", "candidates")
+        matches = run.latest_artifact("04", "kvk_matches")
+        unresolved = run.latest_artifact("05", "kvk_unresolved")
+        if candidates and matches and unresolved:
+            candidate_ids = Counter(row["candidate_id"] for row in read_tsv(candidates))
+            terminal_ids = Counter(row["candidate_id"] for path in (matches, unresolved) for row in read_tsv(path))
+            if candidate_ids != terminal_ids:
+                errors.append("RELATION:candidate_terminal_mismatch")
+        output_manifest = run.latest_artifact("08", "outputset_manifest")
+        if output_manifest:
+            payload = json.loads(output_manifest.read_text(encoding="utf-8"))
+            for entry in payload.get("files", []):
+                output = output_manifest.parent / entry["path"]
+                if not output.is_file() or output.stat().st_size != entry["size"] or sha256(output) != entry["sha256"]:
+                    errors.append(f"OUTPUTSET:{entry.get('path', 'unknown')}")
     result = {"run": run.path.name, "checked_artifacts": checked, "errors": errors, "valid": not errors}
     run.log("INFO" if not errors else "ERROR", "audit_verify", **result)
     if errors:
         raise HarvestError(json.dumps(result, ensure_ascii=False), 7)
     return result
+
+
+def _overlap(partitions: list[list[dict[str, str]]]) -> bool:
+    seen: set[str] = set()
+    for rows in partitions:
+        current = {row["KVK-nummer"] for row in rows}
+        if seen.intersection(current):
+            return True
+        seen.update(current)
+    return False
 
 
 def trace(run: Run, kvk_number: str) -> dict[str, Any]:

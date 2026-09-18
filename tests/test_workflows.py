@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from company_harvest.audit import trace, verify
+from company_harvest.audit import _overlap, trace, verify
 from company_harvest.core import HarvestError, read_tsv, write_tsv
 from company_harvest.workflow import (
     active_only,
@@ -75,3 +75,13 @@ def test_excel_safe_text(tmp_path: Path) -> None:
     write_xlsx(path, ["Bedrijfsnaam", "KVK-nummer"], [{"Bedrijfsnaam": "=cmd", "KVK-nummer": "00123456"}])
     sheet = load_workbook(path)["Bedrijven"]
     assert sheet["A2"].value == "'=cmd" and sheet.freeze_panes == "A2"
+
+
+def test_partition_overlap_and_atomic_export_failure(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _overlap([[{"KVK-nummer": "01234567"}], [{"KVK-nummer": "01234567"}]])
+    _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer"], [{"Bedrijfsnaam": "Alpha", "KVK-nummer": "01234567"}])
+    monkeypatch.setattr("company_harvest.workflow.write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("fault")))
+    with pytest.raises(OSError):
+        export(run, 1)
+    assert not list((run.path / "artifacts").glob("*_08_delivery_outputset"))
+    assert not list((run.path / "artifacts").glob(".*_08_delivery_outputset.tmp"))
