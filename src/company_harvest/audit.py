@@ -14,8 +14,9 @@ def verify(run: Run) -> dict[str, Any]:
     errors: list[str] = []
     checked = 0
     with run.connect() as connection:
-        artifacts = connection.execute("SELECT path,sha256,size,status FROM artifacts ORDER BY id").fetchall()
-        latest_statuses = connection.execute("SELECT a.kind,a.status FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
+        artifacts = connection.execute("SELECT path,kind,sha256,size,status FROM artifacts ORDER BY id").fetchall()
+        latest_statuses = connection.execute("SELECT a.kind,a.status,a.path FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
+    latest_by_kind = {row["kind"]: row for row in latest_statuses}
     errors.extend(f"STALE:{row['kind']}" for row in latest_statuses if row["status"] == "STALE")
     for row in artifacts:
         path = run.path / row["path"]
@@ -51,6 +52,12 @@ def verify(run: Run) -> dict[str, Any]:
                 if excluded.intersection(numbers):
                     errors.append("RELATION:excluded_conflict_present_in_merged")
     else:
+        exported = metadata.get("status") in {"EXPORT_COMPLETE", "PARTIAL_EXPORTED"}
+        required_export_kinds = {"candidates", "kvk_matches", "kvk_unresolved", "canonical", "non_sole", "sole_excluded", "legal_form_review", "active", "inactive_excluded", "status_review", "delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve", "outputset_manifest"}
+        if exported:
+            for kind in sorted(required_export_kinds):
+                if kind not in latest_by_kind or latest_by_kind[kind]["status"] not in {"COMPLETE", "PARTIAL"}:
+                    errors.append(f"MISSING_REQUIRED:{kind}")
         active = run.latest_artifact("07", "active")
         delivery = run.latest_artifact("08", "delivery_full_csv")
         reserve = run.latest_artifact("08", "reserve")
@@ -81,18 +88,37 @@ def verify(run: Run) -> dict[str, Any]:
         candidates = run.latest_artifact("03", "candidates")
         matches = run.latest_artifact("04", "kvk_matches")
         unresolved = run.latest_artifact("05", "kvk_unresolved")
-        if candidates and matches and unresolved:
+        if int(metadata.get("last_completed_step", "0")) >= 4 and not (candidates and matches and unresolved):
+            errors.append("MISSING_REQUIRED:candidate_terminal_artifacts")
+        elif candidates and matches and unresolved:
             candidate_ids = Counter(row["candidate_id"] for row in read_tsv(candidates))
             terminal_ids = Counter(row["candidate_id"] for path in (matches, unresolved) for row in read_tsv(path))
             if candidate_ids != terminal_ids:
                 errors.append("RELATION:candidate_terminal_mismatch")
         output_manifest = run.latest_artifact("08", "outputset_manifest")
-        if output_manifest:
-            payload = json.loads(output_manifest.read_text(encoding="utf-8"))
-            for entry in payload.get("files", []):
-                output = output_manifest.parent / entry["path"]
-                if not output.is_file() or output.stat().st_size != entry["size"] or sha256(output) != entry["sha256"]:
-                    errors.append(f"OUTPUTSET:{entry.get('path', 'unknown')}")
+        if exported and not output_manifest:
+            errors.append("MISSING_REQUIRED:outputset_manifest")
+        elif output_manifest:
+            try:
+                payload = json.loads(output_manifest.read_text(encoding="utf-8"))
+                entries = payload.get("files", [])
+                if not isinstance(entries, list):
+                    entries = []
+                expected_kinds = {"delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve"}
+                entry_kinds = [entry.get("kind") for entry in entries if isinstance(entry, dict)]
+                if len(entries) != 5 or len(set(entry_kinds)) != 5 or set(entry_kinds) != expected_kinds:
+                    errors.append("OUTPUTSET:manifest_not_closed")
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        errors.append("OUTPUTSET:manifest_invalid_entry")
+                        continue
+                    kind = entry.get("kind", "")
+                    output = output_manifest.parent / entry.get("path", "")
+                    registered = latest_by_kind.get(kind)
+                    if not registered or str(output.relative_to(run.path)) != registered["path"] or not output.is_file() or output.stat().st_size != entry.get("size") or sha256(output) != entry.get("sha256"):
+                        errors.append(f"OUTPUTSET:{entry.get('path', 'unknown')}")
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                errors.append("OUTPUTSET:manifest_invalid")
     result = {"run": run.path.name, "checked_artifacts": checked, "errors": errors, "valid": not errors}
     run.log("INFO" if not errors else "ERROR", "audit_verify", **result)
     if errors:

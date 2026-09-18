@@ -34,6 +34,7 @@ def test_harvest_offline_pipeline(run) -> None:
     candidate_id = read_tsv(candidates)[0]["candidate_id"]
     match_headers = ["candidate_id", "Bedrijfsnaam", "KVK-nummer", "raw_legal_form", "raw_status", "city", "country", "match_method", "provider", "checked_at", "response_json", "source_relations"]
     _register(run, "04", "kvk_matches", match_headers, [{"candidate_id": candidate_id, "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567", "raw_legal_form": "Besloten vennootschap", "raw_status": "Actief", "city": "Utrecht", "country": "Nederland", "match_method": "SOURCE_KVK_CONFIRMED", "provider": "mock", "checked_at": "now", "response_json": "{}", "source_relations": "[]"}])
+    _register(run, "05", "kvk_unresolved", ["candidate_id", "reason"], [])
     canonical = consolidate(run)
     assert read_tsv(canonical)[0]["KVK-nummer"] == "01234567"
     assert len(read_tsv(exclude_sole_proprietorships(run)[0])) == 1
@@ -49,6 +50,11 @@ def test_harvest_offline_pipeline(run) -> None:
         )
     traced = trace(run, "01234567")
     assert traced["trace"] and traced["request_journal"]
+    bad_manifest = run.artifact_path("08", "bad_outputset_manifest", "json")
+    bad_manifest.write_text('{"schema":1,"files":[]}')
+    run.register_artifact(bad_manifest, "08", "outputset_manifest")
+    with pytest.raises(HarvestError):
+        verify(run)
 
 
 def test_filters_partial_and_integrity(run) -> None:
@@ -85,3 +91,10 @@ def test_partition_overlap_and_atomic_export_failure(run, monkeypatch: pytest.Mo
         export(run, 1)
     assert not list((run.path / "artifacts").glob("*_08_delivery_outputset"))
     assert not list((run.path / "artifacts").glob(".*_08_delivery_outputset.tmp"))
+
+
+def test_audit_requires_terminal_artifacts(run) -> None:
+    _register(run, "03", "candidates", ["candidate_id"], [{"candidate_id": "one"}])
+    run.update_status("IN_PROGRESS", "04")
+    with pytest.raises(HarvestError):
+        verify(run)

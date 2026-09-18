@@ -178,7 +178,6 @@ def write_xlsx(path: Path, headers: list[str], rows: list[dict[str, Any]]) -> No
 
 
 def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
-    run.record_config("export", {"limit": limit, "allow_partial": allow_partial})
     source = run.latest_artifact("07", "active")
     if not source:
         raise HarvestError("voer eerst active-only uit")
@@ -216,6 +215,7 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
     manifest = final / "outputset_manifest.json"
     status = "PARTIAL" if allow_partial else "COMPLETE"
     run.register_artifact_set([(path, "08", kind, status) for path, kind in zip(paths, kinds, strict=True)] + [(manifest, "08", "outputset_manifest", status)])
+    run.record_config("export", {"limit": limit, "allow_partial": allow_partial})
     run.update_status("PARTIAL_EXPORTED" if allow_partial else "EXPORT_COMPLETE", "08")
     return paths + [manifest]
 

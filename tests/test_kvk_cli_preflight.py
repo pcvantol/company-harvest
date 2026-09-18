@@ -202,6 +202,10 @@ def test_resume_and_limit(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert read_tsv(unresolved)[0]["reason"] == "NOT_PROCESSED_LIMIT"
     matches2, _ = resolve(run, "auto", 1, True, False, False, 0)
     assert len(read_tsv(matches2)) >= 1
+    downstream = run.artifact_path("05", "canonical", "csv")
+    write_tsv(downstream, ["KVK-nummer"], [{"KVK-nummer": "01234567"}]); run.register_artifact(downstream, "05", "canonical")
+    resolve(run, "auto", 1, False, True, False, 0)
+    assert run.latest_artifact("05", "canonical") is None
 
 
 def test_incomplete_and_unknown_outcome_not_resent(run, monkeypatch: pytest.MonkeyPatch) -> None:

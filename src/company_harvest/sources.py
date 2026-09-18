@@ -176,9 +176,9 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
 def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None, refresh: bool = False) -> list[Path]:
     outputs: list[Path] = []
     enabled = _enabled(only, skip)
-    run.record_config("sources_collect", {"only": sorted(only), "skip": sorted(skip), "limit": limit, "refresh": refresh})
-    if refresh and any(run.latest_artifact("02", f"source_{source.source_id}") for source in enabled):
-        run.invalidate_from(3, "source_refresh")
+    will_fetch = any(refresh or not run.latest_artifact("02", f"source_{source.source_id}") for source in enabled)
+    if will_fetch:
+        run.invalidate_from(3, "source_collection_changed")
     timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
     headers = {"User-Agent": "company-harvest/0.1 (+local audited collection)"}
     with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
@@ -235,6 +235,7 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
             run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=[_hash(snapshot) for snapshot in snapshots], refreshed=refresh)
             outputs.append(path)
     _update_inventory(run, {path.name.split("_source_", 1)[1].rsplit("_companies", 1)[0]: len(read_tsv(path)) for path in outputs})
+    run.record_config("sources_collect", {"only": sorted(only), "skip": sorted(skip), "limit": limit, "refresh": refresh})
     run.update_status("IN_PROGRESS", "02")
     return outputs
 
@@ -291,11 +292,13 @@ def import_source(run: Run, input_path: Path, source_id: str, name_column: str, 
             rows.append(_raw_row(name, number, source_id, snapshot.name, str(index)))
     if not rows:
         raise HarvestError("importadapter vond nul geldige records")
+    run.invalidate_from(3, "source_import_changed")
     output = run.artifact_path("02", f"source_{source_id}_companies", "csv")
     write_tsv(output, RAW_HEADERS, rows)
     run.register_artifact(snapshot, "02", f"evidence_{source_id}")
     run.register_artifact(output, "02", f"source_{source_id}")
     run.log("INFO", "source_import_completed", source_id=source_id, count=len(rows), adapter=source.suffix.lower(), evidence_sha256=_hash(snapshot))
+    run.record_config(f"source_import:{source_id}", {"sha256": _hash(snapshot), "adapter": source.suffix.lower(), "name_column": name_column, "kvk_column": kvk_column, "sheet": sheet})
     run.update_status("IN_PROGRESS", "02")
     return output
 

@@ -401,11 +401,12 @@ class ProviderLock:
 
 
 def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refresh: bool, headed: bool, interval: float = 2.0) -> tuple[Path, Path]:
-    run.record_config("kvk_resolve", {"provider": provider_name, "limit": limit, "resume": resume, "refresh": refresh, "headed": headed, "interval": interval})
     candidates_path = run.latest_artifact("03", "candidates")
     if not candidates_path:
         raise HarvestError("voer eerst companies merge uit")
     candidates = read_tsv(candidates_path)
+    if refresh:
+        run.invalidate_from(5, "kvk_refresh")
     provider = _provider_for_run(run, provider_name)
     resolved: list[dict[str, Any]] = []
     unresolved: list[dict[str, str]] = []
@@ -477,6 +478,7 @@ def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refre
     write_tsv(unresolved_path, UNRESOLVED_HEADERS, unresolved)
     run.register_artifact(resolved_path, "04", "kvk_matches")
     run.register_artifact(unresolved_path, "05", "kvk_unresolved")
+    run.record_config("kvk_resolve", {"provider": provider_name, "limit": limit, "resume": resume, "refresh": refresh, "headed": headed, "interval": interval})
     run.update_status("IN_PROGRESS", "04")
     return resolved_path, unresolved_path
 

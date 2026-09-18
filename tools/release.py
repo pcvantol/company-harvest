@@ -80,7 +80,7 @@ from company_harvest.core import open_run,read_tsv,write_tsv
 from company_harvest.workflow import consolidate,exclude_sole_proprietorships,active_only,export
 r=open_run(Path(sys.argv[1])); c=read_tsv(r.latest_artifact('03','candidates'))[0]
 p=r.artifact_path('04','kvk_matches','csv'); row={'candidate_id':c['candidate_id'],'Bedrijfsnaam':c['original_name'],'KVK-nummer':c['source_kvk_hint'],'raw_legal_form':'Besloten Vennootschap','raw_status':'Actief','city':'Utrecht','country':'Nederland','match_method':'QUALIFICATION_SYNTHETIC','provider':'qualification','checked_at':'synthetic','response_json':'{}','source_relations':c['source_relations']}
-write_tsv(p,list(row),[row]); r.register_artifact(p,'04','kvk_matches'); consolidate(r); exclude_sole_proprietorships(r); active_only(r); export(r,1)
+write_tsv(p,list(row),[row]); r.register_artifact(p,'04','kvk_matches'); u=r.artifact_path('05','kvk_unresolved','csv'); write_tsv(u,['candidate_id','original_name','reason','detail','resumable','checked_at'],[]); r.register_artifact(u,'05','kvk_unresolved'); consolidate(r); exclude_sole_proprietorships(r); active_only(r); export(r,1)
 """
         subprocess.run([str(python), "-c", synthetic_export, str(harvest_run)], check=True, capture_output=True, text=True)
         harvest_audit = subprocess.run([str(cli), "--data-dir", str(data), "audit", "verify", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
