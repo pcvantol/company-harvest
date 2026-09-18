@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -371,7 +372,17 @@ class ProviderLock:
         if self.path.exists():
             try:
                 owner = json.loads(self.path.read_text(encoding="utf-8"))
-                os.kill(int(owner["pid"]), 0)
+                pid = int(owner["pid"])
+                if os.name == "nt":
+                    windows_ctypes: Any = ctypes
+                    kernel32 = windows_ctypes.WinDLL("kernel32", use_last_error=True)
+                    handle = kernel32.OpenProcess(0x1000, False, pid)
+                    if handle:
+                        kernel32.CloseHandle(handle)
+                    elif windows_ctypes.get_last_error() != 5:
+                        raise ProcessLookupError(pid)
+                else:
+                    os.kill(pid, 0)
             except ProcessLookupError:
                 self.path.unlink(missing_ok=True)
             except (OSError, ValueError, KeyError, json.JSONDecodeError):
