@@ -435,6 +435,9 @@ def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refre
                 )
             try:
                 result = provider.search(candidate["original_name"], headed=headed)
+                evidence_path = run.path / result.evidence
+                if evidence_path.is_file():
+                    run.register_artifact(evidence_path, "04", f"evidence_{result.transport}")
                 record = _match(candidate, result) if result.complete else None
                 if record:
                     resolved.append(record)

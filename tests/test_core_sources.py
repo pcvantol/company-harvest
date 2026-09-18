@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook
 
 from company_harvest.core import (
     HarvestError,
@@ -20,6 +21,7 @@ from company_harvest.sources import (
     _enabled,
     collect,
     discover,
+    import_source,
     list_sources,
     parse_ind_html,
     parse_wikidata,
@@ -121,6 +123,21 @@ def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
     outputs = collect(run, limit=1)
     assert len(outputs) == 2 and all(read_tsv(path) for path in outputs)
+    assert collect(run, limit=1) == outputs
     client = FakeClient()
     with pytest.raises(HarvestError):
         _bounded_get(client, "http://localhost/private")
+
+
+def test_generic_source_import_adapters(run, tmp_path: Path) -> None:
+    csv_path = tmp_path / "input.csv"
+    csv_path.write_text("Naam;KVK\nAlpha BV;01234567\n", encoding="utf-8")
+    assert read_tsv(import_source(run, csv_path, "csv_input", "Naam", "KVK"))[0]["original_name"] == "Alpha BV"
+    html_path = tmp_path / "input.html"
+    html_path.write_text("<table><tr><th>Naam</th><th>KVK</th></tr><tr><td>Beta &amp; Co</td><td>12345678</td></tr></table>", encoding="utf-8")
+    assert read_tsv(import_source(run, html_path, "html_input", "Naam", "KVK"))[0]["original_name"] == "Beta & Co"
+    xlsx_path = tmp_path / "input.xlsx"
+    workbook = Workbook(); sheet = workbook.active; sheet.append(["Naam", "KVK"]); sheet.append(["Gamma BV", "23456789"]); workbook.save(xlsx_path)
+    assert read_tsv(import_source(run, xlsx_path, "xlsx_input", "Naam", "KVK"))[0]["source_kvk_hint"] == "23456789"
+    with pytest.raises(HarvestError):
+        import_source(run, csv_path, "BAD", "Naam", "KVK")

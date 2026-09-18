@@ -69,12 +69,19 @@ def qualify_wheel(wheel: Path) -> dict[str, str]:
         left.write_text("Bedrijfsnaam,KVK-nummer\nAlpha BV,01234567\n", encoding="utf-8")
         right.write_text("Bedrijfsnaam,KVK-nummer\nBeta BV,12345678\n", encoding="utf-8")
         subprocess.run([str(cli), "--data-dir", str(data), "doctor"], check=True, capture_output=True, text=True)
+        harvest_run = Path(subprocess.run([str(cli), "--data-dir", str(data), "run", "init", "--target", "1", "--print-path"], check=True, capture_output=True, text=True).stdout.strip())
+        preflight = subprocess.run([str(cli), "--data-dir", str(data), "run", "preflight", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
+        subprocess.run([str(cli), "--data-dir", str(data), "sources", "import", "--run-dir", str(harvest_run), "--input", str(left), "--source-id", "qualification", "--name-column", "Bedrijfsnaam", "--kvk-column", "KVK-nummer"], check=True, capture_output=True, text=True)
+        subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
+        harvest_audit = subprocess.run([str(cli), "--data-dir", str(data), "audit", "verify", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
         merged = subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge-lists", "--left", str(left), "--right", str(right)], check=True, capture_output=True, text=True)
-        run_dir = sorted((data / "runs").iterdir())[0]
+        run_dir = next(path for path in sorted((data / "runs").iterdir()) if path != harvest_run)
         audit = subprocess.run([str(cli), "--data-dir", str(data), "audit", "verify", "--run-dir", str(run_dir)], check=True, capture_output=True, text=True)
-        if '"valid": true' not in audit.stdout or "merged.csv" not in merged.stdout:
+        if '"ready": true' not in preflight.stdout or '"valid": true' not in harvest_audit.stdout or '"valid": true' not in audit.stdout or "merged.csv" not in merged.stdout:
             raise RuntimeError("verse-installatiekwalificatie leverde geen geldig auditresultaat")
-    return {"version": version, "import_location": location, "workflow": "MERGE_LISTS", "audit": "PASS", "status": "PASS"}
+    if "site-packages" not in location.replace("\\", "/"):
+        raise RuntimeError("wheelimport kwam niet uit de geïsoleerde site-packages")
+    return {"version": version, "import_scope": "isolated-site-packages", "workflows": "HARVEST_PREFLIGHT_IMPORT_DEDUP,MERGE_LISTS", "audit": "PASS", "status": "PASS"}
 
 
 def build(root: Path, output_root: Path) -> Path:
@@ -105,7 +112,7 @@ def build(root: Path, output_root: Path) -> Path:
             "source_commit": git(root, "rev-parse", "HEAD"),
             "wheel": wheel.name,
             "wheel_sha256": digest(wheel),
-            "offline_install": f"python -m pip install {wheel.name}",
+            "online_install": f"python -m pip install {wheel.name}",
         }
         (stage / "BUNDLE-MANIFEST.json").write_text(json.dumps(bundle_manifest, indent=2) + "\n", encoding="utf-8")
         (stage / "SHA256SUMS.txt").write_text(f"{digest(wheel)}  {wheel.name}\n", encoding="utf-8")
@@ -115,12 +122,12 @@ def build(root: Path, output_root: Path) -> Path:
         scan_asset(asset)
     wheel = next(path for path in assets if path.suffix == ".whl")
     installation = qualify_wheel(wheel)
-    manifest: dict[str, Any] = {"schema": 1, "version": version, "tag": f"v{version}", "source_commit": git(root, "rev-parse", "HEAD"), "built_at": datetime.now(UTC).isoformat(), "clean_install": installation, "assets": [{"name": path.name, "path": str(path), "sha256": digest(path), "size": path.stat().st_size} for path in assets]}
+    manifest: dict[str, Any] = {"schema": 1, "version": version, "tag": f"v{version}", "source_commit": git(root, "rev-parse", "HEAD"), "built_at": datetime.now(UTC).isoformat(), "clean_install": installation, "assets": [{"name": path.name, "sha256": digest(path), "size": path.stat().st_size} for path in assets]}
     manifest_path = folder / "distribution-manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     checksums = folder / "SHA256SUMS.txt"
     checksums.write_text("".join(f"{entry['sha256']}  {entry['name']}\n" for entry in manifest["assets"]), encoding="utf-8")
-    manifest["assets"].extend([{"name": checksums.name, "path": str(checksums), "sha256": digest(checksums), "size": checksums.stat().st_size}])
+    manifest["assets"].extend([{"name": checksums.name, "sha256": digest(checksums), "size": checksums.stat().st_size}])
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest_path
 
@@ -134,7 +141,7 @@ def _version(root: Path) -> str:
 def verify(manifest_path: Path) -> dict[str, Any]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     for asset in manifest["assets"]:
-        path = Path(asset["path"])
+        path = manifest_path.parent / asset["name"]
         if not path.is_file() or path.stat().st_size != asset["size"] or digest(path) != asset["sha256"]:
             raise RuntimeError(f"assetverificatie mislukt: {asset['name']}")
         scan_asset(path)
@@ -157,7 +164,7 @@ def publish(root: Path, manifest_path: Path) -> None:
     else:
         subprocess.run(["git", "tag", "-a", tag, "-m", f"Company Harvest {manifest['version']}"], cwd=root, check=True)
     subprocess.run(["git", "push", "origin", tag], cwd=root, check=True)
-    assets = [entry["path"] for entry in manifest["assets"]] + [str(manifest_path)]
+    assets = [str(manifest_path.parent / entry["name"]) for entry in manifest["assets"]] + [str(manifest_path)]
     subprocess.run(["gh", "release", "create", tag, *assets, "--draft", "--verify-tag", "--title", f"Company Harvest {manifest['version']}", "--notes-file", str(root / "docs" / "releases" / f"v{manifest['version']}.md")], cwd=root, check=True)
     subprocess.run(["gh", "release", "edit", tag, "--draft=false"], cwd=root, check=True)
 

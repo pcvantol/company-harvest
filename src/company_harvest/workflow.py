@@ -16,6 +16,7 @@ from company_harvest.core import (
     Run,
     normalize_name,
     read_tsv,
+    sha256,
     validate_kvk,
     write_tsv,
 )
@@ -197,10 +198,13 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
     write_tsv(paths[2], headers, selected)
     write_xlsx(paths[3], headers, selected)
     write_tsv(paths[4], headers, reserve)
-    for path, kind in zip(paths, ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve"), strict=True):
-        run.register_artifact(path, "08", kind, "PARTIAL" if allow_partial else "COMPLETE")
+    kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
+    manifest = run.artifact_path("08", "outputset_manifest", "json")
+    manifest.write_text(json.dumps({"schema": 1, "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(paths, kinds, strict=True)]}, indent=2) + "\n", encoding="utf-8")
+    status = "PARTIAL" if allow_partial else "COMPLETE"
+    run.register_artifact_set([(path, "08", kind, status) for path, kind in zip(paths, kinds, strict=True)] + [(manifest, "08", "outputset_manifest", status)])
     run.update_status("PARTIAL_EXPORTED" if allow_partial else "EXPORT_COMPLETE", "08")
-    return paths
+    return paths + [manifest]
 
 
 def report(run: Run) -> Path:

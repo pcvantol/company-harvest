@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import csv
 import html
+import io
 import re
+import shutil
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -11,10 +14,13 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+from openpyxl import load_workbook
 
 from company_harvest.core import HarvestError, Run, timestamp, validate_kvk, write_tsv
 
 MAX_RESPONSE_BYTES = 20 * 1024 * 1024
+MAX_SOURCE_PAGES = 100
+WIKIDATA_PAGE_SIZE = 100
 ALLOWED_HOSTS = {"ind.nl", "www.wikidata.org", "query.wikidata.org"}
 
 
@@ -167,32 +173,55 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
     return [source for source in CATALOG if (not only_set or source.source_id in only_set) and source.source_id not in skip_set]
 
 
-def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None) -> list[Path]:
+def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None, refresh: bool = False) -> list[Path]:
     outputs: list[Path] = []
     timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
     headers = {"User-Agent": "company-harvest/0.1 (+local audited collection)"}
     with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
         for source in _enabled(only, skip):
+            prior = run.latest_artifact("02", f"source_{source.source_id}")
+            if prior and not refresh:
+                run.log("INFO", "source_collect_reused", source_id=source.source_id, path=str(prior.relative_to(run.path)))
+                outputs.append(prior)
+                continue
             run.log("INFO", "source_collect_started", source_id=source.source_id)
+            snapshots: list[Path] = []
             if source.source_id == "ind_arbeid":
                 response = _bounded_get(client, source.url)
                 snapshot = run.path / "evidence" / f"{timestamp()}_02_ind_arbeid_source.html"
                 snapshot.write_bytes(response.content)
+                snapshots.append(snapshot)
                 rows = parse_ind_html(response.text, str(response.url), limit)
             else:
-                query = "SELECT ?org ?orgLabel ?kvk WHERE {?org wdt:P31/wdt:P279* wd:Q4830453; wdt:P17 wd:Q55; wdt:P3821 ?kvk. SERVICE wikibase:label { bd:serviceParam wikibase:language 'nl,en'. }} ORDER BY ?orgLabel LIMIT 100"
-                response = client.get(source.url, params={"query": query, "format": "json"})
-                response.raise_for_status()
-                if len(response.content) > MAX_RESPONSE_BYTES:
-                    raise HarvestError("Wikidata-response overschrijdt de maximale grootte")
-                snapshot = run.path / "evidence" / f"{timestamp()}_02_wikidata_source.json"
-                snapshot.write_bytes(response.content)
-                rows = parse_wikidata(response.json(), str(response.url), limit)
+                rows = []
+                for page in range(MAX_SOURCE_PAGES):
+                    remaining = None if limit is None else limit - len(rows)
+                    if remaining is not None and remaining <= 0:
+                        break
+                    page_size = min(WIKIDATA_PAGE_SIZE, remaining) if remaining is not None else WIKIDATA_PAGE_SIZE
+                    query = f"SELECT ?org ?orgLabel ?kvk WHERE {{?org wdt:P31/wdt:P279* wd:Q4830453; wdt:P17 wd:Q55; wdt:P3821 ?kvk. SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'nl,en'. }} }} ORDER BY ?orgLabel LIMIT {page_size} OFFSET {page * WIKIDATA_PAGE_SIZE}"
+                    response = client.get(source.url, params={"query": query, "format": "json"})
+                    response.raise_for_status()
+                    if len(response.content) > MAX_RESPONSE_BYTES:
+                        raise HarvestError("Wikidata-response overschrijdt de maximale grootte")
+                    snapshot = run.path / "evidence" / f"{timestamp()}_02_wikidata_source_page_{page + 1}.json"
+                    snapshot.write_bytes(response.content)
+                    snapshots.append(snapshot)
+                    page_rows = parse_wikidata(response.json(), str(response.url), page_size)
+                    for row in page_rows:
+                        row["source_row"] = str(page * WIKIDATA_PAGE_SIZE + int(row["source_row"]))
+                    rows.extend(page_rows)
+                    if len(page_rows) < page_size:
+                        break
+                else:
+                    raise HarvestError("Wikidata-paginering bereikte de veiligheidslimiet; resultaat is niet aantoonbaar compleet")
             path = run.artifact_path("02", f"source_{source.source_id}_companies", "csv")
             rows.sort(key=lambda row: (row["original_name"].casefold(), row["source_kvk_hint"]))
             write_tsv(path, RAW_HEADERS, rows)
             run.register_artifact(path, "02", f"source_{source.source_id}")
-            run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=_hash(snapshot))
+            for snapshot in snapshots:
+                run.register_artifact(snapshot, "02", f"evidence_{source.source_id}")
+            run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=[_hash(snapshot) for snapshot in snapshots], refreshed=refresh)
             outputs.append(path)
     run.update_status("IN_PROGRESS", "02")
     return outputs
@@ -211,3 +240,60 @@ def list_sources(run: Run) -> list[dict[str, str]]:
     from company_harvest.core import read_tsv
 
     return read_tsv(path)
+
+
+def import_source(run: Run, input_path: Path, source_id: str, name_column: str, kvk_column: str, sheet: str | None = None) -> Path:
+    """Importeer een expliciet gemapte lokale CSV/TSV/XLSX/HTML-tabel als bron."""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{1,63}", source_id):
+        raise HarvestError("source-id moet 2-64 veilige kleine letters/cijfers bevatten")
+    source = input_path.expanduser().resolve()
+    if not source.is_file() or source.stat().st_size > MAX_RESPONSE_BYTES:
+        raise HarvestError("importbron ontbreekt of overschrijdt de maximale grootte")
+    headers, values = _read_tabular(source, sheet)
+    if name_column not in headers or kvk_column not in headers:
+        raise HarvestError("expliciete naam- of KVK-kolom ontbreekt")
+    snapshot = run.path / "evidence" / f"{timestamp()}_02_{source_id}_input{source.suffix.lower()}"
+    shutil.copyfile(source, snapshot)
+    rows: list[dict[str, str]] = []
+    for index, row in enumerate(values, 2):
+        try:
+            number = validate_kvk(row.get(kvk_column))
+        except ValueError:
+            continue
+        name = str(row.get(name_column) or "").strip()
+        if name:
+            rows.append(_raw_row(name, number, source_id, snapshot.name, str(index)))
+    if not rows:
+        raise HarvestError("importadapter vond nul geldige records")
+    output = run.artifact_path("02", f"source_{source_id}_companies", "csv")
+    write_tsv(output, RAW_HEADERS, rows)
+    run.register_artifact(snapshot, "02", f"evidence_{source_id}")
+    run.register_artifact(output, "02", f"source_{source_id}")
+    run.log("INFO", "source_import_completed", source_id=source_id, count=len(rows), adapter=source.suffix.lower(), evidence_sha256=_hash(snapshot))
+    run.update_status("IN_PROGRESS", "02")
+    return output
+
+
+def _read_tabular(path: Path, sheet: str | None) -> tuple[list[str], list[dict[str, object]]]:
+    if path.suffix.lower() == ".xlsx":
+        workbook = load_workbook(path, read_only=True, data_only=True)
+        if sheet and sheet not in workbook.sheetnames:
+            raise HarvestError(f"werkblad ontbreekt: {sheet}")
+        selected = workbook[sheet] if sheet else workbook[workbook.sheetnames[0]]
+        matrix = [[cell.value for cell in row] for row in selected.iter_rows()]
+    elif path.suffix.lower() in {".html", ".htm"}:
+        rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", path.read_text(encoding="utf-8"), flags=re.I | re.S)
+        matrix = [[html.unescape(re.sub(r"<[^>]+>", "", cell)).strip() for cell in re.findall(r"<t[hd]\b[^>]*>(.*?)</t[hd]>", row, flags=re.I | re.S)] for row in rows]
+    else:
+        text = path.read_text(encoding="utf-8-sig")
+        delimiter = csv.Sniffer().sniff(text[:8192], delimiters="\t,;").delimiter
+        reader = csv.DictReader(io.StringIO(text, newline=""), delimiter=delimiter)
+        if not reader.fieldnames:
+            raise HarvestError("importheader ontbreekt")
+        return list(reader.fieldnames), [dict(row) for row in reader]
+    if not matrix:
+        raise HarvestError("lege importbron")
+    headers = [str(value or "").strip() for value in matrix[0]]
+    if not all(headers) or len(headers) != len(set(headers)):
+        raise HarvestError("importheader bevat lege of dubbele kolommen")
+    return headers, [dict(zip(headers, row, strict=False)) for row in matrix[1:]]

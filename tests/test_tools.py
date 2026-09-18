@@ -55,6 +55,12 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.setattr(module, "git", lambda *_: "dirty")
     with pytest.raises(RuntimeError):
         module.publish(ROOT, manifest_path)
+    with pytest.raises(RuntimeError):
+        module.build(ROOT, tmp_path / "dirty-build")
+    monkeypatch.setattr(module, "git", lambda root, *args: "x" if args[:2] == ("rev-parse", "HEAD") else ("" if args[0] == "status" else "different"))
+    monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 1 if args[0][0] == "gh" else 0))
+    with pytest.raises(RuntimeError):
+        module.publish(ROOT, manifest_path)
     monkeypatch.undo()
     module = load("release")
     assert module.main(["verify", "--manifest", str(tmp_path / "missing")]) == 1

@@ -140,10 +140,14 @@ class Run:
         return self.path / "artifacts" / f"{timestamp()}_{step}_{description}.{suffix}"
 
     def register_artifact(self, path: Path, step: str, kind: str, status: str = "COMPLETE") -> None:
+        self.register_artifact_set([(path, step, kind, status)])
+
+    def register_artifact_set(self, entries: Sequence[tuple[Path, str, str, str]]) -> None:
+        """Registreer een complete outputset in één databasetransactie."""
         with self.connect() as connection:
-            connection.execute(
+            connection.executemany(
                 "INSERT INTO artifacts(path, step, kind, sha256, size, status, created_at) VALUES(?,?,?,?,?,?,?)",
-                (str(path.relative_to(self.path)), step, kind, sha256(path), path.stat().st_size, status, utc_now().isoformat()),
+                [(str(path.relative_to(self.path)), step, kind, sha256(path), path.stat().st_size, status, utc_now().isoformat()) for path, step, kind, status in entries],
             )
 
     def latest_artifact(self, step: str, kind: str) -> Path | None:

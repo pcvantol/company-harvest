@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 
@@ -24,6 +25,16 @@ def verify(run: Run) -> dict[str, Any]:
         if sha256(path) != row["sha256"]:
             errors.append(f"HASH:{row['path']}")
     metadata = run.metadata()
+    expected_config = hashlib.sha256(json.dumps({"workflow": metadata["workflow"], "target": metadata["target"]}, sort_keys=True).encode()).hexdigest()
+    if metadata.get("config_fingerprint") != expected_config:
+        errors.append("CONFIG:fingerprint_mismatch")
+    registered_paths = {row["path"] for row in artifacts}
+    with run.connect() as connection:
+        requests = connection.execute("SELECT candidate_id,state,evidence_path FROM kvk_requests ORDER BY id").fetchall()
+    for request in requests:
+        evidence = request["evidence_path"]
+        if evidence and (evidence not in registered_paths or not (run.path / evidence).is_file()):
+            errors.append(f"EVIDENCE:{request['candidate_id']}")
     if metadata["workflow"] == "MERGE_LISTS":
         merged = run.latest_artifact("09", "merged_csv")
         conflicts = run.latest_artifact("09", "conflicts")
@@ -45,6 +56,22 @@ def verify(run: Run) -> dict[str, Any]:
             exported_numbers = {row["KVK-nummer"] for row in read_tsv(delivery)} | {row["KVK-nummer"] for row in read_tsv(reserve)}
             if active_numbers != exported_numbers:
                 errors.append("RELATION:active_delivery_reserve_mismatch")
+        canonical = run.latest_artifact("05", "canonical")
+        non_sole = run.latest_artifact("06", "non_sole")
+        sole = run.latest_artifact("06", "sole_excluded")
+        legal_review = run.latest_artifact("06", "legal_form_review")
+        if canonical and non_sole and sole and legal_review:
+            before = {row["KVK-nummer"] for row in read_tsv(canonical)}
+            after = {row["KVK-nummer"] for path in (non_sole, sole, legal_review) for row in read_tsv(path)}
+            if before != after:
+                errors.append("RELATION:legal_form_partition_mismatch")
+        inactive = run.latest_artifact("07", "inactive_excluded")
+        status_review = run.latest_artifact("07", "status_review")
+        if non_sole and active and inactive and status_review:
+            before = {row["KVK-nummer"] for row in read_tsv(non_sole)}
+            after = {row["KVK-nummer"] for path in (active, inactive, status_review) for row in read_tsv(path)}
+            if before != after:
+                errors.append("RELATION:status_partition_mismatch")
     result = {"run": run.path.name, "checked_artifacts": checked, "errors": errors, "valid": not errors}
     run.log("INFO" if not errors else "ERROR", "audit_verify", **result)
     if errors:
