@@ -245,6 +245,21 @@ def test_preflight_and_cli(tmp_path: Path, run, capsys: pytest.CaptureFixture[st
     assert cli.main(["run", "status", "--run-dir", str(tmp_path / "missing")]) == 3
 
 
+def test_sources_measure_cli(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    called = {}
+
+    def fake_measure(selected_run, limit):
+        called.update(run=selected_run.path, limit=limit)
+        return run.path / "capability.json", run.path / "capability.md"
+
+    monkeypatch.setattr(cli, "measure_sources", fake_measure)
+    assert cli.main([
+        "sources", "measure", "--run-dir", str(run.path),
+        "--wikidata-limit", "25",
+    ]) == 0
+    assert called == {"run": run.path, "limit": 25}
+
+
 def test_r1_vertical_cli_slice_accepts_name_only_source(run, tmp_path: Path) -> None:
     source = tmp_path / "organisaties.csv"
     source.write_text("Naam\nVoorbeeld Zonder Nummer\n", encoding="utf-8")

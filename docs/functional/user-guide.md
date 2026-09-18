@@ -8,6 +8,7 @@ Gebruik voor ontwikkeling bijvoorbeeld:
 export COMPANY_HARVEST_DATA_DIR=/Users/pcvantol/Documents/GitHub/company-harvest
 RUN_DIR="$(company-harvest run init --target 10000 --print-path)"
 company-harvest sources discover --run-dir "$RUN_DIR"
+company-harvest sources measure --run-dir "$RUN_DIR" --wikidata-limit 200
 company-harvest sources collect --run-dir "$RUN_DIR"
 company-harvest companies merge --run-dir "$RUN_DIR"
 company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
@@ -24,5 +25,12 @@ company-harvest sources import --run-dir "$RUN_DIR" --input organisaties.csv --s
 ```
 
 Geef `--kvk-column KVK` mee wanneer zo'n kolom bestaat. Geldige nummers worden als hint behouden; ontbrekende en ongeldige waarden blijven respectievelijk `MISSING` en `INVALID` en verwijderen het bronrecord niet.
+
+`sources measure` voert de R2-capabilitymeting uit: de IND-bronpagina wordt volledig
+gelezen en Wikidata blijft standaard begrensd tot 200 records. Het commando schrijft een
+machineleesbaar en een leesbaar capabilityrapport, ook wanneer een bron met `BLOCKED` of
+`FAILED` eindigt. Het meetcommando ververst altijd live en kan oud bronbewijs daardoor
+niet als een actuele meting labelen. De meting is geen productieharvest en de
+Wikidata-steekproef is geen populatieschatting.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

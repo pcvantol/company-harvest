@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 from openpyxl import Workbook
 
@@ -20,10 +21,14 @@ from company_harvest.core import (
 from company_harvest.sources import (
     _bounded_get,
     _enabled,
+    _ind_source_date,
+    _measurement_error,
+    _parse_ind_html_with_stats,
     collect,
     discover,
     import_source,
     list_sources,
+    measure_sources,
     parse_ind_html,
     parse_wikidata,
 )
@@ -84,10 +89,23 @@ def test_sources_discovery_and_parsers(run) -> None:
     assert all(row["catalog_schema_version"] == "2" for row in catalog)
     assert {row["access_mode"] for row in catalog} == {"api", "html"}
     assert all(row["registration_number_type"] == "KVK" for row in catalog)
+    assert catalog[0]["terms_url"] == "https://ind.nl/nl/proclaimer"
+    assert catalog[1]["terms_url"] == "https://www.wikidata.org/wiki/Wikidata:Data_access"
     rows = parse_ind_html("<tr><td>Voorbeeld B.V.</td><td>01234567</td></tr>", "https://ind.nl/x")
     assert rows[0]["source_kvk_hint"] == "01234567"
     with pytest.raises(HarvestError):
         parse_ind_html("geen tabel", "https://ind.nl/x")
+    assert _ind_source_date(
+        "<p>Het overzicht is <strong>bijgewerkt op 3 september 2026</strong>.</p>"
+    ) == "3 september 2026"
+    assert _ind_source_date("geen peildatum") is None
+    parsed_ind, raw_ind, rejected_ind = _parse_ind_html_with_stats(
+        "<table><tr><th>Naam</th><th>KvK nummer</th></tr>"
+        "<tr><th>Goed B.V.</th><td>12345678</td></tr>"
+        "<tr><th>Afgewezen B.V.</th><td>1234567</td></tr></table>",
+        "https://ind.nl/x",
+    )
+    assert len(parsed_ind) == 1 and raw_ind == 2 and rejected_ind == 1
     payload = {"results": {"bindings": [{"orgLabel": {"value": "Demo"}, "kvk": {"value": "12345678"}}, {"orgLabel": {"value": "Bad"}, "kvk": {"value": "x"}}]}}
     parsed = parse_wikidata(payload, "https://query.wikidata.org")
     assert parsed[0]["original_name"] == "Demo"
@@ -103,6 +121,8 @@ class FakeResponse:
         self.content = content
         self.text = content.decode()
         self.url = type("URL", (), {"host": "ind.nl", "__str__": lambda self: url})()
+        self.status_code = 200
+        self.headers = {"x-ratelimit-remaining": "99"}
 
     def raise_for_status(self) -> None:
         return None
@@ -145,6 +165,149 @@ def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
         _bounded_get(client, "http://localhost/private")
 
 
+def test_live_capability_measurement_is_bounded_and_reconcilable(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    discover(run)
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
+    json_path, md_path = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    assert md_path.is_file() and report["all_sources_terminal"]
+    assert report["http_user_agent"] == "company-lookup/0.1"
+    by_source = {item["source_id"]: item for item in report["sources"]}
+    assert by_source["ind_arbeid"]["measurement_scope"] == "FULL_SOURCE_PAGE"
+    assert by_source["ind_arbeid"]["collection_complete"] is True
+    assert by_source["wikidata_nl_companies"]["measurement_scope"] == "BOUNDED_SAMPLE"
+    assert by_source["wikidata_nl_companies"]["collection_complete"] is False
+    assert all(item["count_closure"] == "CLOSED" for item in by_source.values())
+    assert all(item["rate_limit_observation"] == "HEADERS_OBSERVED" for item in by_source.values())
+    catalog = {item["source_id"]: item for item in list_sources(run)}
+    assert {item["live_measurement_status"] for item in catalog.values()} == {"LIVE_MEASURED"}
+
+
+def test_measurement_error_classifies_rate_limit_as_blocked() -> None:
+    request = httpx.Request("GET", "https://query.wikidata.org/sparql")
+    response = httpx.Response(429, request=request, headers={"retry-after": "60"})
+    exc = httpx.HTTPStatusError("rate limited", request=request, response=response)
+    status, evidence = _measurement_error(exc)
+    assert status == "BLOCKED"
+    assert evidence == {
+        "error_type": "HTTPStatusError",
+        "http_status": 429,
+        "retry_after": "60",
+    }
+
+
+def test_capability_report_preserves_terminal_source_failure(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class PartialClient(FakeClient):
+        def get(self, url, **kwargs):
+            if "wikidata" in url:
+                request = httpx.Request("GET", url)
+                raise httpx.ReadTimeout("bounded timeout", request=request)
+            return super().get(url, **kwargs)
+
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", PartialClient)
+    json_path, _ = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    by_source = {item["source_id"]: item for item in report["sources"]}
+    assert by_source["ind_arbeid"]["measurement_status"] == "LIVE_MEASURED"
+    assert by_source["wikidata_nl_companies"]["measurement_status"] == "FAILED"
+    assert by_source["wikidata_nl_companies"]["configured_limit"] == 1
+    assert by_source["wikidata_nl_companies"]["count_closure"] == "NOT_AVAILABLE"
+    assert report["exact_registration_overlap"]["status"] == "NOT_AVAILABLE"
+    assert report["exact_registration_overlap"]["shared_valid_registration_numbers"] is None
+
+
+def test_capability_report_preserves_malformed_json_as_terminal_failure(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class MalformedJsonClient(FakeClient):
+        def get(self, url, **kwargs):
+            if "wikidata" in url:
+                return FakeResponse(b"not-json", "https://query.wikidata.org/sparql")
+            return super().get(url, **kwargs)
+
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", MalformedJsonClient)
+    json_path, _ = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    by_source = {item["source_id"]: item for item in report["sources"]}
+    assert by_source["wikidata_nl_companies"]["measurement_status"] == "FAILED"
+    assert by_source["wikidata_nl_companies"]["error"]["error_type"] == "HarvestError"
+    assert by_source["wikidata_nl_companies"]["response_count"] == 1
+    assert run.latest_artifact("02", "evidence_wikidata_nl_companies") is not None
+
+
+def test_failed_refresh_does_not_reuse_prior_attempt_observations(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
+    measure_sources(run, wikidata_limit=1)
+
+    class TimeoutClient(FakeClient):
+        def get(self, url, **kwargs):
+            raise httpx.ReadTimeout("new attempt failed", request=httpx.Request("GET", url))
+
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", TimeoutClient)
+    json_path, _ = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    for item in report["sources"]:
+        assert item["measurement_status"] == "FAILED"
+        assert item["response_count"] is None
+        assert item["response_bytes"] is None
+        assert item["http_statuses"] == []
+
+
+def test_http_block_records_current_response_metrics_headers_and_evidence(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class BlockedClient(FakeClient):
+        def get(self, url, **kwargs):
+            request = httpx.Request("GET", url)
+            return httpx.Response(
+                429,
+                request=request,
+                content=b"rate limited",
+                headers={"retry-after": "60", "x-ratelimit-remaining": "0"},
+            )
+
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", BlockedClient)
+    json_path, _ = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    for item in report["sources"]:
+        assert item["measurement_status"] == "BLOCKED"
+        assert item["response_count"] == 1
+        assert item["response_bytes"] == 12
+        assert item["http_statuses"] == [429]
+        assert item["rate_limit_headers"] == {
+            "retry-after": "60",
+            "x-ratelimit-remaining": "0",
+        }
+        assert run.latest_artifact("02", f"evidence_{item['source_id']}") is not None
+
+
+def test_ind_invalid_only_failure_keeps_parser_rejection_count(
+    run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class InvalidIndClient(FakeClient):
+        def get(self, url, **kwargs):
+            if "ind.nl" in url:
+                return FakeResponse(
+                    b"<table><tr><th>Naam</th><th>KvK nummer</th></tr>"
+                    b"<tr><th>Ongeldig B.V.</th><td>1234567</td></tr></table>"
+                )
+            return super().get(url, **kwargs)
+
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", InvalidIndClient)
+    json_path, _ = measure_sources(run, wikidata_limit=1)
+    report = json.loads(json_path.read_text())
+    ind = next(item for item in report["sources"] if item["source_id"] == "ind_arbeid")
+    assert ind["measurement_status"] == "FAILED"
+    assert ind["parser_rejections"] == 1
+    assert ind["response_count"] == 1
+
+
 def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
@@ -162,6 +325,8 @@ def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.Monkey
     monkeypatch.setattr("company_harvest.sources.httpx.Client", PagingClient)
     output = collect(run, only=["wikidata_nl_companies"])[0]
     assert len(calls) == 2 and len(read_tsv(output)) == 100
+    assert "wdt:P3220" in calls[0]["params"]["query"]
+    assert "wdt:P3821" not in calls[0]["params"]["query"]
     assert read_tsv(output)[0]["registration_validation_status"] == "INVALID"
 
 

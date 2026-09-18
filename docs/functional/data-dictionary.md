@@ -18,3 +18,9 @@
 CSV-uitvoer is UTF-8, tabgescheiden en correct gequote. Leeg betekent onbekend. Logbestanden bevatten IDs, geen volledige responses. De minimale spreadsheet heeft exact de kolommen `Bedrijfsnaam`, `KVK-nummer`.
 
 Broncatalogusschema 2 legt per bron onder meer registratie-ID-profiel, bronfamilie, toegangsvorm, voorwaarden, refreshinformatie, meetstatus, gemeten aantal, werkelijk gemeten overlap, inclusiereden, herkomstkwaliteit en kandidaatlaag vast. Ontbrekende optionele velden uit oudere catalogi worden expliciet als leeg/unknown genormaliseerd; bestaande waarden blijven behouden.
+
+Capabilityrapport schema 1 bevat per bron `measurement_status`, `measurement_scope`,
+`collection_complete`, bron-/identifieraantallen, duplicaten, parserafwijzingen,
+`count_closure`, requestobservaties, voorwaarden en bias. Exacte overlap gebruikt alleen
+syntactisch geldige achtcijferige KVK-nummers en is `NOT_AVAILABLE` zodra niet beide
+bronmetingen live zijn geslaagd.

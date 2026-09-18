@@ -38,4 +38,7 @@
 | CH-R1-002 | Bronnen zonder KVK-kolom en ontbrekende/ongeldige nummers blijven verliesvrij als kandidaten behouden | `sources.import_source`, `RAW_HEADERS` | import- en parserfixtures |
 | CH-R1-003 | Outcome-rapportage meet per bron, dedup/conflict/review, kandidaatdiversiteit/-overlap, resourcegroei en closure per procesovergang | `workflow.outcome_metrics`, `workflow.report` | lege/dubbele/conflict- en volledige-pipelinefixtures |
 | CH-R1-004 | `company-lookup/0.1` is zichtbaar in directe en browserrequests, runmetadata en rapportage | `core.HTTP_USER_AGENT`, browsercontext, `initialize_run`, outcome-rapport | bron/KVK-browser/run/rapporttests |
+| CH-R2-001 | IND en Wikidata eindigen per capabilitymeting aantoonbaar als `LIVE_MEASURED`, `BLOCKED` of `FAILED` | `sources.measure_sources`, CLI `sources measure` | terminale succes-/foutpadtests + live aggregaatmeting |
+| CH-R2-002 | Bronopbrengst, identifierkwaliteit, duplicaten en exacte KVK-overlap sluiten reproduceerbaar | capabilityrapport schema 1 | parser-/paginering-/closuretests + `docs/measurements/20260918-r2-source-capability.md` |
+| CH-R2-003 | Actualiteit, voorwaarden, bias, begrenzing en request-/rate-limitobservaties zijn expliciet | broncatalogus + capabilityrapport | catalogusasserties + live meetdocument |
 | CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |

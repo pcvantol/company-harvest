@@ -5,8 +5,10 @@ from __future__ import annotations
 import csv
 import html
 import io
+import json
 import re
 import shutil
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -20,6 +22,8 @@ from company_harvest.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
+    atomic_write,
+    normalize_name,
     read_tsv,
     timestamp,
     validate_kvk,
@@ -29,6 +33,8 @@ from company_harvest.core import (
 MAX_RESPONSE_BYTES = 20 * 1024 * 1024
 MAX_SOURCE_PAGES = 100
 WIKIDATA_PAGE_SIZE = 100
+DEFAULT_WIKIDATA_MEASUREMENT_LIMIT = 200
+CAPABILITY_REPORT_SCHEMA_VERSION = 1
 ALLOWED_HOSTS = {"ind.nl", "www.wikidata.org", "query.wikidata.org"}
 
 
@@ -61,8 +67,8 @@ CATALOG = (
         "https://ind.nl/nl/openbaar-register-erkende-referenten/openbaar-register-arbeid",
         "ind_html_table_v1",
         "html",
-        "https://ind.nl/nl/copyright",
-        "Publicatiefrequentie niet vastgesteld; live meting vereist.",
+        "https://ind.nl/nl/proclaimer",
+        "Maandelijks volgens de bronpagina; peildatum wordt per live meting vastgelegd.",
         True,
         "KVK",
         False,
@@ -79,7 +85,7 @@ CATALOG = (
         "https://query.wikidata.org/sparql",
         "wikidata_sparql_v1",
         "api",
-        "https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use",
+        "https://www.wikidata.org/wiki/Wikidata:Data_access",
         "Doorlopend bewerkbaar; actualiteit verschilt per item.",
         True,
         "KVK",
@@ -192,7 +198,6 @@ def _bounded_get(client: httpx.Client, url: str) -> httpx.Response:
     if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
         raise HarvestError(f"bronhost niet toegestaan: {parsed.hostname}")
     response = client.get(url)
-    response.raise_for_status()
     if len(response.content) > MAX_RESPONSE_BYTES:
         raise HarvestError("bronresponse overschrijdt de maximale grootte")
     if response.url.host not in ALLOWED_HOSTS:
@@ -200,11 +205,41 @@ def _bounded_get(client: httpx.Client, url: str) -> httpx.Response:
     return response
 
 
-def parse_ind_html(content: str, source_url: str, limit: int | None = None) -> list[dict[str, str]]:
+def _parse_ind_html_with_stats(
+    content: str, source_url: str, limit: int | None = None
+) -> tuple[list[dict[str, str]], int, int]:
+    """Parse IND-tabelrijen en tel kandidaatrijen plus strikte afwijzingen."""
+    table_rows = re.findall(r"<tr\b[^>]*>(.*?)</tr>", content, flags=re.I | re.S)
+    rows: list[dict[str, str]] = []
+    candidates = 0
+    rejected = 0
+    if table_rows:
+        for block in table_rows:
+            cells = re.findall(
+                r"<(?:th|td)\b[^>]*>(.*?)</(?:th|td)>", block, flags=re.I | re.S
+            )
+            if len(cells) < 2:
+                continue
+            name = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", cells[-2])).split())
+            registration = " ".join(
+                html.unescape(re.sub(r"<[^>]+>", " ", cells[-1])).split()
+            )
+            if not name or not registration or "kvk" in registration.casefold():
+                continue
+            candidates += 1
+            try:
+                kvk = validate_kvk(registration)
+            except ValueError:
+                rejected += 1
+                continue
+            rows.append(_raw_row(name, kvk, "ind_arbeid", source_url, str(candidates)))
+            if limit and len(rows) >= limit:
+                break
+        return rows, candidates, rejected
+
     text = re.sub(r"<[^>]+>", "\n", content)
     text = html.unescape(text)
     lines = [" ".join(line.split()) for line in text.splitlines() if line.strip()]
-    rows: list[dict[str, str]] = []
     for index, line in enumerate(lines):
         inline = re.search(r"(.+?)\s+([0-9]{8})$", line)
         if inline:
@@ -213,16 +248,30 @@ def parse_ind_html(content: str, source_url: str, limit: int | None = None) -> l
             name, number = lines[index - 1], line
         else:
             continue
+        candidates += 1
         try:
             kvk = validate_kvk(number)
         except ValueError:
+            rejected += 1
             continue
         rows.append(_raw_row(name, kvk, "ind_arbeid", source_url, str(index + 1)))
         if limit and len(rows) >= limit:
             break
+    return rows, candidates, rejected
+
+
+def parse_ind_html(content: str, source_url: str, limit: int | None = None) -> list[dict[str, str]]:
+    rows, _, _ = _parse_ind_html_with_stats(content, source_url, limit)
     if not rows:
         raise HarvestError("IND-parser vond onverwacht nul records", 5)
     return rows
+
+
+def _ind_source_date(content: str) -> str | None:
+    text = html.unescape(re.sub(r"<[^>]+>", " ", content))
+    text = " ".join(text.split())
+    match = re.search(r"Het overzicht is bijgewerkt op\s+([^.<]+)", text, flags=re.I)
+    return match.group(1).strip() if match else None
 
 
 def _raw_row(
@@ -233,11 +282,12 @@ def _raw_row(
     row: str,
     registration_raw: str | None = None,
     registration_status: str | None = None,
+    nl_evidence: str = "Publiek Nederlands register",
 ) -> dict[str, str]:
     clean_name = re.sub(r'""([^\n]+?)""', r'"\1"', name.strip())
     return {
         "original_name": clean_name, "country": "Nederland",
-        "nl_evidence": "Publiek Nederlands register", "employees_raw": "",
+        "nl_evidence": nl_evidence, "employees_raw": "",
         "employees_date": "", "employees_scope": "", "website": "", "sector": "",
         "source_kvk_hint": kvk, "source_id": source_id, "source_url": url,
         "fetched_at": datetime.now(UTC).isoformat(), "source_row": row,
@@ -275,6 +325,7 @@ def parse_wikidata(payload: dict[str, object], source_url: str, limit: int | Non
                     str(index + 1),
                     str(kvk),
                     validation_status,
+                    "Wikidata-eigenschap P3220 (KvK company ID)",
                 )
             )
         if limit and len(rows) >= limit:
@@ -291,6 +342,38 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
     return [source for source in CATALOG if (not only_set or source.source_id in only_set) and source.source_id not in skip_set]
 
 
+def _record_source_observation(
+    run: Run,
+    observations: dict[str, object],
+    source_id: str,
+    started: float,
+    http_statuses: list[int],
+    response_count: int,
+    response_bytes: int,
+    raw_response_records: int,
+    parser_rejections: int,
+    limit: int | None,
+    collection_complete: bool,
+    rate_limit_headers: dict[str, str],
+    source_data_date: str | None,
+) -> None:
+    observations[source_id] = {
+        "observed_at": datetime.now(UTC).isoformat(),
+        "duration_seconds": round(time.monotonic() - started, 6),
+        "http_statuses": http_statuses,
+        "response_count": response_count,
+        "response_bytes": response_bytes,
+        "raw_response_records": raw_response_records,
+        "parser_rejections": parser_rejections,
+        "limit": limit,
+        "collection_complete": collection_complete,
+        "rate_limit_headers": rate_limit_headers,
+        "user_agent": HTTP_USER_AGENT,
+        "source_data_date": source_data_date,
+    }
+    run.record_config("source_observations", observations)
+
+
 def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None, refresh: bool = False) -> list[Path]:
     outputs: list[Path] = []
     enabled = _enabled(only, skip)
@@ -299,6 +382,7 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
         run.invalidate_from(3, "source_collection_changed")
     timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
     headers = {"User-Agent": HTTP_USER_AGENT}
+    observations = dict(run.metadata().get("runtime_config", {}).get("source_observations", {}))
     with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
         for source in enabled:
             prior = run.latest_artifact("02", f"source_{source.source_id}")
@@ -307,13 +391,47 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                 outputs.append(prior)
                 continue
             run.log("INFO", "source_collect_started", source_id=source.source_id)
+            started = time.monotonic()
             snapshots: list[Path] = []
+            response_bytes = 0
+            response_count = 0
+            raw_response_records = 0
+            parser_rejections = 0
+            http_statuses: list[int] = []
+            rate_limit_headers: dict[str, str] = {}
+            collection_complete = False
+            source_data_date: str | None = None
+
             if source.source_id == "ind_arbeid":
                 response = _bounded_get(client, source.url)
+                response_bytes = len(response.content)
+                response_count = 1
+                http_statuses.append(int(getattr(response, "status_code", 200)))
+                rate_limit_headers.update(_rate_limit_headers(response))
                 snapshot = run.path / "evidence" / f"{timestamp()}_02_ind_arbeid_source.html"
                 snapshot.write_bytes(response.content)
                 snapshots.append(snapshot)
-                rows = parse_ind_html(response.text, str(response.url), limit)
+                run.register_artifact(snapshot, "02", f"evidence_{source.source_id}")
+                _record_source_observation(
+                    run, observations, source.source_id, started, http_statuses,
+                    response_count, response_bytes, raw_response_records,
+                    parser_rejections, limit, collection_complete, rate_limit_headers,
+                    source_data_date,
+                )
+                response.raise_for_status()
+                rows, raw_response_records, parser_rejections = _parse_ind_html_with_stats(
+                    response.text, str(response.url), limit
+                )
+                source_data_date = _ind_source_date(response.text)
+                _record_source_observation(
+                    run, observations, source.source_id, started, http_statuses,
+                    response_count, response_bytes, raw_response_records,
+                    parser_rejections, limit, collection_complete, rate_limit_headers,
+                    source_data_date,
+                )
+                if not rows:
+                    raise HarvestError("IND-parser vond onverwacht nul records", 5)
+                collection_complete = limit is None
             else:
                 rows = []
                 for page in range(MAX_SOURCE_PAGES):
@@ -321,9 +439,12 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                     if remaining is not None and remaining <= 0:
                         break
                     page_size = min(WIKIDATA_PAGE_SIZE, remaining) if remaining is not None else WIKIDATA_PAGE_SIZE
-                    query = f"SELECT ?org ?orgLabel ?kvk WHERE {{?org wdt:P31/wdt:P279* wd:Q4830453; wdt:P17 wd:Q55; wdt:P3821 ?kvk. SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'nl,en'. }} }} ORDER BY ?orgLabel LIMIT {page_size} OFFSET {page * WIKIDATA_PAGE_SIZE}"
+                    query = f"SELECT ?org ?orgLabel ?kvk WHERE {{?org wdt:P3220 ?kvk. SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'nl,en'. }} }} ORDER BY ?org LIMIT {page_size} OFFSET {page * WIKIDATA_PAGE_SIZE}"
                     response = client.get(source.url, params={"query": query, "format": "json"})
-                    response.raise_for_status()
+                    response_count += 1
+                    response_bytes += len(response.content)
+                    http_statuses.append(int(getattr(response, "status_code", 200)))
+                    rate_limit_headers.update(_rate_limit_headers(response))
                     if response.url.host not in ALLOWED_HOSTS:
                         raise HarvestError("Wikidata-redirect naar niet-toegestane host")
                     if len(response.content) > MAX_RESPONSE_BYTES:
@@ -331,16 +452,29 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                     snapshot = run.path / "evidence" / f"{timestamp()}_02_wikidata_source_page_{page + 1}.json"
                     snapshot.write_bytes(response.content)
                     snapshots.append(snapshot)
-                    payload = response.json()
+                    run.register_artifact(snapshot, "02", f"evidence_{source.source_id}")
+                    _record_source_observation(
+                        run, observations, source.source_id, started, http_statuses,
+                        response_count, response_bytes, raw_response_records,
+                        parser_rejections, limit, collection_complete, rate_limit_headers,
+                        source_data_date,
+                    )
+                    response.raise_for_status()
+                    try:
+                        payload = response.json()
+                    except ValueError as exc:
+                        raise HarvestError("Wikidata-response bevat ongeldige JSON") from exc
                     results = payload.get("results") if isinstance(payload, dict) else None
                     bindings = results.get("bindings", []) if isinstance(results, dict) else []
                     if not isinstance(bindings, list):
                         raise HarvestError("Wikidata-responseschema is ongeldig")
+                    raw_response_records += len(bindings)
                     page_rows = parse_wikidata(payload, str(response.url), page_size)
                     for row in page_rows:
                         row["source_row"] = str(page * WIKIDATA_PAGE_SIZE + int(row["source_row"]))
                     rows.extend(page_rows)
                     if len(bindings) < page_size:
+                        collection_complete = True
                         break
                 else:
                     raise HarvestError("Wikidata-paginering bereikte de veiligheidslimiet; resultaat is niet aantoonbaar compleet")
@@ -348,14 +482,282 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
             rows.sort(key=lambda row: (row["original_name"].casefold(), row["source_kvk_hint"]))
             write_tsv(path, RAW_HEADERS, rows)
             run.register_artifact(path, "02", f"source_{source.source_id}")
-            for snapshot in snapshots:
-                run.register_artifact(snapshot, "02", f"evidence_{source.source_id}")
+            parser_rejections = (
+                parser_rejections
+                if source.source_id == "ind_arbeid"
+                else max(raw_response_records - len(rows), 0)
+            )
+            _record_source_observation(
+                run, observations, source.source_id, started, http_statuses,
+                response_count, response_bytes, raw_response_records,
+                parser_rejections, limit, collection_complete, rate_limit_headers,
+                source_data_date,
+            )
             run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=[_hash(snapshot) for snapshot in snapshots], refreshed=refresh)
             outputs.append(path)
     _update_inventory(run, {path.name.split("_source_", 1)[1].rsplit("_companies", 1)[0]: len(read_tsv(path)) for path in outputs})
     run.record_config("sources_collect", {"only": sorted(only), "skip": sorted(skip), "limit": limit, "refresh": refresh})
     run.update_status("IN_PROGRESS", "02")
     return outputs
+
+
+def _rate_limit_headers(response: httpx.Response) -> dict[str, str]:
+    headers = getattr(response, "headers", {})
+    names = ("retry-after", "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset")
+    return {name: str(headers[name]) for name in names if name in headers}
+
+
+def _measurement_error(exc: Exception) -> tuple[str, dict[str, object]]:
+    if isinstance(exc, httpx.HTTPStatusError):
+        status_code = exc.response.status_code
+        status = "BLOCKED" if status_code in {403, 429} else "FAILED"
+        return status, {
+            "error_type": type(exc).__name__,
+            "http_status": status_code,
+            "retry_after": exc.response.headers.get("retry-after"),
+        }
+    return "FAILED", {"error_type": type(exc).__name__, "message": str(exc)}
+
+
+def _source_capability(
+    source: Source,
+    rows: list[dict[str, str]],
+    observation: dict[str, object],
+    measurement_status: str,
+    error: dict[str, object] | None = None,
+) -> dict[str, object]:
+    valid_numbers = [
+        row.get("source_kvk_hint", "")
+        for row in rows
+        if row.get("registration_validation_status") == "VALID"
+        or re.fullmatch(r"[0-9]{8}", row.get("source_kvk_hint", ""))
+    ]
+    missing = sum(
+        row.get("registration_validation_status") == "MISSING"
+        or (not row.get("source_kvk_hint") and not row.get("source_registration_raw"))
+        for row in rows
+    )
+    invalid = sum(
+        row.get("registration_validation_status") == "INVALID"
+        or (not row.get("source_kvk_hint") and bool(row.get("source_registration_raw")))
+        for row in rows
+    )
+    normalized_names = [normalize_name(row.get("original_name", "")) for row in rows]
+    parser_rejections_value = observation.get("parser_rejections", 0)
+    parser_rejections = (
+        parser_rejections_value if isinstance(parser_rejections_value, int) else 0
+    )
+    return {
+        "source_id": source.source_id,
+        "source_family": source.source_family,
+        "measurement_status": measurement_status,
+        "measurement_scope": (
+            "FULL_SOURCE_PAGE" if source.source_id == "ind_arbeid" else "BOUNDED_SAMPLE"
+        ),
+        "collection_complete": bool(observation.get("collection_complete", False)),
+        "source_data_date": observation.get("source_data_date"),
+        "configured_limit": observation.get("limit"),
+        "raw_records": len(rows),
+        "valid_registration_numbers": len(valid_numbers),
+        "unique_valid_registration_numbers": len(set(valid_numbers)),
+        "missing_registration_numbers": missing,
+        "invalid_registration_numbers": invalid,
+        "duplicate_registration_records": len(valid_numbers) - len(set(valid_numbers)),
+        "duplicate_name_records": len(normalized_names) - len(set(normalized_names)),
+        "parser_rejections": parser_rejections,
+        "count_closure": (
+            "NOT_AVAILABLE"
+            if measurement_status != "LIVE_MEASURED"
+            else "CLOSED"
+            if len(rows) == len(valid_numbers) + missing + invalid
+            else "OPEN"
+        ),
+        "duration_seconds": observation.get("duration_seconds"),
+        "response_count": observation.get("response_count"),
+        "response_bytes": observation.get("response_bytes"),
+        "http_statuses": observation.get("http_statuses", []),
+        "rate_limit_headers": observation.get("rate_limit_headers", {}),
+        "rate_limit_observation": (
+            "HEADERS_OBSERVED" if observation.get("rate_limit_headers") else "NO_HEADERS_OBSERVED"
+        ),
+        "terms_url": source.terms_url,
+        "refresh_info": source.refresh_info,
+        "bias": source.bias,
+        "provides_legal_form": source.provides_legal_form,
+        "provides_status": source.provides_status,
+        "error": error,
+    }
+
+
+def measure_sources(
+    run: Run,
+    wikidata_limit: int = DEFAULT_WIKIDATA_MEASUREMENT_LIMIT,
+) -> tuple[Path, Path]:
+    """Meet bestaande bronnen live en schrijft ook bij blokkades een terminal rapport."""
+    if wikidata_limit < 1 or wikidata_limit > 1000:
+        raise HarvestError("wikidata-meetlimiet moet tussen 1 en 1000 liggen")
+    if not run.latest_artifact("01", "sources_inventory"):
+        discover(run)
+    attempts: dict[str, tuple[str, dict[str, object] | None]] = {}
+    source_paths: dict[str, Path] = {}
+    for source in CATALOG:
+        limit = None if source.source_id == "ind_arbeid" else wikidata_limit
+        observations = dict(
+            run.metadata().get("runtime_config", {}).get("source_observations", {})
+        )
+        observations.pop(source.source_id, None)
+        run.record_config("source_observations", observations)
+        try:
+            paths = collect(run, only=[source.source_id], limit=limit, refresh=True)
+            source_paths[source.source_id] = paths[0]
+            attempts[source.source_id] = ("LIVE_MEASURED", None)
+        except (HarvestError, httpx.HTTPError) as exc:
+            status, error = _measurement_error(exc)
+            attempts[source.source_id] = (status, error)
+            run.log(
+                "WARNING",
+                "source_measurement_terminal_error",
+                source_id=source.source_id,
+                status=status,
+                **error,
+            )
+
+    observations = run.metadata().get("runtime_config", {}).get("source_observations", {})
+    capabilities: list[dict[str, object]] = []
+    valid_by_source: dict[str, set[str]] = {}
+    for source in CATALOG:
+        path = source_paths.get(source.source_id)
+        rows = read_tsv(path) if path else []
+        observation = observations.get(source.source_id, {}) if isinstance(observations, dict) else {}
+        if not isinstance(observation, dict):
+            observation = {}
+        if "limit" not in observation:
+            observation["limit"] = None if source.source_id == "ind_arbeid" else wikidata_limit
+        status, attempt_error = attempts[source.source_id]
+        capability = _source_capability(
+            source,
+            rows,
+            observation,
+            status,
+            attempt_error,
+        )
+        capabilities.append(capability)
+        valid_by_source[source.source_id] = {
+            row["source_kvk_hint"]
+            for row in rows
+            if re.fullmatch(r"[0-9]{8}", row.get("source_kvk_hint", ""))
+        }
+
+    left_id, right_id = (source.source_id for source in CATALOG)
+    live_by_source = {
+        source_id: attempts[source_id][0] == "LIVE_MEASURED" for source_id in valid_by_source
+    }
+    overlap_available = all(live_by_source.values())
+    shared = valid_by_source[left_id] & valid_by_source[right_id]
+    report: dict[str, object] = {
+        "capability_report_schema_version": CAPABILITY_REPORT_SCHEMA_VERSION,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "run_id": run.metadata()["run_id"],
+        "http_user_agent": HTTP_USER_AGENT,
+        "measurement_kind": "BOUNDED_LIVE_CAPABILITY",
+        "sources": capabilities,
+        "exact_registration_overlap": {
+            "status": "MEASURED" if overlap_available else "NOT_AVAILABLE",
+            "source_pair": f"{left_id}|{right_id}",
+            "shared_valid_registration_numbers": len(shared) if overlap_available else None,
+            "left_unique_valid_registration_numbers": len(valid_by_source[left_id]),
+            "right_unique_valid_registration_numbers": len(valid_by_source[right_id]),
+            "left_overlap_share": (
+                len(shared) / len(valid_by_source[left_id])
+                if overlap_available and valid_by_source[left_id]
+                else None
+            ),
+            "right_overlap_share": (
+                len(shared) / len(valid_by_source[right_id])
+                if overlap_available and valid_by_source[right_id]
+                else None
+            ),
+        },
+        "all_sources_terminal": all(
+            item["measurement_status"] in {"LIVE_MEASURED", "BLOCKED", "FAILED"}
+            for item in capabilities
+        ),
+        "thresholds": {"status": "NOT_SET_PENDING_R3_FEASIBILITY"},
+    }
+    json_path = run.artifact_path("02", "source_capability_report", "json")
+    atomic_write(json_path, json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    lines = [
+        "# Broncapabilitymeting",
+        "",
+        f"- Run: `{report['run_id']}`",
+        f"- Meetsoort: `{report['measurement_kind']}`",
+        f"- User-Agent: `{HTTP_USER_AGENT}`",
+        f"- Alle bronnen terminaal: **{str(report['all_sources_terminal']).lower()}**",
+        "",
+        "| Bron | Status | Scope | Compleet | Records | Geldig KVK | Uniek KVK | Duplicaat-ID | Parserafwijzingen |",
+        "|---|---|---|---|---:|---:|---:|---:|---:|",
+    ]
+    lines.extend(
+        f"| {item['source_id']} | {item['measurement_status']} | {item['measurement_scope']} | "
+        f"{item['collection_complete']} | {item['raw_records']} | "
+        f"{item['valid_registration_numbers']} | {item['unique_valid_registration_numbers']} | "
+        f"{item['duplicate_registration_records']} | {item['parser_rejections']} |"
+        for item in capabilities
+    )
+    overlap = report["exact_registration_overlap"]
+    assert isinstance(overlap, dict)
+    lines.extend(
+        [
+            "",
+            "## Exacte KVK-overlap",
+            "",
+            f"- Bronpaar: `{overlap['source_pair']}`",
+            f"- Status: `{overlap['status']}`",
+            f"- Gedeelde geldige nummers: {overlap['shared_valid_registration_numbers']}",
+            "",
+            "Rechtsvorm en status zijn uitsluitend bronvelden en gelden niet als KVK-gevalideerd. "
+            "Er zijn nog geen succesdrempels vastgesteld.",
+            "",
+        ]
+    )
+    md_path = run.artifact_path("02", "source_capability_report", "md")
+    atomic_write(md_path, "\n".join(lines))
+    run.register_artifact_set(
+        [
+            (json_path, "02", "source_capability_report", "COMPLETE"),
+            (md_path, "02", "source_capability_report_md", "COMPLETE"),
+        ]
+    )
+    _update_capability_inventory(run, capabilities, len(shared) if overlap_available else None)
+    run.record_config(
+        "sources_measure",
+        {"wikidata_limit": wikidata_limit, "refresh": True, "report_schema": 1},
+    )
+    run.log("INFO", "source_capability_measurement_completed", terminal=True)
+    return json_path, md_path
+
+
+def _update_capability_inventory(
+    run: Run, capabilities: list[dict[str, object]], shared_count: int | None
+) -> None:
+    rows = read_catalog(run)
+    by_id = {str(item["source_id"]): item for item in capabilities}
+    for row in rows:
+        capability = by_id.get(row["source_id"])
+        if not capability:
+            continue
+        status = str(capability["measurement_status"])
+        row["status"] = "COLLECTED" if status == "LIVE_MEASURED" else status
+        row["live_measurement_status"] = status
+        row["measured_count"] = (
+            str(capability["raw_records"]) if status == "LIVE_MEASURED" else ""
+        )
+        row["estimated_overlap"] = (
+            f"exact_shared_kvk:{shared_count}" if shared_count is not None else "NOT_AVAILABLE"
+        )
+    updated = run.artifact_path("01", "sources_inventory_capability_measured", "csv")
+    write_tsv(updated, SOURCE_HEADERS, rows)
+    run.register_artifact(updated, "01", "sources_inventory")
 
 
 def _hash(path: Path) -> str:

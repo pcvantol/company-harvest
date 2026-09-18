@@ -107,8 +107,8 @@ Daarbij gelden de volgende grenzen:
 |---|---|---|---|
 | R0 | `DONE` | Roadmap, besluiten en prioriteiten canoniek vastgelegd en onafhankelijk gereviewd | — |
 | R1 | `DONE` | Meetcontract en rijkere broncatalogus | R0 |
-| R2 | `NEXT` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
-| R3 | `PLANNED` | GLEIF-feasibility met go/no-go-besluit | R1 |
+| R2 | `DONE` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
+| R3 | `NEXT` | GLEIF-feasibility met go/no-go-besluit | R1 |
 | R4 | `PLANNED` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
 | R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
@@ -198,7 +198,7 @@ Voeg aan runrapportage minimaal toe:
 
 ## 7. R2 — Bestaande bronnen werkelijk meten
 
-Status: `NEXT`.
+Status: `DONE` — live gemeten en onafhankelijk gereviewd met `PASS`.
 
 ### Doel
 
@@ -224,9 +224,17 @@ Vervang aannames over IND en Wikidata door actuele, reproduceerbare capabilityme
 - Werkelijke aantallen en overlap zijn aantoonbaar.
 - Bijdrage, overlap en bias van beide bronnen binnen de brede kandidaatlaag zijn datagedreven vastgelegd.
 
+### Gerealiseerd bewijs
+
+- `sources measure` schrijft ook bij bronblokkade of transportfout een terminaal JSON- en Markdownrapport.
+- IND is volledig gemeten op 12.980 ruwe records en 12.977 unieke geldige KVK-nummers; de bronpagina droeg peildatum 3 september 2026.
+- Wikidata is via officiële property `P3220` begrensd gemeten op 200 records, waarvan 195 unieke geldige achtcijferige KVK-nummers en vijf verliesvrij bewaarde ongeldige waarden.
+- De begrensde vergelijking vond 12 gedeelde nummers; bias, voorwaarden, actualiteit, request-/rate-limitobservaties en niet-extrapoleerbaarheid staan in [`docs/measurements/20260918-r2-source-capability.md`](docs/measurements/20260918-r2-source-capability.md).
+- Beide adapters leveren in deze slice geen rechtsvorm of status; er wordt geen geschiktheid voor een 10.000-run geclaimd.
+
 ## 8. R3 — GLEIF-feasibility, nog geen productieadapter
 
-Status: `PLANNED`.
+Status: `NEXT`.
 
 ### Doel
 
