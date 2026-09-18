@@ -32,6 +32,16 @@ from company_harvest.core import (
 OUTCOME_REPORT_SCHEMA_VERSION = 1
 
 
+def _missing_source_status(value: str | None) -> bool:
+    status = (value or "").strip()
+    if not status:
+        return True
+    if status.startswith("entity=") and ";registration=" in status:
+        entity, registration = status.split(";registration=", 1)
+        return not entity.removeprefix("entity=").strip() or not registration.strip()
+    return False
+
+
 def merge_candidates(run: Run) -> tuple[Path, Path, Path]:
     source_paths = _latest_artifact_rows(run, "02", "source_")
     if not source_paths:
@@ -280,6 +290,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
     source_ids = sorted({row.get("source_id", "") for row in raw_rows if row.get("source_id")} | set(catalog_by_id))
     per_source: list[dict[str, Any]] = []
     family_counts: dict[str, int] = {}
+    valid_numbers_by_source: dict[str, set[str]] = {}
     valid_total = 0
     missing_total = 0
     invalid_total = 0
@@ -288,15 +299,21 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
         valid = 0
         missing = 0
         invalid = 0
+        valid_numbers: set[str] = set()
         for row in rows:
             try:
-                validate_kvk(row.get("source_kvk_hint"))
+                number = validate_kvk(row.get("source_kvk_hint"))
                 valid += 1
+                valid_numbers.add(number)
             except ValueError:
-                if row.get("registration_validation_status") == "INVALID" or row.get("source_registration_raw", "").strip():
+                status = row.get("registration_validation_status")
+                if status == "MISSING":
+                    missing += 1
+                elif status == "INVALID" or row.get("source_registration_raw", "").strip():
                     invalid += 1
                 else:
                     missing += 1
+        valid_numbers_by_source[source_id] = valid_numbers
         profile = catalog_by_id.get(source_id, {})
         family = profile.get("source_family") or "unclassified"
         family_counts[family] = family_counts.get(family, 0) + len(rows)
@@ -309,7 +326,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
                 "missing_registration_numbers": missing,
                 "invalid_registration_numbers": invalid,
                 "missing_legal_form": sum(not row.get("source_legal_form", "").strip() for row in rows),
-                "missing_status": sum(not row.get("source_status", "").strip() for row in rows),
+                "missing_status": sum(_missing_source_status(row.get("source_status")) for row in rows),
                 "catalog_measurement_status": profile.get("live_measurement_status", "NOT_CATALOGED"),
             }
         )
@@ -361,6 +378,23 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
         for left, right in itertools.combinations(sorted(relation_families), 2):
             key = f"{left}|{right}"
             family_pair_overlap[key] = family_pair_overlap.get(key, 0) + 1
+
+    active_sources = sorted(
+        item["source_id"] for item in per_source if item["raw_records"] > 0
+    )
+    valid_registration_overlap: dict[str, int] = {}
+    for left, right in itertools.combinations(active_sources, 2):
+        key = f"{left}|{right}"
+        source_pair_overlap.setdefault(key, 0)
+        valid_registration_overlap[key] = len(
+            valid_numbers_by_source.get(left, set())
+            & valid_numbers_by_source.get(right, set())
+        )
+    active_families = sorted(
+        family for family, count in family_counts.items() if count > 0
+    )
+    for left, right in itertools.combinations(active_families, 2):
+        family_pair_overlap.setdefault(f"{left}|{right}", 0)
 
     def count_artifact(step: str, kind: str) -> tuple[Path | None, int | None]:
         artifact = run.latest_artifact(step, kind)
@@ -481,6 +515,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
             "largest_candidate_family_share": (largest_candidate_family / len(candidates)) if candidates else 0.0,
             "measured_candidate_overlap_by_source_pair": source_pair_overlap,
             "measured_candidate_overlap_by_family_pair": family_pair_overlap,
+            "measured_valid_registration_overlap_by_source_pair": valid_registration_overlap,
         },
         "resources": {
             "duration_seconds": max(0.0, (generated_at - created_at).total_seconds()),

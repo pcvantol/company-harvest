@@ -36,6 +36,8 @@ WIKIDATA_PAGE_SIZE = 100
 DEFAULT_WIKIDATA_MEASUREMENT_LIMIT = 200
 CAPABILITY_REPORT_SCHEMA_VERSION = 1
 ALLOWED_HOSTS = {"ind.nl", "www.wikidata.org", "query.wikidata.org"}
+DIRECT_COLLECT_SOURCE_IDS = {"ind_arbeid", "wikidata_nl_companies"}
+CAPABILITY_SOURCE_IDS = ("ind_arbeid", "wikidata_nl_companies")
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,24 @@ CATALOG = (
         "Onafhankelijke kennisbron voor aanvullende dekking en overlapmeting.",
         "COMMUNITY_CURATED",
         "Vrijwillig samengestelde kennisbank; dekking en actualiteit variëren.",
+    ),
+    Source(
+        "gleif_golden_copy",
+        "GLEIF Level 1 Golden Copy",
+        "Global Legal Entity Identifier Foundation",
+        "wereldwijd-entiteitenregister",
+        "https://goldencopy.gleif.org/api/v2/golden-copies/publishes/lei2/latest.csv",
+        "gleif_golden_copy_csv_v1",
+        "bulk",
+        "https://www.gleif.org/en/meta/lei-data-terms-of-use",
+        "Drie Golden Copy-publicaties per dag; de evidence-snapshot bepaalt de gebruikte versie.",
+        True,
+        "KVK via registratieautoriteit RA000463",
+        True,
+        True,
+        "Brede primaire LEI-bron met herleidbare Nederlandse registratie-identifiers en bronvelden.",
+        "PRIMARY_AGGREGATED_REGISTER",
+        "Alleen entiteiten met een LEI; geen volledige populatie van Nederlandse ondernemingen.",
     ),
 )
 
@@ -339,7 +359,15 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
     unknown = (only_set | skip_set) - known
     if unknown:
         raise HarvestError(f"onbekende source-id(s): {', '.join(sorted(unknown))}")
-    return [source for source in CATALOG if (not only_set or source.source_id in only_set) and source.source_id not in skip_set]
+    if "gleif_golden_copy" in only_set:
+        raise HarvestError("gebruik 'sources gleif' voor de begrensde GLEIF-bulkadapter")
+    return [
+        source
+        for source in CATALOG
+        if source.source_id in DIRECT_COLLECT_SOURCE_IDS
+        and (not only_set or source.source_id in only_set)
+        and source.source_id not in skip_set
+    ]
 
 
 def _record_source_observation(
@@ -600,7 +628,10 @@ def measure_sources(
         discover(run)
     attempts: dict[str, tuple[str, dict[str, object] | None]] = {}
     source_paths: dict[str, Path] = {}
-    for source in CATALOG:
+    capability_sources = [
+        source for source in CATALOG if source.source_id in CAPABILITY_SOURCE_IDS
+    ]
+    for source in capability_sources:
         limit = None if source.source_id == "ind_arbeid" else wikidata_limit
         observations = dict(
             run.metadata().get("runtime_config", {}).get("source_observations", {})
@@ -625,7 +656,7 @@ def measure_sources(
     observations = run.metadata().get("runtime_config", {}).get("source_observations", {})
     capabilities: list[dict[str, object]] = []
     valid_by_source: dict[str, set[str]] = {}
-    for source in CATALOG:
+    for source in capability_sources:
         path = source_paths.get(source.source_id)
         rows = read_tsv(path) if path else []
         observation = observations.get(source.source_id, {}) if isinstance(observations, dict) else {}
@@ -648,7 +679,7 @@ def measure_sources(
             if re.fullmatch(r"[0-9]{8}", row.get("source_kvk_hint", ""))
         }
 
-    left_id, right_id = (source.source_id for source in CATALOG)
+    left_id, right_id = CAPABILITY_SOURCE_IDS
     live_by_source = {
         source_id: attempts[source_id][0] == "LIVE_MEASURED" for source_id in valid_by_source
     }

@@ -12,6 +12,9 @@
   identifierclosure, duplicaten, exacte overlap, bronactualiteit en request-/rate-limitobservaties.
 - GLEIF Level 1 Golden Copy-feasibility met `GO`: officiële CC0-bulkroute, actuele
   omvang en begrensde Nederlandse identifier-/rechtsvorm-/statusmeting vastgelegd.
+- Streaming GLEIF Golden Copy-adapter met begrensde download/ZIP-gates, immutable
+  evidence, Nederlandse filtering, verliesvrije identifier-review, resume/refresh en
+  zichtbare opbrengst plus exacte KVK-overlap in het outcome-rapport.
 
 ## 0.1.0 - 2026-09-18
 

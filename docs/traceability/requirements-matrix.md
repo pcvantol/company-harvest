@@ -43,5 +43,9 @@
 | CH-R2-003 | Actualiteit, voorwaarden, bias, begrenzing en request-/rate-limitobservaties zijn expliciet | broncatalogus + capabilityrapport | catalogusasserties + live meetdocument |
 | CH-R3-001 | GLEIF-feasibility verifieert officiële voorwaarden, bulkroute, formaat, actualiteit en omvang vóór adapterbouw | `ROADMAP.md` R3 | `docs/measurements/20260918-r3-gleif-feasibility.md` + lokale hashes |
 | CH-R3-002 | Nederlandse identifier-, legal-form- en statusvelden zijn begrensd gemeten zonder GLEIF-status als KVK-verificatie te behandelen | R3 meetcontract | statusgestratificeerde live sample van 200 + onafhankelijk reviewbewijs |
-| CH-R3-003 | Adapterbouw start alleen na expliciet, onderbouwd go/no-go | `ROADMAP.md` R3/R4 | `GO`; R4 is `NEXT` |
+| CH-R3-003 | Adapterbouw start alleen na expliciet, onderbouwd go/no-go | `ROADMAP.md` R3/R4 | `GO`; R4 is `DONE` |
+| CH-R4-001 | GLEIF Golden Copy-inname is streaming, expliciet en begrensd op host, redirects, bytes, ZIP-structuur, ratio, CSV-omvang en vrije ruimte | `gleif.py`, CLI `sources gleif` | veiligheids-/downloadtests + R4 live evidence |
+| CH-R4-002 | Nederlandse kandidaten blijven behouden bij ontbrekend, ongeldig of niet-KVK registratie-ID, met originele identifier en reden | `gleif._raw_candidate`, kandidaat/rejected-contract | representatieve fixture + count-closure |
+| CH-R4-003 | Evidence, bronlegal-form/status, resume/refresh en downstream-invalidatie zijn auditbaar zonder promotie tot KVK-verificatie | `gleif.collect_gleif`, innamerapport schema 1 | regressietests + `docs/measurements/20260918-r4-gleif-adapter.md` |
+| CH-R4-004 | Outcome-rapport toont opbrengst en expliciete kandidaat- en geldige-KVK-overlap voor alle actieve bronparen | `workflow.outcome_metrics` | driebron capability-run + overlapfixture |
 | CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |

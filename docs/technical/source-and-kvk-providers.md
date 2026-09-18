@@ -16,9 +16,26 @@ Zowel de directe bron-/KVK-clients als de Playwright-browsercontext gebruiken `c
 
 Geraadpleegd 2026-09-18: KVK-gebruikersvoorwaarden (bijgewerkt 2026-06-17) vermelden aanvullende voorwaarden voor grootschalig opvragen/hergebruik; de IND-bronpagina meldt maandelijkse actualisatie en op 2026-09-03 bijgewerkte data, terwijl de IND-proclaimer hergebruik met bronvermelding toestaat; Wikidata beschrijft de gestructureerde data als CC0 en verlangt herkenbare, beheerste toegang; Playwright documenteert response-observatie. Live veldsemantiek blijft `UNKNOWN` totdat gemeten.
 
-R3 kwalificeert GLEIF Level 1 Golden Copy als nieuwe bulkbron voor R4. De officiële
-CSV-ZIP-route, data-API en voorwaarden zijn geschikt bevonden; `registeredAs` onder
-registratieautoriteit `RA000463` is een sterke KVK-hint. `entity.status`,
-`registration.status` en ISO-20275-legal-formcode worden als afzonderlijke bronvelden
-bewaard. Zij vervangen geen actuele KVK-verificatie. R4 moet de ZIP en CSV streamen,
-vrije schijfruimte vooraf controleren en onbekende kolommen tolerant behandelen.
+R4 implementeert GLEIF Level 1 Golden Copy als afzonderlijke bulkadapter via `sources
+gleif`. Zonder `--archive` downloadt zij de officiële laatste CSV-ZIP; met `--archive`
+neemt zij een lokale, eerder gekwalificeerde ZIP byte-identiek over. De download gebruikt
+uitsluitend HTTPS naar `goldencopy.gleif.org`, maximaal drie redirects en
+`company-lookup/0.1`. De limieten zijn 600 MiB gecomprimeerd, 6 GiB ongecomprimeerd en
+een compressieratio van maximaal 15. De ZIP moet exact één niet-versleutelde CSV op het
+hoogste niveau bevatten en de run moet vooraf voldoende vrije ruimte hebben.
+
+De parser streamt de CSV en gebruikt een tijdelijke SQLite-set voor unieke KVK-nummers.
+Alleen `Entity.LegalAddress.Country=NL` komt in de kandidaatlaag. Een achtcijferige
+`RegistrationAuthorityEntityID` geldt uitsluitend bij autoriteit `RA000463` als geldige
+KVK-hint. Ontbrekende, ongeldige en aan een andere autoriteit gekoppelde identifiers
+verwijderen de organisatie niet: de kandidaat behoudt de originele identifiertekst en
+krijgt `MISSING` of `INVALID`; rejected bevat de reden en het volledige ruwe bronrecord.
+Alleen een ontbrekende juridische naam verhindert een kandidaatrecord.
+
+`EntityLegalFormCode` blijft `source_legal_form`; `EntityStatus` en `RegistrationStatus`
+blijven als afzonderlijk gelabelde componenten in `source_status` (`entity=…;registration=…`).
+Een ontbrekende component telt als ontbrekende statusdekking. Zij vervangen geen actuele KVK-verificatie. Iedere run registreert de
+evidencehash, scope, duur, count-closure en identifier-/velddekking. Een identieke invoer
+met dezelfde limiet wordt hergebruikt; `--refresh` of een andere input maakt downstream
+stappen pas na geslaagde parsing stale. `sources collect` blijft bewust alleen voor IND
+en Wikidata, zodat een gewone run niet onverwacht een bulkbestand downloadt.

@@ -85,10 +85,13 @@ def test_sources_discovery_and_parsers(run) -> None:
     inventory, report = discover(run)
     assert inventory.is_file() and report.is_file()
     catalog = list_sources(run)
-    assert len(catalog) == 2
+    assert len(catalog) == 3
     assert all(row["catalog_schema_version"] == "2" for row in catalog)
-    assert {row["access_mode"] for row in catalog} == {"api", "html"}
-    assert all(row["registration_number_type"] == "KVK" for row in catalog)
+    assert {row["access_mode"] for row in catalog} == {"api", "bulk", "html"}
+    assert {row["registration_number_type"] for row in catalog} == {
+        "KVK",
+        "KVK via registratieautoriteit RA000463",
+    }
     assert catalog[0]["terms_url"] == "https://ind.nl/nl/proclaimer"
     assert catalog[1]["terms_url"] == "https://www.wikidata.org/wiki/Wikidata:Data_access"
     rows = parse_ind_html("<tr><td>Voorbeeld B.V.</td><td>01234567</td></tr>", "https://ind.nl/x")
@@ -112,6 +115,12 @@ def test_sources_discovery_and_parsers(run) -> None:
     assert parsed[1]["registration_validation_status"] == "INVALID"
     assert parse_wikidata({}, "x") == []
     assert [item.source_id for item in _enabled(["ind_arbeid"], [])] == ["ind_arbeid"]
+    assert {item.source_id for item in _enabled([], [])} == {
+        "ind_arbeid",
+        "wikidata_nl_companies",
+    }
+    with pytest.raises(HarvestError, match="sources gleif"):
+        _enabled(["gleif_golden_copy"], [])
     with pytest.raises(HarvestError):
         _enabled(["unknown"], [])
 
@@ -182,7 +191,11 @@ def test_live_capability_measurement_is_bounded_and_reconcilable(
     assert all(item["count_closure"] == "CLOSED" for item in by_source.values())
     assert all(item["rate_limit_observation"] == "HEADERS_OBSERVED" for item in by_source.values())
     catalog = {item["source_id"]: item for item in list_sources(run)}
-    assert {item["live_measurement_status"] for item in catalog.values()} == {"LIVE_MEASURED"}
+    assert {
+        catalog[source_id]["live_measurement_status"]
+        for source_id in ("ind_arbeid", "wikidata_nl_companies")
+    } == {"LIVE_MEASURED"}
+    assert catalog["gleif_golden_copy"]["live_measurement_status"] == "NOT_MEASURED"
 
 
 def test_measurement_error_classifies_rate_limit_as_blocked() -> None:

@@ -10,6 +10,7 @@ RUN_DIR="$(company-harvest run init --target 10000 --print-path)"
 company-harvest sources discover --run-dir "$RUN_DIR"
 company-harvest sources measure --run-dir "$RUN_DIR" --wikidata-limit 200
 company-harvest sources collect --run-dir "$RUN_DIR"
+company-harvest sources gleif --run-dir "$RUN_DIR" --limit 200
 company-harvest companies merge --run-dir "$RUN_DIR"
 company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
 company-harvest kvk resolve --run-dir "$RUN_DIR" --provider auto --limit 1
@@ -32,5 +33,20 @@ machineleesbaar en een leesbaar capabilityrapport, ook wanneer een bron met `BLO
 `FAILED` eindigt. Het meetcommando ververst altijd live en kan oud bronbewijs daardoor
 niet als een actuele meting labelen. De meting is geen productieharvest en de
 Wikidata-steekproef is geen populatieschatting.
+
+`sources gleif` is een expliciete bulkactie en wordt niet door `sources collect` of `run
+execute` gestart. Zonder `--archive` downloadt het commando de officiële huidige Golden
+Copy; gebruik `--limit N` voor een capabilitysample van maximaal N Nederlandse records.
+Een reeds gecontroleerde lokale ZIP kan zonder nieuw netwerkrequest worden gebruikt:
+
+```bash
+company-harvest sources gleif --run-dir "$RUN_DIR" --archive gleif-golden-copy.zip --limit 200
+```
+
+Laat `--limit` alleen weg voor een bewust gekozen volledige inname. Controleer vooraf
+vrije schijfruimte: de evidence-ZIP wordt volledig in de run gekopieerd. `--refresh`
+forceert nieuwe evidence en verwerking; zonder deze optie wordt exact dezelfde input en
+limiet hergebruikt. Bekijk na afloop altijd `gleif_ingest_report`, `gleif_rejected` en het
+outcome-rapport. GLEIF-status en -rechtsvorm zijn brondata, geen KVK-verificatie.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

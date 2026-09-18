@@ -109,8 +109,8 @@ Daarbij gelden de volgende grenzen:
 | R1 | `DONE` | Meetcontract en rijkere broncatalogus | R0 |
 | R2 | `DONE` | Bestaande IND/Wikidata-capabilities werkelijk gemeten | R1 |
 | R3 | `DONE` | GLEIF-feasibility met gereviewd `GO`-besluit | R1 |
-| R4 | `NEXT` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
-| R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
+| R4 | `DONE` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
+| R5 | `NEXT` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
 | R8 | `PLANNED` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
@@ -282,7 +282,7 @@ gates die in R4 worden geïmplementeerd. Volledig bewijs en hashes staan in
 
 ## 9. R4 — Eerste nieuwe bronadapter en brede-innamebasis
 
-Status: `NEXT`, geactiveerd door het gereviewde `GO` uit R3.
+Status: `DONE` — verticale slice geïmplementeerd, live begrensd gemeten en onafhankelijk gereviewd met `PASS`.
 
 ### Doel
 
@@ -308,9 +308,35 @@ Voeg de eerste nieuwe bron met aantoonbare kwaliteit en opbrengst toe en maak de
 - Geen bronveld wordt stil als KVK-gevalideerd gepromoveerd.
 - Opbrengst en overlap zijn in het outcome-rapport zichtbaar.
 
+### Gerealiseerd bewijs
+
+- `sources gleif` verwerkt de officiële Level 1 Golden Copy CSV-ZIP streaming en kan
+  zowel zelf begrensd downloaden als een reeds gekwalificeerde lokale snapshot innemen.
+- HTTPS-host, redirects, downloadgrootte, ZIP-structuur, compressieratio, ongecomprimeerde
+  grootte en vrije schijfruimte hebben expliciete gates; tijdelijke bestanden worden bij
+  fouten verwijderd en HTTP-blokkades veroorzaken geen fallback.
+- De evidencekopie is immutable geregistreerd met SHA-256. Verplichte kolommen worden
+  gevalideerd; onbekende extra kolommen blijven toegestaan.
+- Nederlandse records zonder KVK-nummer, met ongeldig nummer of met een andere
+  registratieautoriteit blijven kandidaat. De originele registratie blijft behouden en
+  het identifierprobleem staat afzonderlijk in rejected-uitvoer met het ruwe bronrecord.
+- GLEIF-rechtsvorm en beide statusvelden blijven expliciet brondata en worden nergens als
+  actuele KVK-verificatie gepromoveerd.
+- De begrensde capability-run op 200 Nederlandse records sloot beide adapterpartities:
+  200 kandidaten, 172 geldige unieke KVK-hints, 28 identifier-reviewgevallen en geen
+  ontbrekende legal-form- of statusvelden. De gecombineerde outcome-run telde 450
+  records uit drie bronfamilies en maakte ook nuloverlap expliciet zichtbaar; één geldig
+  KVK-nummer overlapte tussen GLEIF en de Wikidata-sample.
+- Offline regressies dekken verwerking, hergebruik, refresh/invalidatie, CLI, download,
+  User-Agent, schema-, ruimte-, ZIP- en groottefouten. Het nieuwe adapterbestand behaalt
+  283/294 statements coverage (96,26%).
+
+Het volledige aggregaatbewijs staat in
+[`docs/measurements/20260918-r4-gleif-adapter.md`](docs/measurements/20260918-r4-gleif-adapter.md).
+
 ## 10. R5 — Brede bronportfolio
 
-Status: `PLANNED`.
+Status: `NEXT`, geactiveerd doordat R4 de gedeelde brede-innamebasis heeft bewezen.
 
 ### Doel
 
@@ -552,6 +578,9 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-18 — R4 afgerond:** de streaming GLEIF-adapter, brede-innamecontracten,
+  begrensde capability-run, expliciete bronpaaroverlap en onafhankelijke review zijn
+  afgerond. R5 is de eerstvolgende uitvoerbare increment; R7 blijft `PARKED`.
 - **2026-09-18 — GitHub Release `v0.1.0` verwijderd:** op expliciet besluit van de repository-eigenaar zijn het release-object en de vijf assets verwijderd. De Git-tag, broncommit en historische kwalificatie-evidence zijn behouden. Er is momenteel geen publieke release; een volgende release doorloopt opnieuw alle toepasselijke gates.
 - **2026-09-18 — CI-matrix gericht verkleind:** op expliciet besluit van de repository-eigenaar is RD-005 gewijzigd. Doorlopende CI valideert voortaan uitsluitend Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 zijn voor nieuwe wijzigingen `NOT_TESTED`. De overige kwaliteits- en releasegates blijven staan.
 - **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.

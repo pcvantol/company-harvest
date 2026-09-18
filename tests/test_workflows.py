@@ -159,6 +159,9 @@ def test_outcome_report_closes_empty_duplicate_conflict_and_review_fixtures(run)
     assert metrics["source_diversity"]["measured_candidate_overlap_by_family_pair"] == {
         "family-a|family-b": 1,
     }
+    assert metrics["source_diversity"][
+        "measured_valid_registration_overlap_by_source_pair"
+    ] == {"a|b": 1}
     assert metrics["resources"]["storage_growth_status"] == "MEASURED"
     empty_run = initialize_run(run.path.parent, 1)
     empty = outcome_metrics(empty_run)

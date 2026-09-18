@@ -13,3 +13,11 @@ record- en identifierclosure, duplicaten, parserafwijzingen, duur, responsaantal
 HTTP-statussen en waargenomen rate-limitheaders. Het JSON- en Markdownrapport worden als
 immutable stap-02-artefacten geregistreerd. Ruwe responses blijven uitsluitend in lokale
 evidence; canonieke documentatie bevat alleen aggregaten.
+
+`sources gleif` registreert daarnaast het originele ZIP-bestand als stap-02-evidence,
+een kandidaatbestand, een afzonderlijk identifier-/naam-rejectedbestand en JSON-/Markdown-
+innamerapport. Het rapport bevat evidencehash en -omvang, CSV-omvang, lokale of HTTP-
+acquisitiemetadata, scope, duur, alle partitieaantallen en twee closurecontroles. Bij
+lokale inname is de User-Agent bewust `null`, omdat geen request plaatsvindt; bij download
+wordt de centrale `company-lookup/0.1` vastgelegd. Ruwe echte records blijven uitsluitend
+in de lokale evidence en runartefacten; canonieke documentatie bevat alleen aggregaten.
