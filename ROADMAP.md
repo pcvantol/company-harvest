@@ -63,12 +63,28 @@ Daarom:
 - worden meerdere onafhankelijke bronfamilies vroeg onderzocht en, na een positieve feasibility, verzameld;
 - is een direct KVK-/registratienummer een waardevol routerings- en kwaliteitskenmerk, maar geen voorwaarde om een goede bron vroeg op te nemen;
 - blijven originele bronrecords, ontbrekende velden en onzekerheden behouden;
-- worden kandidaten zonder registratienummer vroeg in een afzonderlijke kandidaatlaag opgenomen, maar pas na R7 extern gematcht/verrijkt;
+- worden kandidaten zonder registratienummer vroeg in een afzonderlijke kandidaatlaag opgenomen en mogen zij binnen het normale proces naar een KVK-nummer worden gematcht of verrijkt;
 - vinden rechtsvorm-, status- en definitieve identiteitsfilters pas plaats wanneer de benodigde verificatie aantoonbaar beschikbaar is;
 - worden commerciële geschiktheid, sector, werknemersaantal of lage bronfrequentie niet als vroege uitsluitingsreden gebruikt;
 - betekent “breed” niet onbegrensd of willekeurig: iedere bron moet herleidbaar, relevant, technisch beheersbaar en volgens vastgelegde voorwaarden toegankelijk zijn.
 
 De architectuur onderscheidt voortaan drie lagen: **ruwe brondekking**, **voorlopige kandidaten** en **geverifieerde levering**. Verkleining is een expliciete, meetbare overgang tussen lagen en nooit stil dataverlies.
+
+### RD-007 — KVK-nummermatching is toegestaan
+
+Het ontbreken van een KVK-nummer in een bronrecord maakt die bron of kandidaat niet waardeloos. Matching en verrijking naar een KVK-nummer zijn toegestaan als normale, meetbare verwerkingsstap. Dit omvat exacte koppeling via andere herleidbare bronnen en begrensde zoek-/reviewroutes volgens het bestaande providercontract.
+
+Daarbij gelden de volgende grenzen:
+
+- het oorspronkelijke record blijft altijd behouden;
+- een match krijgt methode, bronbewijs, score/reden en terminale uitkomst;
+- een matchscore is prioriteringsinformatie en nooit zelfstandig beslissend bewijs;
+- naam-, domein- of fuzzy-overeenkomst alleen is nooit voldoende voor een automatische definitieve merge;
+- een gevonden KVK-nummer blijft voorlopig totdat het volgens ADR-002 en het bestaande providercontract is geverifieerd; alleen een geverifieerd KVK-nummer is een definitieve ondernemingssleutel;
+- meerdere mogelijke KVK-nummers of conflicterende naam-, bron- of plaatsevidence eindigen als `AMBIGUOUS` of `SOURCE_CONFLICT`, zonder canonieke merge;
+- `no-match` en `ambigu` blijven bruikbare kandidaten en worden niet verwijderd;
+- KVK-nummermatching bewijst niet automatisch rechtsvorm, status of activiteit;
+- kleine, sequentiële matchingmetingen zijn toegestaan; bulkgebruik van de publieke KVK-frontend en migratie naar een andere KVK-route blijven onder RD-001/R7 geparkeerd.
 
 ## 3. Statuslegenda
 
@@ -93,7 +109,7 @@ De architectuur onderscheidt voortaan drie lagen: **ruwe brondekking**, **voorlo
 | R5 | `PLANNED` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `PLANNED` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
 | R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
-| R8 | `PLANNED` | Begrensde matching- en verrijkingspilot voor kandidaten zonder registratienummer | R5, succesvol afgerond R7 |
+| R8 | `PLANNED` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `PLANNED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
 | R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
 
@@ -269,7 +285,7 @@ De externe review noemt onder meer TED, TenderNed, leveranciersbestanden, sector
 2. bewijs dit met primaire documentatie en een begrensde sample;
 3. geef bronnen met een betrouwbaar direct registratienummer binnen een implementatiegolf voorrang wanneer overige kwaliteit vergelijkbaar is;
 4. implementeer adapters beheerst één voor één, maar blijf feasibility en portfolio-opbouw over meerdere onafhankelijke bronfamilies sturen;
-5. neem ook bewezen goede bronnen zonder registratienummer vroeg op in de kandidaatlaag; stel alleen hun externe matching uit tot R7.
+5. neem ook bewezen goede bronnen zonder registratienummer vroeg op in de kandidaatlaag en routeer ze naar de toegestane matching-/reviewstap.
 
 Feasibilitykaarten en bronselectie mogen vanaf R1 parallel worden voorbereid. Implementatie van de tweede en volgende adapters start pas nadat R4 de gedeelde brede-innamebasis heeft bewezen.
 
@@ -332,6 +348,8 @@ Test schaalgedrag en datakwaliteit op een doorsnede van de brede kandidaatlaag z
 ### Grenzen
 
 - Geen 500 KVK-frontendcalls zolang R7 geparkeerd is.
+- KVK-nummers mogen binnen de sample wel uit directe bronvelden en exacte, deterministische offline koppeling tussen reeds verzamelde bronnen worden aangevuld.
+- R6 doet geen publieke-frontendmatching; het vormt de gestratificeerde pilotselectie voor R8.
 - Geen bronstatus of GLEIF-status presenteren als KVK-gevalideerde ondernemingsstatus.
 - Geen releaseclaim dat het einddoel is bewezen.
 - Geen vroege verwijdering omdat een record nog geen KVK-nummer, rechtsvorm of status heeft; het blijft kandidaat of reviewgeval.
@@ -341,7 +359,8 @@ Test schaalgedrag en datakwaliteit op een doorsnede van de brede kandidaatlaag z
 - 100% count-closure en nul stil verloren records.
 - Geen onverklaarde false merge in de beoordeelde steekproef.
 - Meetrapport bevat reproduceerbare sampledefinitie.
-- Op basis van de meting worden expliciete thresholds voorgesteld voor R9; niet eerder.
+- De meting levert bron-/deduplicatiebaselines, een reproduceerbare R8-pilotselectie en vooraf vastgelegde R8-metrics op.
+- Match-, review- en capaciteitsthresholds voor R9 worden pas na de R8-pilot vastgesteld.
 
 ## 12. R7 — KVK-verificatiebesluit
 
@@ -368,34 +387,39 @@ Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
 
 ### Blokkade voor bulk
 
-Zolang R7 `PARKED` is, is volledige KVK-verrijking op 500/10.000 records niet release- of productiegekwalificeerd.
+Zolang R7 `PARKED` is, zijn bulkgebruik van een KVK-provider en volledige KVK-verificatie op 500/10.000 records niet release- of productiegekwalificeerd. Dit blokkeert niet het bewaren van kandidaten, onderlinge bronkoppeling of begrensde matching en verrijking naar een KVK-nummer.
 
-## 13. R8 — Matching- en verrijkingspilot zonder direct registratienummer
+## 13. R8 — Begrensde KVK-nummermatchingpilot
 
-Status: `PLANNED`, maar uitsluitend na een succesvol afgerond en expliciet geactiveerd R7-besluit.
+Status: `PLANNED`, afhankelijk van de gestratificeerde kandidaatlaag uit R6; geen activatie van R7 vereist.
 
-De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. R5 stelt eerst vast welke identifiers zij werkelijk leveren en mag bewezen goede bronnen al vóór R7 in de brede kandidaatlaag opnemen. R8 verzamelt die bronnen dus niet pas achteraf; R8 activeert voor een begrensde, gestratificeerde pilot de uitgestelde matching, verificatie en verrijking van hun kandidaten zodra de matchroute bewezen is.
+De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. Zulke bronnen kunnen waardevolle organisaties leveren zonder direct KVK-nummer. R8 meet daarom expliciet hoe goed hun kandidaten naar een KVK-nummer kunnen worden verrijkt. Het doel is identiteitskoppeling, niet het omzeilen van het geparkeerde besluit over providerbulk, rechtsvorm of ondernemingsstatus.
 
 ### Werk
 
-- Selecteer een reproduceerbare pilot uit meerdere bronfamilies en volg de maximale omvang uit het R7-besluit.
+- Selecteer vooraf een kleine, reproduceerbare en gestratificeerde pilot uit meerdere bronfamilies.
+- Gebruik eerst exacte koppeling via herleidbare bronvelden en bestaande kandidaten; gebruik de huidige publieke frontend alleen klein, sequentieel en binnen het bestaande providercontract.
 - Meet match, no-match, ambigu, review en technische terminale uitkomsten.
-- Meet rechtsvorm- en statusdekking met bewezen veldsemantiek.
+- Registreer eventueel aangetroffen rechtsvorm/status alleen als bronobservatie; promoveer die niet zonder bewezen verificatiesemantiek.
 - Bewaar ieder origineel bronrecord en iedere matchbeslissing; een mislukte match verwijdert de kandidaat niet.
 - Automatiseer geen merge op alleen naam, domein of fuzzy score.
+- Behandel een score uitsluitend als reviewprioriteit, nooit als zelfstandig matchbewijs.
+- Routeer meerdere mogelijke KVK-nummers of conflicterende naam-, bron- of plaatsevidence naar `AMBIGUOUS` of `SOURCE_CONFLICT`; maak daaruit geen canonieke merge.
 - Leg per bron matchopbrengst, reviewkosten en stopcriteria vast.
 
 ### Exitcriteria
 
 - Iedere pilotkandidaat heeft exact één reconcilieerbare terminale uitkomst.
-- Identiteit, rechtsvorm en status zijn alleen gevuld uit de in R7 goedgekeurde verificatiesemantiek.
+- Elk toegevoegd KVK-nummer heeft herleidbaar matchbewijs en een expliciete matchmethode.
+- Een gevonden KVK-nummer blijft voorlopig totdat het volgens ADR-002 en het bestaande providercontract is geverifieerd; alleen daarna mag het de definitieve ondernemingssleutel zijn.
+- Rechtsvorm en status blijven `UNKNOWN` tenzij zij via een afzonderlijk bewezen pad zijn gevalideerd.
 - Handmatige controle van een gestratificeerde steekproef toont geen onverklaarde false merge.
-- De pilot levert vooraf vast te leggen thresholds en capaciteitsevidence voor R9.
-- Buiten de begrensde R8-pilot blijft externe matching uitgeschakeld totdat R9 expliciet start.
+- De pilot levert vooraf vast te leggen thresholds, reviewkosten en capaciteitsevidence voor R9.
+- Een `no-match` of `ambigu` verlaagt de gemeten dekking, maar verwijdert de kandidaat niet en maakt de bron niet onbruikbaar.
 
 ## 14. R9 — Volledige sample- en schaalvalidatie
 
-Status: `PLANNED`, afhankelijk van R6, een afgerond R7-besluit en een geslaagde R8-pilot.
+Status: `PLANNED`, onvoorwaardelijk afhankelijk van R6, een geslaagde R8-pilot en een expliciet geactiveerd en succesvol afgerond R7-besluit.
 
 ### Fase A — volledige sample van 500
 
@@ -490,4 +514,5 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
-- **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. Externe matching blijft geparkeerd onder R7; na activering volgt eerst een begrensde R8-pilot en pas daarna R9-schaalvalidatie.
+- **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.
+- **2026-09-18 — KVK-nummermatching toegestaan:** op expliciet besluit van de repository-eigenaar is RD-007 toegevoegd. Kandidaten zonder initieel KVK-nummer mogen regulier worden gematcht en verrijkt; R8 vereist daarom niet langer R7. Alleen providerbulk, routemigratie en volledige rechtsvorm-/statusverificatie blijven onder RD-001/R7 geparkeerd.
