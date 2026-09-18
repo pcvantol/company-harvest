@@ -39,7 +39,7 @@ def test_coverage_gate(tmp_path: Path) -> None:
 
 def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     module = load("release")
-    assert module.git(ROOT, "rev-parse", "--show-toplevel") == str(ROOT)
+    assert Path(module.git(ROOT, "rev-parse", "--show-toplevel")).resolve() == ROOT.resolve()
     with pytest.raises(RuntimeError):
         module.git(ROOT, "rev-parse", "--verify", "refs/tags/does-not-exist")
     file = tmp_path / "asset.whl"; file.write_bytes(b"wheel")
