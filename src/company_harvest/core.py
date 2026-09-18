@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 RUN_SCHEMA_VERSION = 1
+HTTP_USER_AGENT = "company-lookup/0.1"
 KVK_RE = re.compile(r"^[0-9]{8}$", re.ASCII)
 SECRET_RE = re.compile(r"(?i)(authorization|cookie|token|secret|password)([=: ]+)([^\s,;]+)")
 

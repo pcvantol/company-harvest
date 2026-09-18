@@ -16,7 +16,15 @@ from urllib.parse import urlparse
 import httpx
 from openpyxl import load_workbook
 
-from company_harvest.core import HarvestError, Run, read_tsv, timestamp, validate_kvk, write_tsv
+from company_harvest.core import (
+    HTTP_USER_AGENT,
+    HarvestError,
+    Run,
+    read_tsv,
+    timestamp,
+    validate_kvk,
+    write_tsv,
+)
 
 MAX_RESPONSE_BYTES = 20 * 1024 * 1024
 MAX_SOURCE_PAGES = 100
@@ -180,7 +188,7 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
     if will_fetch:
         run.invalidate_from(3, "source_collection_changed")
     timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
-    headers = {"User-Agent": "company-harvest/0.1 (+local audited collection)"}
+    headers = {"User-Agent": HTTP_USER_AGENT}
     with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
         for source in enabled:
             prior = run.latest_artifact("02", f"source_{source.source_id}")

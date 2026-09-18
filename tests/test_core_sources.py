@@ -103,8 +103,10 @@ class FakeResponse:
 
 
 class FakeClient:
+    headers = {}
+
     def __init__(self, *args, **kwargs):
-        pass
+        type(self).headers = kwargs.get("headers", {})
 
     def __enter__(self):
         return self
@@ -123,6 +125,8 @@ def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
     outputs = collect(run, limit=1)
     assert len(outputs) == 2 and all(read_tsv(path) for path in outputs)
+    assert FakeClient.headers["User-Agent"] == "company-lookup/0.1"
+    assert "github" not in FakeClient.headers["User-Agent"].casefold()
     assert collect(run, limit=1) == outputs
     downstream = run.artifact_path("03", "downstream", "csv"); write_tsv(downstream, ["x"], [{"x": "1"}]); run.register_artifact(downstream, "03", "downstream")
     assert len(collect(run, only=["ind_arbeid"], limit=1, refresh=True)) == 1

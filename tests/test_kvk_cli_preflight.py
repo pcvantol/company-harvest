@@ -94,8 +94,10 @@ class HttpResponse:
 
 
 class HttpClient:
+    headers = {}
+
     def __init__(self, *args, **kwargs):
-        pass
+        type(self).headers = kwargs.get("headers", {})
 
     def __enter__(self):
         return self
@@ -117,6 +119,8 @@ def test_http_search_observed(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert provider.preflight()["available"]
     result = provider.search("Alpha")
     assert result.hits and Path(run.path / result.evidence).is_file()
+    assert HttpClient.headers["User-Agent"] == "company-lookup/0.1"
+    assert "github" not in HttpClient.headers["User-Agent"].casefold()
     provider._cooldown(1, "test")
     assert _choose_provider(run, "auto").name == "public-http"
     assert _choose_provider(run, "public-browser").name == "public-browser"

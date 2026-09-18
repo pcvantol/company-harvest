@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from company_harvest.core import HarvestError, Run, read_tsv, timestamp, write_tsv
+from company_harvest.core import HTTP_USER_AGENT, HarvestError, Run, read_tsv, timestamp, write_tsv
 
 KVK_HOSTS = {"www.kvk.nl", "kvk.nl", "web-api.kvk.nl"}
 PUBLIC_SEARCH_ENDPOINT = "https://web-api.kvk.nl/zoeken/v3/search"
@@ -98,7 +98,7 @@ class PublicHttpProvider:
         if parsed.scheme != "https" or parsed.hostname not in KVK_HOSTS:
             raise KvkError("CAPABILITY_MISSING", "waargenomen KVK-endpoint is niet toegestaan", 7)
         timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
-        headers = {"User-Agent": "company-harvest/0.1", "profileId": PUBLIC_PROFILE_ID}
+        headers = {"User-Agent": HTTP_USER_AGENT, "profileId": PUBLIC_PROFILE_ID}
         payloads: list[dict[str, Any]] = []
         hits: list[dict[str, Any]] = []
         start, total = 0, None
