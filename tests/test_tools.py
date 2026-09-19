@@ -11,6 +11,21 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_ci_uses_current_node_actions_and_supported_matrix() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    active_lines = [
+        line.strip() for line in workflow.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    assert sorted(line for line in active_lines if line.startswith("- uses:")) == sorted([
+        "- uses: actions/checkout@v7",
+        "- uses: actions/setup-python@v7",
+    ])
+    assert "os: [macos-latest, windows-latest]" in active_lines
+    assert 'python: ["3.14"]' in active_lines
+    assert "run: python -m pytest -q tests/test_ci_e2e_integration.py" in active_lines
+
+
 def load(name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(name, ROOT / "tools" / f"{name}.py")
     assert spec and spec.loader

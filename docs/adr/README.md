@@ -12,3 +12,4 @@
 - [ADR-010 Alleen Python 3.14 voor de actuele tool](010-python-314-only.md)
 - [ADR-011 Commandoroutering en pre-KVK-partitie scheiden](011-cli-and-pre-kvk-refactor.md)
 - [ADR-012 Veilige CLI-voortgang op stderr](012-safe-cli-console-progress.md)
+- [ADR-013 Actuele Node-runtime voor officiële CI-acties](013-current-node-runtime-in-ci.md)

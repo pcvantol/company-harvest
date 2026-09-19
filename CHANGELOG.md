@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- GitHub Actions gebruikt de actuele v7-versies van `checkout` en
+  `setup-python` op Node 24; de Python 3.14/macOS+Windows-matrix en de aparte
+  offline E2E-poort blijven ongewijzigd.
 - Alle CLI-routes tonen nu veilige, ANSI-gekleurde fase-, resultaat- en
   foutmeldingen op stderr, zonder recordinhoud. De E2E-keten en langlopende
   KVK-check geven tussentijdse stappen/checkpoints; machineleesbare stdout,

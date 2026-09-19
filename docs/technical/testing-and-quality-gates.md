@@ -10,6 +10,9 @@ blijft de gedeelde keten met gemockte KVK-verzoeken toetsen.
 
 CI doet geen live harvest. Live bron-/KVK-smokes blijven lokaal en klein. De actieve
 CI-matrix bestaat uitsluitend uit Python 3.14 op `macos-latest` en `windows-latest`.
+De workflow gebruikt `actions/checkout@v7` en `actions/setup-python@v7`;
+beide officiële acties draaien op de Node 24-runtime. Dat is de runtime van
+de GitHub Actions-stappen, niet een extra Python-/Node-applicatiematrix.
 Elke matrixjob heeft na de algemene gate een afzonderlijke **offline E2E-
 integratiestap** (`tests/test_ci_e2e_integration.py`). Die start de echte
 `run e2e`-CLI op een lege synthetische run, simuleert broncollectors en de
