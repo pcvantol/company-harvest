@@ -16,6 +16,12 @@
   als niet-geverifieerde unresolved zichtbaar; gesloten input kan toch
   COMPLETE-artefacten krijgen, maar export vergt `--allow-partial`.
   Een 401/403/429 blokkeert verder gebruik tot een afzonderlijk besluit.
+- In v1.0.0 registreert `export --allow-partial` ook het outputmanifest als
+  `PARTIAL`, terwijl `audit verify` dit manifest alleen als `COMPLETE` opzoekt.
+  Daardoor geeft de eindaudit dan ten onrechte
+  `MISSING_REQUIRED:outputset_manifest`. Beschouw een partiële levering niet
+  als audit-PASS; de aparte integriteits- en outputcontrole moet in een
+  volgende versie worden hersteld.
 - `run is vergrendeld`: controleer eigenaar/proces; verwijder een lock niet op alleen ouderdom.
 - `audit verify` faalt: publiceer/exporteer niet; behoud de run en onderzoek ontbrekende of gewijzigde bestanden.
 - Mergeconflicten zijn datawaarschuwingen, geen technisch mislukte run; inspecteer alle conflictbestanden.

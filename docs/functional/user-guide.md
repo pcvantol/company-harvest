@@ -1,5 +1,9 @@
 # Gebruikershandleiding
 
+Zie [alle v1.0.0-commando's van installatie tot export](v1-end-to-end-commands.md)
+voor één uitvoertabel met de verwachte lokale bestanden en de poorten voor
+een strikte of bewust partiële levering.
+
 Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`. `run init --print-path` maakt uitsluitend een lokale run. De nieuwe standaardvoorbereiding gebruikt IND, GLEIF, ANBI en DUO; Wikidata wordt niet gedownload of aan de master toegevoegd.
 
 Gebruik voor ontwikkeling bijvoorbeeld:
