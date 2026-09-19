@@ -5,8 +5,9 @@
 Een lokale build is geen publieke release. Een tag zonder asset evenmin. Releasebewijs staat per versie in `docs/releases/`; echte downloadlinks worden pas na succesvolle publicatie vastgelegd.
 
 De actuele [v3.0.0-release](../releases/v3.0.0.md) bevat de vijfbronnenketen
-en lichte export. Haar distributiebewijs wordt afzonderlijk vastgelegd na
-CI, conceptcontrole, publicatie en anonieme herdownload. Ook de vorige
+en lichte export. Het [distributiebewijs](../releases/20260919-v3.0.0-evidence.md)
+legt exacte-commit-CI, conceptcontrole, publicatie en anonieme herdownload
+vast. Ook de vorige
 [v2.0.0-toolrelease](../releases/20260919-v2.0.0-evidence.md) is uit de
 exacte broncommit gebouwd, op macOS/Windows-Python-3.14-CI gekwalificeerd
 en byte-identiek hergedownload. Dit bewijst de distributie, niet een

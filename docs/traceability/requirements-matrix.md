@@ -32,7 +32,7 @@
 | CH-TEST-001 | >80% per file | ADR-004, `tools/check_coverage.py` | qualityrapport |
 | CH-TEST-002 | Onafhankelijke subagentreview | `docs/reviews/` | reviewdocument |
 | CH-DIST-001 | Wheel/sdist/bundle uit broncommit | `tools/release.py` | manifest/installtest |
-| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | `v3.0.0` is de actuele release; [releasenotities](../releases/v3.0.0.md) en afzonderlijk distributiebewijs na publicatie. [Anonieme byte-identieke v2.0.0-herdownload](../releases/20260919-v2.0.0-evidence.md); oudere releases ingetrokken onder CH-2026-09-19-029 |
+| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | `v3.0.0` is de actuele release; [anonieme byte-identieke v3.0.0-herdownload](../releases/20260919-v3.0.0-evidence.md). [v2.0.0-bewijs](../releases/20260919-v2.0.0-evidence.md) blijft historisch; oudere releases ingetrokken onder CH-2026-09-19-029 |
 | CH-DIST-003 | Cross-platform wrappers/preflight | `scripts/`, `preflight.py` | wrapper/CI-smokes; [v1.0.0-snelstart](../functional/snelstart-v1.0.0.md) |
 
 ## Roadmapbesluiten en outcome-gates

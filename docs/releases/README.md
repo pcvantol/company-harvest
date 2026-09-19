@@ -19,7 +19,7 @@ releasegates in v1.0.0 gekwalificeerd; zie het
 - [v0.1.0](v0.1.0.md) — historisch publicatie- en kwalificatiebewijs; het GitHub Release-object en de assets zijn op 18 september 2026 verwijderd, de lokale en `origin`-tag op 19 september 2026.
 - [v1.0.0](v1.0.0.md) — historische release-inhoud en [publicatiebewijs](20260919-v1.0.0-evidence.md). De GitHub Release, vijf assets en lokale/remote tag zijn op 19 september 2026 verwijderd; broncommit en documenten blijven bewaard.
 - [v2.0.0](v2.0.0.md) — vorige wheel met Python 3.14, vierbronnen-E2E-opdracht en auditfix; [geverifieerd publicatiebewijs](20260919-v2.0.0-evidence.md).
-- [v3.0.0](v3.0.0.md) — actuele wheel met vijf bronfamilies, KVK-nummer-only, export zonder tweede afkap en een lichte zakelijke eindlijst. Publiek distributiebewijs volgt na byte-identieke herdownload en herinstallatie.
+- [v3.0.0](v3.0.0.md) — actuele wheel met vijf bronfamilies, KVK-nummer-only, export zonder tweede afkap en een lichte zakelijke eindlijst; [geverifieerd publicatiebewijs](20260919-v3.0.0-evidence.md).
 
 De 3.0.0-wheel bevat TenderNed als vijfde bron, onbeperkte export binnen
 de gekozen KVK-cohort en `companies_delivery_light.xlsx`. Deze functies

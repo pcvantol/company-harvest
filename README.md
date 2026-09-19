@@ -65,7 +65,7 @@ De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de
 
 De [publieke release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0)
 bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
-en checksums.
+en checksums; zie ook het [publicatiebewijs](docs/releases/20260919-v3.0.0-evidence.md).
 Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de actuele
 compatibiliteit en grenzen. Versie 2.0.0 blijft beschikbaar als vorige release;
 alle oudere GitHub Releases en tags onder 2.0,
