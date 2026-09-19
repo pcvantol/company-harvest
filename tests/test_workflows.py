@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from company_harvest.audit import _overlap, trace, verify
 from company_harvest.core import HarvestError, initialize_run, read_tsv, sha256, write_tsv
 from company_harvest.workflow import (
+    _light_rows,
     _peak_memory,
     active_only,
     consolidate,
@@ -185,6 +186,25 @@ def test_light_export_recovers_source_fields_from_merged_payloads(run) -> None:
     light = read_tsv(export(run)[2])[0]
     assert light["Website (bron)"] == "https://alpha.example"
     assert light["Sector (bron)"] == "Bouw"
+
+
+def test_light_export_audit_projection_fills_missing_optional_fields(run) -> None:
+    _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer", "response_json"], [
+        {"Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567",
+         "response_json": json.dumps([{"bezoeklocatie": {"huisnummerToevoeging": "A"}}])},
+        {"Bedrijfsnaam": "Beta B.V.", "KVK-nummer": "12345678",
+         "response_json": json.dumps([{"oudeNamen": ["Beta Oud"]}])},
+    ])
+    paths = export(run)
+    full = read_tsv(paths[4])
+    headers, expected, _ = _light_rows(run, full)
+    actual = read_tsv(paths[2])
+    assert actual == expected
+    assert all(set(row) == set(headers) for row in expected)
+    assert actual[0]["Huisnummertoevoeging bezoekadres (KVK)"] == "A"
+    assert actual[0]["Oude namen (KVK)"] == ""
+    assert actual[1]["Huisnummertoevoeging bezoekadres (KVK)"] == ""
+    assert actual[1]["Oude namen (KVK)"] == "Beta Oud"
 
 
 def test_peak_memory_has_explicit_windows_fallback(monkeypatch: pytest.MonkeyPatch) -> None:

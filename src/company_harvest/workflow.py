@@ -360,7 +360,7 @@ def _light_rows(run: Run, selected: list[dict[str, str]]) -> tuple[list[str], li
     provenance = ({"path": str(source.relative_to(run.path)), "sha256": sha256(source)}
                   if source is not None and wanted else None)
     headers = LIGHT_KVK_HEADERS + sorted(public_headers) + LIGHT_SOURCE_HEADERS
-    return headers, light, provenance
+    return headers, [{header: row.get(header, "") for header in headers} for row in light], provenance
 
 
 def export(run: Run, allow_partial: bool = False) -> list[Path]:

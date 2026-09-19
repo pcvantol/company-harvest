@@ -11,7 +11,9 @@
   drie zakelijke KVK-veldpaden die de lichte export nog afwees:
   `bezoeklocatie.huisnummerToevoeging`, `oudeHandelsnamen` en `oudeNamen`.
   Die zijn gericht aan de exportallowlist en regressietests toegevoegd;
-  onbekende metadata blijft geblokkeerd. Nog niet gepubliceerd.
+  onbekende metadata blijft geblokkeerd. De lichte rijprojectie vult
+  ontbrekende optionele velden nu expliciet met leegte, zodat de afsluitende
+  audit ook bij ongelijke veldsets per KVK-hit slaagt. Nog niet gepubliceerd.
 
 - Live proef van de ongewijzigde publieke 3.0.0-wheel met vijf volledige
   bronnen en maximaal tien KVK-checks stopte vóór de KVK-fase: één
