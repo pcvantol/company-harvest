@@ -71,6 +71,12 @@ bedrijfsnamen zijn geen uitsluitingsgrond; de verkennende
 [naamvariantenmeting](../measurements/20260919-pre-kvk-name-variants.md) heeft
 geen fuzzy filter geactiveerd.
 
+Vanaf bronversie 3.0.1 accepteert de gedeelde CSV-/TSV-parser velden tot
+1.048.576 tekens, ook wanneer de volledige JSON-bronpayload van één masterrij boven
+Python's standaardgrens van 131.072 tekens komt. Dezelfde begrensde instelling
+geldt voor latere cohort-, KVK- en exportlezers; boven deze veldgrens wordt niet
+afgekapt maar gestopt. Zie [ADR-018](../adr/018-bounded-csv-field-size.md).
+
 `kvk pre-kvk-batch --run-dir RUN_DIR --limit 10` leest uitsluitend de
 gefilterde, geregistreerde en aan de actuele master gebonden lijst. Ontbreekt
 die of wijkt de regelversie/hash af, dan stopt de opdracht vóór de provider.

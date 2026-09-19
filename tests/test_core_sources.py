@@ -1,3 +1,4 @@
+import csv
 import gzip
 import json
 import re
@@ -12,6 +13,7 @@ from openpyxl import Workbook
 
 from company_harvest import core
 from company_harvest.core import (
+    CSV_FIELD_SIZE_LIMIT,
     HTTP_USER_AGENT,
     HarvestError,
     atomic_write,
@@ -62,6 +64,18 @@ def test_core_roundtrip_and_validation(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv("COMPANY_HARVEST_DATA_DIR", str(tmp_path))
     assert data_root() == tmp_path
     assert data_root(tmp_path / "x") == tmp_path / "x"
+
+
+def test_csv_field_limit_keeps_large_evidence_and_rejects_oversized_field(tmp_path: Path) -> None:
+    assert csv.field_size_limit() == CSV_FIELD_SIZE_LIMIT == 1024 * 1024
+    accepted = "x" * 159_763
+    path = tmp_path / "wide.tsv"
+    write_tsv(path, ["source_payloads_json"], [{"source_payloads_json": accepted}])
+    assert read_tsv(path) == [{"source_payloads_json": accepted}]
+    write_tsv(path, ["source_payloads_json"],
+              [{"source_payloads_json": "x" * (CSV_FIELD_SIZE_LIMIT + 1)}])
+    with pytest.raises(csv.Error):
+        read_tsv(path)
 
 
 def test_timestamp_is_readable_utc_with_same_second_uniqueness(

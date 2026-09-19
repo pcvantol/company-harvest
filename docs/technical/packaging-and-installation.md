@@ -2,7 +2,7 @@
 
 De Hatchling-wheel bevat de `src`-package en console-entrypoint. De
 historisch gepubliceerde, inmiddels ingetrokken 2.0.0-wheel en de huidige
-3.0.0-wheel ondersteunen
+publieke 3.0.0-wheel ondersteunen
 uitsluitend Python 3.14.x:
 `Requires-Python: >=3.14,<3.15` blokkeert normale installatie met andere
 minorversies en een package-guard blokkeert ook geforceerde installaties bij
@@ -28,3 +28,6 @@ is de publieke 3.0.0-wheel nodig; de ingetrokken 2.0.0-wheel had die
 functies niet. De exacte macOS-/PowerShell-commando's staan in de
 [E2E-handleiding](../functional/e2e-command.md). De 3.0.0-wheel kan na
 download en hashcontrole zonder broncheckout worden geïnstalleerd.
+De publieke 3.0.0-wheel kan op een groot bronbewijsveld vóór KVK stoppen;
+de broncode voor 3.0.1 herstelt dit begrensd, maar is pas als schone-machine-
+wheel bruikbaar na een afzonderlijke gekwalificeerde build.

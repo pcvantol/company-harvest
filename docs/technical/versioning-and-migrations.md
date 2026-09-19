@@ -2,6 +2,13 @@
 
 Packageversie is gezaghebbend in `pyproject.toml`; CLI/changelog/tag gebruiken dezelfde waarde. Vanaf 1.0.0 verhogen incompatibele publieke contractwijzigingen MAJOR, nieuwe compatibele functies MINOR en fixes PATCH. Tool-, run-/databaseschema-, export- en providerschemaversies zijn afzonderlijk.
 
+De actuele bronversie **3.0.1** is een nog niet gepubliceerde patch op de
+publieke 3.0.0-wheel: alleen de begrensde CSV-veldparser en foutmelding
+wijzigen. Run-, database- en outputsetschema blijven gelijk. Een v3.0.0-run
+die vóór KVK op de veldgrens stopte kan met 3.0.1 dezelfde runmap hervatten
+na de gebruikelijke hash-/configvalidatie; maak geen nieuwe run als omweg
+voor een echte KVK-toegangsblokkade. Zie [ADR-018](../adr/018-bounded-csv-field-size.md).
+
 De overgang van v1.0.0 naar 2.0.0 is MAJOR omdat de ondersteunde
 Python-minorversies van 3.11–3.14 naar uitsluitend 3.14 veranderen. Een
 gebruiker met Python 3.11–3.13 moet eerst Python 3.14 installeren en een

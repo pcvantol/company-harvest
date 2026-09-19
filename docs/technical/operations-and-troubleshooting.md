@@ -8,6 +8,12 @@
 - `run prepare-pre-kvk` kan lang duren en veel lokale schijfruimte gebruiken:
   inspecteer eerst de bron- en evidencegates; dezelfde run hergebruikt afgeronde
   downloadartefacten en een identieke master.
+- De publieke v3.0.0-wheel kan op actuele brondata vóór KVK stoppen met
+  `_csv.Error: field larger than field limit (131072)`. Er is dan geen
+  gefilterde input of eind-Excel. Bronversie 3.0.1 zet de grens begrensd op
+  1.048.576 tekens per veld; bij overschrijding blijft de invoer intact en meldt de CLI
+  een recordvrije validatiefout. Hervat uitsluitend dezelfde run na
+  installatie van een nieuw gekwalificeerde wheel.
 - `kvk pre-kvk-batch` produceert alleen `PARTIAL`-uitkomsten; voer geen
   `kvk consolidate`/export op basis hiervan uit.
 - `kvk pre-kvk-run` bewaart journal, voortgangs-JSON en tussentijdse TSV's

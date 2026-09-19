@@ -1,12 +1,15 @@
 # Documentatie
 
-De huidige broncode en publieke wheel zijn **3.0.0**. Zij bevatten
+De huidige broncode is **3.0.1 (nog niet gepubliceerd)**; de publieke wheel
+blijft **3.0.0**. Beide bevatten
 TenderNed als vijfde bron en een afzonderlijke lichte KVK-/bronexport.
 Versie 2.0.0 was de vorige release zonder die functies, maar de publieke
 release en tag zijn inmiddels ingetrokken; gebruik voor nieuwe installaties
 alleen 3.0.0.
-Handleidingen hieronder beschrijven 3.0.0, tenzij zij expliciet als
-historisch zijn gemarkeerd. Zie ook
+Handleidingen hieronder beschrijven het publieke 3.0.0-contract en
+markeren de 3.0.1-parsercorrectie afzonderlijk; 3.0.0 stopte in een
+[live E2E-proef](measurements/20260919-v3-live-wheel-e2e-10-blocked.md)
+vóór KVK. Zie ook
 [versies en migraties](technical/versioning-and-migrations.md).
 
 - Canonieke koers en uitvoeringsvolgorde: [roadmap](../ROADMAP.md).

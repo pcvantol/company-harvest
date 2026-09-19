@@ -22,6 +22,11 @@ from typing import Any
 
 RUN_SCHEMA_VERSION = 1
 HTTP_USER_AGENT = "company-lookup/0.1"
+# Bronbewijs kan één TSV-veld groter dan de stdlib-default van 131072 tekens maken.
+# De csv-parserlimiet is procesbreed; houd haar expliciet begrensd voor alle
+# lezers van master, filter, cohort, journal-snapshot en exportcontext.
+CSV_FIELD_SIZE_LIMIT = 1024 * 1024
+csv.field_size_limit(CSV_FIELD_SIZE_LIMIT)
 KVK_RE = re.compile(r"^[0-9]{8}$", re.ASCII)
 SECRET_RE = re.compile(r"(?i)(authorization|cookie|token|secret|password)([=: ]+)([^\s,;]+)")
 _RUN_LOCKS = threading.local()

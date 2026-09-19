@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -45,6 +46,53 @@ def _response(run: Run, query: str, number: str, sequence: int) -> ProviderResul
         "naam": name, "kvkNummer": number, "plaats": "Utrecht", "land": "Nederland",
         "rechtsvorm": "Besloten vennootschap", "status": "Actief",
     }], True, "public-http", str(evidence.relative_to(run.path)))
+
+
+def test_large_source_payload_survives_full_offline_e2e(
+    run: Run, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sources = _full_sources(run)
+    rows = read_tsv(sources["ind_arbeid"])
+    wide = "x" * 159_763
+    next(row for row in rows if row["source_kvk_hint"] == "34567890")["employees_raw"] = wide
+    replacement = run.artifact_path("02", "source_ind_wide", "csv")
+    write_tsv(replacement, RAW_HEADERS, rows)
+    run.register_artifact(replacement, "02", "source_ind_arbeid")
+    observations = run.metadata()["runtime_config"]["source_observations"]
+    observations["ind_arbeid"]["source_artifact"] = {
+        "path": str(replacement.relative_to(run.path)),
+        "sha256": sha256(replacement), "size": replacement.stat().st_size,
+    }
+    run.record_config("source_observations", observations)
+    monkeypatch.setattr(end_to_end, "prepare_pre_kvk", _prepare)
+    calls: list[str] = []
+
+    def search(provider: object, query: str) -> ProviderResult:
+        calls.append(query)
+        return _response(provider.run, query, query, len(calls))  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
+    result = end_to_end.run_end_to_end(run, 1)
+    master = run.latest_artifact("03", "pre_kvk_master")
+    assert master is not None
+    candidate = next(row for row in read_tsv(master) if row["source_kvk_hint"] == "34567890")
+    assert json.loads(candidate["source_payloads_json"])[0]["employees_raw"] == wide
+    assert len(candidate["source_payloads_json"]) > 131_072
+    assert calls == ["34567890"] and result["delivery_rows"] == 1 and result["audit_valid"]
+    assert (Path(result["outputset_manifest"]).parent / "companies_delivery_light.xlsx").is_file()
+
+
+def test_cli_reports_csv_limit_without_field_value(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail(_args: object) -> None:
+        raise csv.Error("sensitive source value")
+
+    monkeypatch.setattr(cli, "dispatch", fail)
+    assert cli.main(["doctor"]) == 3
+    captured = capsys.readouterr()
+    assert "1048576" in captured.err
+    assert "sensitive source value" not in captured.err
 
 
 def test_holding_label_survives_number_only_e2e_with_renamed_kvk_result(

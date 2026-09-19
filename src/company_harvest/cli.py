@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
 import re
@@ -16,7 +17,14 @@ from company_harvest.audit import trace, verify
 from company_harvest.console import active as console_active
 from company_harvest.console import emit, error_text, phase
 from company_harvest.console import result as console_result
-from company_harvest.core import HarvestError, Run, data_root, initialize_run, open_run
+from company_harvest.core import (
+    CSV_FIELD_SIZE_LIMIT,
+    HarvestError,
+    Run,
+    data_root,
+    initialize_run,
+    open_run,
+)
 from company_harvest.end_to_end import run_end_to_end
 from company_harvest.gleif import collect_gleif
 from company_harvest.kvk import preflight as kvk_preflight
@@ -314,6 +322,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             emit("WARN", "Onderbroken; voortgang is gecheckpoint")
             print("ONDERBROKEN: voortgang is gecheckpoint; hervat de bestaande run", file=sys.stderr)
             return 130
+        except csv.Error:
+            emit("FOUT", "CSV/TSV-invoer ongeldig of boven de veldlimiet")
+            print(f"FOUT: CSV/TSV-invoer ongeldig of veld groter dan {CSV_FIELD_SIZE_LIMIT} tekens", file=sys.stderr)
+            return 3
         except Exception as exc:
             emit("FOUT", "Onverwachte technische fout")
             print(f"FOUT: onverwachte technische fout ({type(exc).__name__})", file=sys.stderr)

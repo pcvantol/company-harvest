@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Bronversie 3.0.1 herstelt de CSV-/TSV-parser voor verliesvrije
+  bronbewijsvelden boven Python's standaardgrens: één begrensde limiet van
+  1.048.576 tekens per veld geldt voor master, filter, cohort, KVK-snapshot en export.
+  Een grotere of ongeldige invoer geeft een recordvrije validatiefout.
+  Synthetische volledige E2E- en grensregressies toegevoegd
+  (CH-2026-09-19-040, ADR-018). Nog niet gepubliceerd.
+
 - Live proef van de ongewijzigde publieke 3.0.0-wheel met vijf volledige
   bronnen en maximaal tien KVK-checks stopte vóór de KVK-fase: één
   `source_payloads_json`-veld in de master overschrijdt Python's standaard

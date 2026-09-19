@@ -7,7 +7,10 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-De actuele publieke release en broncode zijn versie 3.0.0 en vereisen uitsluitend Python 3.14.x. De ingetrokken v1.0.0-wheel
+De actuele publieke release is 3.0.0; de broncode is de nog niet gepubliceerde
+patchversie 3.0.1. Beide vereisen uitsluitend Python 3.14.x. De publieke
+3.0.0-wheel heeft een [bekende live parserblokkade](docs/measurements/20260919-v3-live-wheel-e2e-10-blocked.md)
+vóór de KVK-check; de 3.0.1-bron bevat een begrensde correctie. De ingetrokken v1.0.0-wheel
 had een breder historisch compatibiliteitscontract.
 
 Nieuwe runs en bestanden vanaf 2.0.0 krijgen
@@ -23,7 +26,7 @@ hervatbare langlopende opdracht worden geraadpleegd. Die opdracht doet niets
 automatisch bij installatie of starten. Een gesloten kandidatenlijst is nog
 geen bewijs voor 10.000 actieve, geverifieerde bedrijven.
 
-Versie 3.0.0 behoudt `run e2e` voor een
+Vanaf versie 3.0.0 behoudt `run e2e` een route voor een
 expliciete verwerking van downloads tot geaudite eindlijst. Met
 `--limit-kvk-check 50` wordt vóór de eerste KVK-aanroep een vaste cohort
 gebonden: ook na hervatten maximaal 50 KVK-kandidaten en maximaal 50
@@ -66,7 +69,7 @@ De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de
 De [publieke release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0)
 bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
 en checksums; zie ook het [publicatiebewijs](docs/releases/20260919-v3.0.0-evidence.md).
-Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de actuele
+Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de publieke
 compatibiliteit en grenzen. Alle GitHub Releases en lokale/remote tags onder
 3.0, inclusief `v2.0.0`, zijn op verzoek ingetrokken. De historische
 [releasenotities](docs/releases/README.md) en publicatiebewijzen blijven als

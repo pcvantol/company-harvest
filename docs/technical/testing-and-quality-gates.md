@@ -7,6 +7,9 @@ JSON-versus-tekstuitvoer en expliciet de doorgifte van optiecombinaties per
 commandofamilie. De pre-KVK-filtertests bewaken dat bijna-gelijke namen met
 verschillende KVK-hints niet stil worden samengevoegd. Een offline E2E-proef
 blijft de gedeelde keten met gemockte KVK-verzoeken toetsen.
+Vanaf bronversie 3.0.1 bewaken synthetische regressies bovendien een
+159.763-tekens bronpayload langs master→filter→cohort→KVK-mock→export,
+verliesvrij teruglezen, afwijzing boven 1.048.576 tekens en een recordvrije CLI-fout.
 
 CI doet geen live harvest. Live bron-/KVK-smokes blijven lokaal en klein. De actieve
 CI-matrix bestaat uitsluitend uit Python 3.14 op `macos-latest` en `windows-latest`.
