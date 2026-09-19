@@ -5,7 +5,8 @@ Packageversie is gezaghebbend in `pyproject.toml`; CLI/changelog/tag gebruiken d
 De actuele bronversie **3.0.1** is een nog niet gepubliceerde patch op de
 publieke 3.0.0-wheel: de begrensde CSV-veldparser en foutmelding wijzigen,
 en drie in een begrensde live proef waargenomen zakelijke KVK-veldpaden
-worden gericht toegelaten in de lichte export. Run-, database- en
+worden gericht toegelaten in de lichte export. Ontbrekende optionele
+exportvelden worden voor de eindaudit expliciet leeg geprojecteerd. Run-, database- en
 outputsetschema blijven gelijk. Een v3.0.0-run
 die vóór KVK op de veldgrens stopte kan met 3.0.1 dezelfde runmap hervatten
 na de gebruikelijke hash-/configvalidatie; maak geen nieuwe run als omweg

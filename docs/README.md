@@ -10,7 +10,8 @@ Handleidingen hieronder beschrijven het publieke 3.0.0-contract en
 markeren de 3.0.1-parsercorrectie en gerichte lichte-veldtoelating
 afzonderlijk; 3.0.0 stopte in een
 [live E2E-proef](measurements/20260919-v3-live-wheel-e2e-10-blocked.md)
-vóór KVK. Zie ook
+vóór KVK. De lokale 3.0.1-wheel [slaagde daarna](measurements/20260919-v301-local-wheel-e2e-10-pass.md)
+voor een begrensde tiennummerproef, inclusief eind-Excel en audit. Zie ook
 [versies en migraties](technical/versioning-and-migrations.md).
 
 - Canonieke koers en uitvoeringsvolgorde: [roadmap](../ROADMAP.md).

@@ -29,5 +29,8 @@ functies niet. De exacte macOS-/PowerShell-commando's staan in de
 [E2E-handleiding](../functional/e2e-command.md). De 3.0.0-wheel kan na
 download en hashcontrole zonder broncheckout worden geïnstalleerd.
 De publieke 3.0.0-wheel kan op een groot bronbewijsveld vóór KVK stoppen;
-de broncode voor 3.0.1 herstelt dit begrensd, maar is pas als schone-machine-
-wheel bruikbaar na een afzonderlijke gekwalificeerde build.
+een lokaal gebouwde en in een schone omgeving geïnstalleerde 3.0.1-wheel
+herstelde dit begrensd en voltooide een maximaal-tien-KVK-proef met geldige
+eindaudit. Deze patch is nog niet gepubliceerd; gebruik dus niet de publieke
+3.0.0-installatieroute als bewijs van de fix. Zie de
+[lokale kwalificatiemeting](../measurements/20260919-v301-local-wheel-e2e-10-pass.md).

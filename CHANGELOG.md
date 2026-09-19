@@ -14,6 +14,9 @@
   onbekende metadata blijft geblokkeerd. De lichte rijprojectie vult
   ontbrekende optionele velden nu expliciet met leegte, zodat de afsluitende
   audit ook bij ongelijke veldsets per KVK-hit slaagt. Nog niet gepubliceerd.
+  De definitieve lokale wheel doorliep een begrensde vijfbronnen-E2E met
+  tien geslaagde nummerchecks, acht eindrijen en geldige partiële eindaudit;
+  dit is geen schaal- of publieke-releasebewijs.
 
 - Live proef van de ongewijzigde publieke 3.0.0-wheel met vijf volledige
   bronnen en maximaal tien KVK-checks stopte vóór de KVK-fase: één

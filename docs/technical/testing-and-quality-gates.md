@@ -10,6 +10,12 @@ blijft de gedeelde keten met gemockte KVK-verzoeken toetsen.
 Vanaf bronversie 3.0.1 bewaken synthetische regressies bovendien een
 159.763-tekens bronpayload langs master→filter→cohort→KVK-mock→export,
 verliesvrij teruglezen, afwijzing boven 1.048.576 tekens en een recordvrije CLI-fout.
+Extra regressies toetsen de drie live waargenomen zakelijke KVK-velden,
+symmetrische postadres-toevoeging, blijvend verbod op onbekende metadata en
+gelijke lichte rijen in export/audit als optionele velden per hit verschillen.
+De definitieve lokale 3.0.1-broncommit doorliep 259 tests en alle overige
+lokale kwaliteitspoorten; [de proefmeting](../measurements/20260919-v301-local-wheel-e2e-10-pass.md)
+bewijst een begrensde live E2E, niet macOS-/Windows-CI of schaalgedrag.
 
 CI doet geen live harvest. Live bron-/KVK-smokes blijven lokaal en klein. De actieve
 CI-matrix bestaat uitsluitend uit Python 3.14 op `macos-latest` en `windows-latest`.

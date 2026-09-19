@@ -4,9 +4,12 @@
 > v3.0.0-wheel haalde alle vijf bronnen binnen, maar stopte op één te lang
 > CSV-veld bij de pre-KVK-filter. Er waren nul KVK-verzoeken en er ontstond
 > geen eind-Excel. Zie het [meetverslag](../measurements/20260919-v3-live-wheel-e2e-10-blocked.md).
-> De nog niet gepubliceerde bronversie 3.0.1 bevat een begrensde parserfix;
-> de onderstaande installatiecommando's voor de publieke 3.0.0-wheel
-> bevatten die fix **niet**. Een volledige live E2E-slaagkans is nog niet bewezen.
+> De nog niet gepubliceerde 3.0.1-wheel bevat een begrensde parserfix en
+> gerichte lichte-exportcorrecties. Een [lokale proef met tien nummers](../measurements/20260919-v301-local-wheel-e2e-10-pass.md)
+> hervatte de vijfbronnenketen vanaf eerder gevalideerde downloads en rondde
+> KVK-controle, export en audit af. De onderstaande installatiecommando's
+> voor de publieke 3.0.0-wheel
+> bevatten deze fixes **niet**. Een onbeperkte live verwerking is niet bewezen.
 
 `run e2e` verbindt de bestaande stappen 1–8: hostcheck, volledige downloads
 van IND/GLEIF/ANBI/DUO/TenderNed, samenvoegen/dedupliceren, pre-KVK-filter, publieke
