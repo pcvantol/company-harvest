@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import socket
 from pathlib import Path
@@ -16,16 +17,45 @@ from company_harvest.kvk import ProviderResult, PublicHttpProvider
 from company_harvest.sources import RAW_HEADERS
 
 
+def _local_ipc(family: int, address: object) -> bool:
+    if family == getattr(socket, "AF_UNIX", None):
+        return True
+    if family not in {socket.AF_INET, socket.AF_INET6} or not isinstance(address, tuple):
+        return False
+    try:
+        return ipaddress.ip_address(address[0]).is_loopback
+    except (ValueError, TypeError, IndexError):
+        return False
+
+
+def test_network_guard_rejects_nonlocal_connections() -> None:
+    assert _local_ipc(socket.AF_INET, ("127.0.0.1", 1))
+    assert _local_ipc(socket.AF_INET6, ("::1", 1))
+    assert not _local_ipc(socket.AF_INET, ("8.8.8.8", 443))
+    assert not _local_ipc(socket.AF_INET, ("example.org", 443))
+    assert not _local_ipc(socket.AF_INET, "malformed")
+
+
 def test_offline_cli_e2e_from_sources_to_audited_export(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Eén lege run, drie KVK-mocks, eenmanszaak eruit, audit en veilig hervatten."""
 
-    def no_network(*_args: object, **_kwargs: object) -> None:
-        pytest.fail("de CI-E2E-proef mag geen netwerkverbinding openen")
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
 
-    monkeypatch.setattr(socket.socket, "connect", no_network)
-    monkeypatch.setattr(socket.socket, "connect_ex", no_network)
+    def guarded_connect(sock: socket.socket, address: object) -> None:
+        if not _local_ipc(sock.family, address):
+            pytest.fail("de CI-E2E-proef mag geen externe netwerkverbinding openen")
+        original_connect(sock, address)
+
+    def guarded_connect_ex(sock: socket.socket, address: object) -> int:
+        if not _local_ipc(sock.family, address):
+            pytest.fail("de CI-E2E-proef mag geen externe netwerkverbinding openen")
+        return original_connect_ex(sock, address)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", guarded_connect_ex)
     sources: list[str] = []
     monkeypatch.setattr(prepare, "discover", lambda _run: sources.append("discover"))
 

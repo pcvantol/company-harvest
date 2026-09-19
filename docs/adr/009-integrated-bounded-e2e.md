@@ -36,7 +36,8 @@ dezelfde registratiestatus, grootte en hash aanwijzen. Alleen de melding
 Aanvulling CH-2026-09-19-023: elke CI-platformjob doorloopt een expliciete
 offline E2E-integratiepoort met echte CLI-orkestratie en downstreamverwerking,
 maar synthetische broncollectors en een gemockte KVK-zoekfunctie. De poort
-verbiedt netwerkverbindingen en toetst output, audit en hervatten. Live
+verbiedt niet-lokale netwerkverbindingen, maar laat lokale Playwright-IPC toe,
+en toetst output, audit en hervatten. Live
 bron-/KVK-capability blijft bewust buiten CI en krijgt geen impliciete PASS.
 
 Een eerder lokaal gejournalde toegangs-/rateblokkade verhindert een nieuwe
