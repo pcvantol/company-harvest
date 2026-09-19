@@ -4,6 +4,13 @@
 
 Een lokale build is geen publieke release. Een tag zonder asset evenmin. Releasebewijs staat per versie in `docs/releases/`; echte downloadlinks worden pas na succesvolle publicatie vastgelegd.
 
+De [lokale 4.0.0-bouw](../releases/20260919-v4.0.0-local-build.md)
+van CH-2026-09-19-044 slaagde voor een verse installatie en synthetische
+workflow-/auditproef; er is geen tag, publieke asset of anonieme
+herdownload. De build hoort exact bij de in het manifest genoemde
+broncommit. Na een evidencecommit is voor een toekomstige publicatie
+een nieuwe build van de dan actuele commit nodig.
+
 De actuele [v3.0.0-release](../releases/v3.0.0.md) bevat de vijfbronnenketen
 en lichte export. Het [distributiebewijs](../releases/20260919-v3.0.0-evidence.md)
 legt exacte-commit-CI, conceptcontrole, publicatie en anonieme herdownload

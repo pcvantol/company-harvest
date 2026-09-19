@@ -1,7 +1,8 @@
 # Releases
 
-De huidige bronversie 4.0.0 is lokaal hernoemd naar **Company Lookup**,
-maar nog niet als publieke release gepubliceerd. De hieronder genoemde
+De huidige bronversie 4.0.0 heet **Company Lookup** en heeft een
+[gekwalificeerde lokale distributiebouw](20260919-v4.0.0-local-build.md),
+maar is nog niet als publieke release gepubliceerd. De hieronder genoemde
 3.0.0-wheel en historische releases behouden hun oorspronkelijke
 assetnamen en checksums; hernoemen van de GitHub-repository verandert de
 bytes van die assets niet.
@@ -31,7 +32,6 @@ De 3.0.0-wheel bevat TenderNed als vijfde bron, onbeperkte export binnen
 de gekozen KVK-cohort en `companies_delivery_light.xlsx`. Deze functies
 horen niet bij de oudere 2.0.0-wheel; zie
 [het huidige outputcontract](../functional/output-files.md).
-De nieuwe `run pre-kvk`-opdracht hoort bij de nog ongepubliceerde
-bronversie 3.1.0. Een tijdelijke lokale wheel is op import/CLI-help
-gecontroleerd, maar niet als release gekwalificeerd of gepubliceerd;
-de publieke 3.0.0-release bevat dit commando niet.
+De nieuwe `run pre-kvk`-opdracht ontstond in de ongepubliceerde
+bronversie 3.1.0 en zit nu ook in de lokaal gekwalificeerde 4.0.0-wheel.
+De publieke 3.0.0-release bevat dit commando niet.

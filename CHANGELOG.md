@@ -10,6 +10,10 @@
   oude runs en publieke releaseassets worden niet herschreven. De GitHub-
   repository is hernoemd naar `pcvantol/company-lookup` en de lokale remote
   bijgewerkt (CH-2026-09-19-043, ADR-020). Nog geen publieke 4.0.0-release.
+- De 4.0.0-wheel, sdist en online bundel zijn uit een schone broncommit
+  lokaal gebouwd en met verse installatie, synthetische workflows, audits,
+  checksums en assetscan gekwalificeerd; nog geen tag of publieke release
+  (CH-2026-09-19-044).
 
 ## Unreleased — 3.1.0
 
