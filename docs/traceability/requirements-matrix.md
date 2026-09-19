@@ -10,7 +10,7 @@
 | CH-DATA-004 | Lokale data buiten publicatie | `.gitignore`, `quality.scan` | publicatiescan |
 | CH-KVK-001 | Publieke HTTP alleen na observatie | ADR-001, `PublicHttpProvider` | preflighttests |
 | CH-KVK-002 | Playwright gewone frontendfallback | `PublicBrowserProvider` | gemockte/browser smoke |
-| CH-KVK-003 | Geen fallback bij blokkade/rate limit | `kvk.resolve`, cooldowns | foutpadtests |
+| CH-KVK-003 | Geen fallback bij blokkade/rate limit | `kvk.resolve`, cooldowns | foutpadtests; [begrensde live blokkade](../measurements/20260919-step9-e2e-blocked.md) |
 | CH-KVK-SMOKE-001 | Een expliciete kleine publieke frontendmeting mag niet ongemerkt tot bulk of een productprovider uitgroeien | RD-001; geïsoleerde lokale runner buiten wheel | [tien-GET-meting](../measurements/20260919-kvk-frontend-batch10.md), onafhankelijke pre-/postreview; R7 blijft `PARKED` |
 | CH-RES-001 | Unieke run, SQLite, lock, snapshots | ADR-003, `core.py` | recoverytests |
 | CH-RES-002 | Resume/requestjournal/cooldown | `kvk.py` | resumetests |
@@ -18,7 +18,7 @@
 | CH-SEC-001 | Bounds, allowlists, redactie | `sources.py`, `core.redact` | securitytests |
 | CH-MERGE-001 | CSV/TSV/XLSX + aliases/overrides | `merge_lists.py` | mergetests |
 | CH-MERGE-002 | Conflictpolicies exact | ADR-002, `merge_lists.merge_lists` | policytests |
-| CH-MERGE-003 | Geen netwerk/filter/limiet | `merge_lists.py` | offline E2E |
+| CH-MERGE-003 | Geen netwerk/filter/limiet | `merge_lists.py` | offline E2E; [volledige broninname en self-merge](../measurements/20260919-step9-e2e-blocked.md) (geen echte eindlijstmerge) |
 | CH-TEST-001 | >80% per file | ADR-004, `tools/check_coverage.py` | qualityrapport |
 | CH-TEST-002 | Onafhankelijke subagentreview | `docs/reviews/` | reviewdocument |
 | CH-DIST-001 | Wheel/sdist/bundle uit broncommit | `tools/release.py` | manifest/installtest |
