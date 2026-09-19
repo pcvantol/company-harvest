@@ -11,6 +11,7 @@
 | CH-KVK-001 | Publieke HTTP alleen na observatie | ADR-001, `PublicHttpProvider` | preflighttests |
 | CH-KVK-002 | Playwright gewone frontendfallback | `PublicBrowserProvider` | gemockte/browser smoke |
 | CH-KVK-003 | Geen fallback bij blokkade/rate limit | `kvk.resolve`, cooldowns | foutpadtests |
+| CH-KVK-SMOKE-001 | Een expliciete kleine publieke frontendmeting mag niet ongemerkt tot bulk of een productprovider uitgroeien | RD-001; geïsoleerde lokale runner buiten wheel | [tien-GET-meting](../measurements/20260919-kvk-frontend-batch10.md), onafhankelijke pre-/postreview; R7 blijft `PARKED` |
 | CH-RES-001 | Unieke run, SQLite, lock, snapshots | ADR-003, `core.py` | recoverytests |
 | CH-RES-002 | Resume/requestjournal/cooldown | `kvk.py` | resumetests |
 | CH-SEC-001 | Bounds, allowlists, redactie | `sources.py`, `core.redact` | securitytests |

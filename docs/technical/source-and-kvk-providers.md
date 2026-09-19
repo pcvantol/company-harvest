@@ -14,6 +14,13 @@ KVK gebruikt uitsluitend de functionaliteit achter `https://www.kvk.nl/zoeken/`.
 
 Zowel de directe bron-/KVK-clients als de Playwright-browsercontext gebruiken `company-lookup/0.1`. De browsertest controleert de contextoptie expliciet; er wordt geen persoonlijke URL of gebruikersnaam meegestuurd.
 
+Een [geïsoleerde tien-querysmoke op 2026-09-19](../measurements/20260919-kvk-frontend-batch10.md)
+gebruikte exact één eerste-pagina-GET per kandidaat op de waargenomen route,
+zonder automatische pagina's of retries. De eenmalige lokale runner is bewust
+geen productprovider of wheelonderdeel. Tien status-200-responses tonen bereikbaarheid
+van de route voor deze batch, maar zijn geen bulk-, gebruiksrecht- of
+verificatiesemantiekbewijs.
+
 Geraadpleegd 2026-09-18: KVK-gebruikersvoorwaarden (bijgewerkt 2026-06-17) vermelden aanvullende voorwaarden voor grootschalig opvragen/hergebruik; de IND-bronpagina meldt maandelijkse actualisatie en op 2026-09-03 bijgewerkte data, terwijl de IND-proclaimer hergebruik met bronvermelding toestaat; Wikidata beschrijft de gestructureerde data als CC0 en verlangt herkenbare, beheerste toegang; Playwright documenteert response-observatie. Live veldsemantiek blijft `UNKNOWN` totdat gemeten.
 
 R4 implementeert GLEIF Level 1 Golden Copy als afzonderlijke bulkadapter via `sources

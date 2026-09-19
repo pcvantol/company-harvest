@@ -6,3 +6,7 @@ HARVEST bestaat uit bronnen inventariseren, bronrecords verzamelen, voorzichtig 
 
 Requirement-ID's en bewijs staan in de [traceabilitymatrix](../traceability/requirements-matrix.md). `UNKNOWN`, technische fouten en niet-verwerkte kandidaten worden nooit als geldige eindbedrijven behandeld. Een onderdoel mag eerlijk worden opgeleverd; fictieve aanvulling niet.
 
+De kleine publieke KVK-frontendmetingen leveren hoogstens voorlopig
+identiteitsbewijs. De geïsoleerde [tien-querymeting van 2026-09-19](../measurements/20260919-kvk-frontend-batch10.md)
+kwalificeert geen 500-recordbulk, definitieve rechtsvorm-/statusverificatie of
+productieharvest; het R7-besluit blijft geparkeerd.

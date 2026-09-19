@@ -463,6 +463,10 @@ Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
 
 Zolang R7 `PARKED` is, zijn bulkgebruik van een KVK-provider en volledige KVK-verificatie op 500/10.000 records niet release- of productiegekwalificeerd. Dit blokkeert niet het bewaren van kandidaten, onderlinge bronkoppeling of begrensde matching en verrijking naar een KVK-nummer.
 
+De [afzonderlijke tien-GET-capability-smoke van 2026-09-19](docs/measurements/20260919-kvk-frontend-batch10.md)
+is als kleine regressiemeting beoordeeld, niet als activering van R7 of vrijgave
+voor de 500-recordbulk.
+
 ## 13. R8 — Begrensde KVK-nummermatchingpilot
 
 Status: `DONE`; implementatie, echte 50-recordmeting, hashgebonden review en
