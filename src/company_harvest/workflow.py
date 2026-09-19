@@ -28,6 +28,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
+from company_harvest.kvk_scope import scope_details
 
 OUTCOME_REPORT_SCHEMA_VERSION = 1
 
@@ -217,16 +218,26 @@ def write_xlsx(path: Path, headers: list[str], rows: list[dict[str, Any]]) -> No
 
 
 def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
+    if type(limit) is not int or limit < 1:
+        raise HarvestError("exportlimiet moet positief zijn")
+    scope = scope_details(run)
+    if scope is not None:
+        if int(scope["not_checked_rows"]) > 0 and not allow_partial:
+            raise HarvestError("begrensde KVK-proef vereist expliciet --allow-partial")
+        limit = min(limit, int(scope["limit_kvk_check"]))
     source = run.latest_artifact("07", "active")
     if not source:
         raise HarvestError("voer eerst active-only uit")
     rows = read_tsv(source)
+    if scope is not None and len(rows) > int(scope["selected_rows"]):
+        raise HarvestError("actieve KVK-populatie overschrijdt de begrensde cohort")
     unresolved = run.latest_artifact("05", "kvk_unresolved")
     if unresolved and read_tsv(unresolved) and not allow_partial:
         raise HarvestError("run bevat unresolved/onverwerkte kandidaten; gebruik bewust --allow-partial")
     ranked = sorted(rows, key=lambda row: hashlib.sha256(("company-harvest-v1\0" + row["KVK-nummer"]).encode()).digest())
     selected = ranked[:limit]
     reserve = ranked[limit:]
+    status = "PARTIAL" if allow_partial else "COMPLETE"
     selected.sort(key=lambda row: (normalize_name(row["Bedrijfsnaam"]), row["KVK-nummer"]))
     headers = list(rows[0]) if rows else ["Bedrijfsnaam", "KVK-nummer"]
     minimal = ["Bedrijfsnaam", "KVK-nummer"]
@@ -244,7 +255,21 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
         write_tsv(staged[4], headers, reserve)
         kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
         manifest_staged = staging / "outputset_manifest.json"
-        manifest_staged.write_text(json.dumps({"schema": 1, "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(staged, kinds, strict=True)]}, indent=2) + "\n", encoding="utf-8")
+        manifest_payload: dict[str, Any] = {
+            "schema": 1,
+            "status": status,
+            "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(staged, kinds, strict=True)],
+        }
+        if scope is not None:
+            manifest_payload["kvk_scope"] = {
+                "limit_kvk_check": scope["limit_kvk_check"],
+                "full_eligible_rows": scope["full_eligible_rows"],
+                "selected_rows": scope["selected_rows"],
+                "not_checked_rows": scope["not_checked_rows"],
+                "full_eligible_sha256": scope["full_eligible_sha256"],
+                "scoped_sha256": scope["scoped_sha256"],
+            }
+        manifest_staged.write_text(json.dumps(manifest_payload, indent=2) + "\n", encoding="utf-8")
         os.replace(staging, final)
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
@@ -252,7 +277,6 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
     paths = [final / name for name in names]
     kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
     manifest = final / "outputset_manifest.json"
-    status = "PARTIAL" if allow_partial else "COMPLETE"
     run.register_artifact_set([(path, "08", kind, status) for path, kind in zip(paths, kinds, strict=True)] + [(manifest, "08", "outputset_manifest", status)])
     run.record_config("export", {"limit": limit, "allow_partial": allow_partial})
     run.update_status("PARTIAL_EXPORTED" if allow_partial else "EXPORT_COMPLETE", "08")
@@ -350,11 +374,14 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
 
     candidate_path = run.latest_artifact("03", "candidates")
     pre_kvk_candidate_path = run.latest_artifact("03", "pre_kvk_eligible")
+    scope = scope_details(run)
     decision_path = run.latest_artifact("03", "dedup_decisions")
     conflict_path = run.latest_artifact("03", "dedup_conflicts")
     candidates = read_tsv(candidate_path) if candidate_path else []
-    terminal_candidate_count = (len(read_tsv(pre_kvk_candidate_path))
-                                if pre_kvk_candidate_path else len(candidates))
+    full_eligible_count = (len(read_tsv(pre_kvk_candidate_path))
+                           if pre_kvk_candidate_path else len(candidates))
+    terminal_candidate_count = (int(scope["selected_rows"]) if scope is not None
+                                else full_eligible_count)
     decisions = read_tsv(decision_path) if decision_path else []
     conflicts = read_tsv(conflict_path) if conflict_path else []
     unique_before = {
@@ -415,6 +442,13 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
 
     def count_artifact(step: str, kind: str) -> tuple[Path | None, int | None]:
         artifact = run.latest_artifact(step, kind)
+        if artifact is None and step == "08" and metadata.get("status") == "PARTIAL_EXPORTED":
+            with run.connect() as connection:
+                entry = connection.execute(
+                    "SELECT path FROM artifacts WHERE step='08' AND kind=? AND status='PARTIAL' "
+                    "ORDER BY id DESC LIMIT 1", (kind,),
+                ).fetchone()
+            artifact = run.path / entry["path"] if entry else None
         return artifact, len(read_tsv(artifact)) if artifact else None
 
     matches_path, matches_count = count_artifact("04", "kvk_matches")
@@ -486,6 +520,8 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
         overall_closure = "COMPLETE_CLOSED"
     else:
         overall_closure = "PARTIAL_CLOSED"
+    if scope is not None and int(scope["not_checked_rows"]) > 0 and overall_closure == "COMPLETE_CLOSED":
+        overall_closure = "BOUNDED_CLOSED"
 
     peak_memory_bytes, peak_memory_status = _peak_memory()
     created_at = datetime.fromisoformat(str(metadata["created_at"]))
@@ -517,7 +553,9 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
             "invalid_registration_numbers": invalid_total,
             "unique_candidates_before_deduplication": len(unique_before),
             "unique_candidates_after_deduplication": len(candidates),
-            **({"pre_kvk_eligible_candidates": terminal_candidate_count} if pre_kvk_candidate_path else {}),
+            **({"pre_kvk_eligible_candidates": full_eligible_count} if pre_kvk_candidate_path else {}),
+            **({"kvk_check_scope_candidates": terminal_candidate_count,
+                "kvk_not_checked_out_of_scope": int(scope["not_checked_rows"])} if scope is not None else {}),
             "identical_merges": sum(max(int(row.get("input_count") or 0) - 1, 0) for row in decisions if row.get("decision") == "MERGED_IDENTICAL"),
             "conflict_records": len(conflicts),
             "review_case_records": missing_total + invalid_total + len(conflicts),
@@ -574,6 +612,12 @@ def report(run: Run) -> Path:
     resources = metrics["resources"]
     lines = ["# Runrapport", "", f"- Run: `{metadata['run_id']}`", f"- Workflow: `{metadata['workflow']}`", f"- Doel: {metadata['target']}", f"- HTTP User-Agent: `{metrics['http_user_agent']}`", f"- Actieve eindpopulatie: {active_count}", f"- Alle input verwerkt: **{str(input_complete).lower()}**", f"- Doelaantal bereikt: **{str(target_reached).lower()}**", f"- Uitvoering/export voltooid: **{str(metadata.get('status') in {'EXPORT_COMPLETE', 'COMPLETE'}).lower()}**", f"- Gegenereerd: {metrics['generated_at']}", "", "## Outcome-meting", "", f"- Ruwe records: {counts['raw_records']}", f"- Geldige directe KVK-nummers: {counts['valid_registration_numbers']}", f"- Zonder direct KVK-nummer: {counts['without_direct_registration_number']}", f"- Unieke kandidaten vóór/na deduplicatie: {counts['unique_candidates_before_deduplication']} / {counts['unique_candidates_after_deduplication']}", f"- Identieke merges: {counts['identical_merges']}", f"- Conflict-/reviewrecords: {counts['conflict_records']} / {counts['review_case_records']}", f"- Bronfamilies: {diversity['source_family_count']}; grootste kandidaataandeel: {diversity['largest_candidate_family_share']:.3f}", f"- Count-closure: **{closure['status']}**", f"- Doorlooptijd: {resources['duration_seconds']:.3f}s; piekgeheugen: {resources['peak_memory_bytes']}; SQLite-/evidencegroei: {resources['sqlite_growth_bytes']} / {resources['evidence_growth_bytes']} bytes", f"- Machineleesbaar rapport: `{outcome_path.relative_to(run.path)}`", "", "### Count-closure per overgang", "", "| Overgang | Status | Input | Output | Delta |", "|---|---|---:|---:|---:|"]
     lines.extend(f"| {name} | {item['status']} | {item['input']} | {item['output']} | {item['delta']} |" for name, item in closure["transitions"].items())
+    if "kvk_check_scope_candidates" in counts:
+        lines.extend(["", "## Begrensde KVK-cohort", "",
+                      f"- Geselecteerde kandidaten: {counts['kvk_check_scope_candidates']}",
+                      f"- Buiten deze run niet bevraagd: {counts['kvk_not_checked_out_of_scope']}"])
+        if counts["kvk_not_checked_out_of_scope"]:
+            lines.append("- Dit is een partiële selectie uit de volledige pre-KVK-lijst, geen volledige harvest.")
     lines.extend(["", "### Per bron", "", "| Bron | Familie | Ruw | Geldig KVK | Ontbrekend | Ongeldig | Rechtsvorm ontbreekt | Status ontbreekt |", "|---|---|---:|---:|---:|---:|---:|---:|"])
     lines.extend(f"| {item['source_id']} | {item['source_family']} | {item['raw_records']} | {item['valid_registration_numbers']} | {item['missing_registration_numbers']} | {item['invalid_registration_numbers']} | {item['missing_legal_form']} | {item['missing_status']} |" for item in metrics["sources"])
     lines.extend(["", "Er zijn bewust nog geen succesdrempels vastgesteld; die volgen pas uit R2/R3-metingen.", "", "## KVK-requeststatus", ""])

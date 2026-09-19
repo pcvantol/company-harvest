@@ -7,7 +7,7 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-Nieuwe runs en bestanden uit de nog niet gepubliceerde 1.0.1-broncode krijgen
+Nieuwe runs en bestanden uit de nog niet gepubliceerde 1.1.0-broncode krijgen
 een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
 Bestaande runmappen worden niet hernoemd; de gepubliceerde 1.0.0-wheel houdt
 zijn oorspronkelijke naamformaat.
@@ -19,6 +19,13 @@ publieke KVK-frontend-Web-API kan via een expliciete kleine batch of een
 hervatbare langlopende opdracht worden geraadpleegd. Die opdracht doet niets
 automatisch bij installatie of starten. Een gesloten kandidatenlijst is nog
 geen bewijs voor 10.000 actieve, geverifieerde bedrijven.
+
+De nog niet gepubliceerde 1.1.0-broncode voegt `run e2e` toe voor een
+expliciete verwerking van downloads tot geaudite eindlijst. Met
+`--limit-kvk-check 50` wordt vóór de eerste KVK-aanroep een vaste cohort
+gebonden: ook na hervatten maximaal 50 KVK-kandidaten en maximaal 50
+eindrecords. Deze proeflevering is PARTIAL ten opzichte van de volledige
+bronlijst. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
 
 ## Snel starten
 

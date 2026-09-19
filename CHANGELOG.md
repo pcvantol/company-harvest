@@ -2,10 +2,22 @@
 
 ## Unreleased
 
+- Broncodeversie 1.1.0: expliciet `run e2e`-commando voor volledige
+  vierbronnenvoorbereiding, publieke KVK-check, canonisering, filters, export,
+  rapport en audit. `--limit-kvk-check N` bindt een onveranderlijke cohort van
+  maximaal N kandidaten aan de run; hervatten kan de grens niet verhogen.
+  Als kandidaten buiten de cohort vallen, blijft de levering zichtbaar PARTIAL
+  ten opzichte van de volledige pre-KVK-lijst; zij bevat altijd maximaal N
+  unieke KVK-nummers. Onopgeloste kandidaten binnen de cohort eisen afzonderlijk
+  `--allow-partial`.
+- Partiële outputsets worden nu door `audit verify` inclusief manifest,
+  bestandshashes, cohortbinding en count-closure gevalideerd. De oude
+  `MISSING_REQUIRED:outputset_manifest`-valspositieve melding is in de
+  broncode opgelost; release v1.0.0 blijft ongewijzigd.
 - Nieuwe run-, artefact-, evidence- en snapshotnamen beginnen met een leesbare
   UTC-tijd `yyyy.mm.dd_hhMMss` plus een korte willekeurige suffix, zonder de
   lange nanosecondeprefixed waarde. Bestaande runs en bestandsnamen blijven
-  ongewijzigd en leesbaar; broncodeversie 1.0.1 is nog niet gepubliceerd.
+  ongewijzigd en leesbaar; de broncode is nog niet als nieuwe release gepubliceerd.
 - De historische Git-tag `v0.1.0` is op eigenaarsverzoek uit de lokale
   checkout en van `origin` verwijderd; broncommit en releasebewijs blijven.
 - Korte functionele v1.0.0-snelstart met exacte commando's, hervatpad en

@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import sqlite3
 import time
 from collections import Counter
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ from company_harvest.kvk import (
     _has_source_conflict,
     _match,
 )
+from company_harvest.kvk_scope import scope_details
 from company_harvest.pre_kvk import MASTER_HEADERS, validated_master
 from company_harvest.pre_kvk_filter import validated_filter
 
@@ -32,6 +34,28 @@ MATCH_HEADERS = [
 ]
 OUTCOME_HEADERS = ["candidate_id", "original_name", "reason", "detail", "checked_at"]
 PROGRESS_NAME = "pre_kvk_kvk_progress.json"
+
+
+def check_access_blocks(run: Run) -> None:
+    """Geen nieuwe GET na een bekende blokkade in dezelfde datamap.
+
+    Roep dit óók onder ProviderLock direct vóór elke GET aan: de eerdere
+    E2E-controle vóór broninname kan intussen verouderd zijn.
+    """
+    for sibling in run.path.parent.iterdir():
+        database = sibling / "state.sqlite3"
+        if not database.is_file():
+            continue
+        try:
+            with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+                blocked = connection.execute(
+                    "SELECT 1 FROM kvk_requests WHERE state='FAILED' "
+                    "AND error IN ('PUBLIC_ACCESS_BLOCKED','RATE_LIMITED') LIMIT 1"
+                ).fetchone()
+        except sqlite3.DatabaseError as exc:
+            raise HarvestError("eerder runjournal is niet controleerbaar; geen nieuwe KVK-run") from exc
+        if blocked:
+            raise HarvestError("eerdere KVK-toegangsblokkade in datamap; geen nieuwe KVK-aanvraag", 4)
 
 
 def _pace_request(run: Run, interval: float) -> None:
@@ -56,10 +80,17 @@ def _master(run: Run) -> tuple[Path, str]:
     return validated_master(run)
 
 
-def _queue(run: Run) -> tuple[Path, str, str]:
+def _queue(run: Run) -> tuple[Path, str, str, int]:
     _master_path, master_hash = _master(run)
-    eligible, eligible_hash, _excluded, _excluded_hash, _metadata = validated_filter(run, master_hash)
-    return eligible, eligible_hash, master_hash
+    eligible, eligible_hash, _excluded, _excluded_hash, metadata_path = validated_filter(run, master_hash)
+    full_count = json.loads(metadata_path.read_text(encoding="utf-8"))["counts"]["eligible_rows"]
+    scope = scope_details(run)
+    if scope is not None:
+        return (run.path / str(scope["scoped_path"]), str(scope["scoped_sha256"]),
+                master_hash, int(scope["selected_rows"]))
+    if run.metadata().get("runtime_config", {}).get("end_to_end", {}).get("limit_kvk_check") is not None:
+        raise HarvestError("begrensde E2E-run vereist eerst een vaste KVK-cohort")
+    return eligible, eligible_hash, master_hash, full_count
 
 
 def resolve_pre_kvk(run: Run, limit: int = 10, interval: float = 2.0) -> tuple[Path, Path, Path]:
@@ -71,7 +102,7 @@ def resolve_pre_kvk(run: Run, limit: int = 10, interval: float = 2.0) -> tuple[P
 def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path, Path, Path]:
     if not 1 <= limit <= 10 or not math.isfinite(interval) or interval < 2.0:
         raise HarvestError("KVK-batch vereist 1–10 verzoeken en minimaal 2 seconden interval")
-    master, digest, master_hash = _queue(run)
+    master, digest, master_hash, _total = _queue(run)
     config = run.metadata().get("runtime_config", {}).get("pre_kvk_kvk")
     if config and (config.get("master_sha256") != master_hash
                    or config.get("eligible_sha256") != digest):
@@ -90,7 +121,7 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
     attempted = 0
     blocked = False
     with run.lock(), ProviderLock(run):
-        locked_master, locked_digest, locked_master_hash = _queue(run)
+        locked_master, locked_digest, locked_master_hash, _locked_total = _queue(run)
         if (locked_master, locked_digest, locked_master_hash) != (master, digest, master_hash):
             raise HarvestError("pre-KVK-filter veranderde vóór de KVK-batch")
         locked_config = run.metadata().get("runtime_config", {}).get("pre_kvk_kvk")
@@ -131,6 +162,7 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
                                          "reason": prior["state"], "detail": prior["error"] or "",
                                          "checked_at": ""})
                     continue
+                check_access_blocks(run)
                 _check_cooldown(run)
                 _pace_request(run, interval)
                 fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{candidate['original_name']}".encode()).hexdigest()
@@ -179,7 +211,7 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
                 outcomes.append({"candidate_id": candidate_id, "original_name": candidate["original_name"],
                                  "reason": reason, "detail": detail, "checked_at": datetime.now(UTC).isoformat()})
     with run.lock():
-        if _queue(run) != (master, digest, master_hash) or sha256(master) != digest:
+        if _queue(run)[:3] != (master, digest, master_hash) or sha256(master) != digest:
             raise HarvestError("pre-KVK-filter veranderde tijdens de KVK-batch")
         match_path = run.artifact_path("04", "pre_kvk_kvk_batch_matches", "tsv")
         outcome_path = run.artifact_path("04", "pre_kvk_kvk_batch_outcomes", "tsv")
@@ -314,9 +346,7 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
     if not math.isfinite(interval) or interval < 2.0 or (max_requests is not None and max_requests < 1):
         raise HarvestError("KVK-run vereist minimaal 2 seconden interval en een positieve verzoeklimiet")
     with run.lock(), ProviderLock(run):
-        eligible, digest, master_hash = _queue(run)
-        metadata_path = validated_filter(run, master_hash)[4]
-        total = json.loads(metadata_path.read_text(encoding="utf-8"))["counts"]["eligible_rows"]
+        eligible, digest, master_hash, total = _queue(run)
         config = run.metadata().get("runtime_config", {}).get("pre_kvk_kvk")
         if config and (config.get("master_sha256") != master_hash or config.get("eligible_sha256") != digest):
             raise HarvestError("KVK-journal hoort bij een andere pre-KVK-filterset")
@@ -360,6 +390,7 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
                         continue
                     if max_requests is not None and attempted >= max_requests:
                         break
+                    check_access_blocks(run)
                     _check_cooldown(run)
                     _pace_request(run, interval)
                     fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{candidate['original_name']}".encode()).hexdigest()

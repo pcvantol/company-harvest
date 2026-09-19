@@ -8,6 +8,7 @@ from collections import Counter
 from typing import Any
 
 from company_harvest.core import HarvestError, Run, read_tsv, sha256, validate_kvk
+from company_harvest.kvk_scope import scope_details
 
 
 def verify(run: Run) -> dict[str, Any]:
@@ -15,8 +16,12 @@ def verify(run: Run) -> dict[str, Any]:
     checked = 0
     with run.connect() as connection:
         artifacts = connection.execute("SELECT path,kind,sha256,size,status FROM artifacts ORDER BY id").fetchall()
-        latest_statuses = connection.execute("SELECT a.kind,a.status,a.path FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
+        latest_statuses = connection.execute("SELECT a.id,a.kind,a.status,a.path FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
     latest_by_kind = {row["kind"]: row for row in latest_statuses}
+    def current_output(kind: str) -> Any:
+        row = latest_by_kind.get(kind)
+        return run.path / row["path"] if row and row["status"] in {"COMPLETE", "PARTIAL"} else None
+
     errors.extend(f"STALE:{row['kind']}" for row in latest_statuses if row["status"] == "STALE")
     for row in artifacts:
         path = run.path / row["path"]
@@ -53,6 +58,11 @@ def verify(run: Run) -> dict[str, Any]:
                     errors.append("RELATION:excluded_conflict_present_in_merged")
     else:
         exported = metadata.get("status") in {"EXPORT_COMPLETE", "PARTIAL_EXPORTED"}
+        try:
+            scope = scope_details(run)
+        except HarvestError:
+            scope = None
+            errors.append("SCOPE:invalid")
         required_export_kinds = {"candidates", "kvk_matches", "kvk_unresolved", "canonical", "non_sole", "sole_excluded", "legal_form_review", "active", "inactive_excluded", "status_review", "delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve", "outputset_manifest"}
         if exported:
             for kind in sorted(required_export_kinds):
@@ -60,9 +70,16 @@ def verify(run: Run) -> dict[str, Any]:
                     continue
                 if kind not in latest_by_kind or latest_by_kind[kind]["status"] not in {"COMPLETE", "PARTIAL"}:
                     errors.append(f"MISSING_REQUIRED:{kind}")
+            if metadata.get("runtime_config", {}).get("end_to_end") is not None:
+                manifest_row = latest_by_kind.get("outputset_manifest")
+                for kind in ("outcome_report", "run_report"):
+                    row = latest_by_kind.get(kind)
+                    if (not manifest_row or not row or row["status"] != "COMPLETE"
+                            or row["id"] <= manifest_row["id"]):
+                        errors.append(f"MISSING_REQUIRED:{kind}_after_outputset")
         active = run.latest_artifact("07", "active")
-        delivery = run.latest_artifact("08", "delivery_full_csv")
-        reserve = run.latest_artifact("08", "reserve")
+        delivery = current_output("delivery_full_csv")
+        reserve = current_output("reserve")
         if active and delivery and reserve:
             active_numbers = Counter(row["KVK-nummer"] for row in read_tsv(active))
             delivery_rows, reserve_rows = read_tsv(delivery), read_tsv(reserve)
@@ -87,7 +104,8 @@ def verify(run: Run) -> dict[str, Any]:
             after = Counter(row["KVK-nummer"] for rows in partitions for row in rows)
             if before != after or _overlap(partitions):
                 errors.append("RELATION:status_partition_mismatch")
-        candidates = run.latest_artifact("03", "pre_kvk_eligible") or run.latest_artifact("03", "candidates")
+        candidates = ((run.path / str(scope["scoped_path"])) if scope is not None
+                      else run.latest_artifact("03", "pre_kvk_eligible") or run.latest_artifact("03", "candidates"))
         matches = run.latest_artifact("04", "kvk_matches")
         unresolved = run.latest_artifact("05", "kvk_unresolved")
         if int(metadata.get("last_completed_step", "0")) >= 4 and not (candidates and matches and unresolved):
@@ -97,12 +115,33 @@ def verify(run: Run) -> dict[str, Any]:
             terminal_ids = Counter(row["candidate_id"] for path in (matches, unresolved) for row in read_tsv(path))
             if candidate_ids != terminal_ids:
                 errors.append("RELATION:candidate_terminal_mismatch")
-        output_manifest = run.latest_artifact("08", "outputset_manifest")
+        if scope is not None:
+            scoped_ids = {row["candidate_id"] for row in read_tsv(candidates)} if candidates else set()
+            journal_ids = {row["candidate_id"] for row in requests}
+            if (len(journal_ids) > int(scope["selected_rows"]) or not journal_ids.issubset(scoped_ids)):
+                errors.append("SCOPE:journal_exceeds_limit_or_cohort")
+            if int(scope["not_checked_rows"]) > 0 and metadata.get("status") == "EXPORT_COMPLETE":
+                errors.append("SCOPE:bounded_export_claimed_complete")
+            if delivery and len(read_tsv(delivery)) > int(scope["limit_kvk_check"]):
+                errors.append("SCOPE:delivery_exceeds_limit")
+        output_manifest = current_output("outputset_manifest")
         if exported and not output_manifest:
             errors.append("MISSING_REQUIRED:outputset_manifest")
         elif output_manifest:
             try:
                 payload = json.loads(output_manifest.read_text(encoding="utf-8"))
+                manifest_row = latest_by_kind.get("outputset_manifest")
+                if payload.get("status") is not None and (
+                    manifest_row is None or payload["status"] != manifest_row["status"]
+                ):
+                    errors.append("OUTPUTSET:status_mismatch")
+                if scope is not None:
+                    expected_scope = {key: scope[key] for key in (
+                        "limit_kvk_check", "full_eligible_rows", "selected_rows",
+                        "not_checked_rows", "full_eligible_sha256", "scoped_sha256",
+                    )}
+                    if payload.get("kvk_scope") != expected_scope:
+                        errors.append("OUTPUTSET:scope_mismatch")
                 entries = payload.get("files", [])
                 if not isinstance(entries, list):
                     entries = []

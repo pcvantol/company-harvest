@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 from company_harvest import __version__
 from company_harvest.audit import trace, verify
 from company_harvest.core import HarvestError, data_root, initialize_run, open_run
+from company_harvest.end_to_end import run_end_to_end
 from company_harvest.gleif import collect_gleif
 from company_harvest.kvk import preflight as kvk_preflight
 from company_harvest.kvk import resolve
@@ -54,6 +56,14 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("status", "preflight"):
         _run_arg(run.add_parser(name))
     execute = run.add_parser("execute"); _run_arg(execute); execute.add_argument("--kvk-provider", choices=("auto", "public-http", "public-browser"), default="auto"); execute.add_argument("--limit", type=int)
+    e2e = run.add_parser("e2e")
+    e2e.add_argument("--run-dir", type=Path)
+    e2e_mode = e2e.add_mutually_exclusive_group(required=True)
+    e2e_mode.add_argument("--limit-kvk-check", type=int)
+    e2e_mode.add_argument("--all-kvk", action="store_true")
+    e2e.add_argument("--interval", type=float, default=2.0)
+    e2e.add_argument("--export-limit", type=int, default=10000)
+    e2e.add_argument("--allow-partial", action="store_true")
     prepare = run.add_parser("prepare-pre-kvk"); _run_arg(prepare); prepare.add_argument("--refresh", action="store_true")
     sources = commands.add_parser("sources").add_subparsers(dest="sources_command", required=True)
     for name in ("discover", "list"):
@@ -115,6 +125,16 @@ def dispatch(args: argparse.Namespace) -> int:
         return 0
     if args.command == "run" and args.run_command == "list":
         _print([str(path) for path in sorted((root / "runs").glob("*")) if (path / "run.json").is_file()] if (root / "runs").exists() else []); return 0
+    if args.command == "run" and args.run_command == "e2e":
+        if (args.export_limit < 1 or (args.limit_kvk_check is not None and args.limit_kvk_check < 1)
+                or not math.isfinite(args.interval) or args.interval < 2.0):
+            raise HarvestError("E2E vereist positieve limieten en minimaal 2 seconden KVK-interval")
+        run = open_run(args.run_dir) if args.run_dir else initialize_run(
+            root, min(args.export_limit, args.limit_kvk_check) if args.limit_kvk_check is not None else args.export_limit
+        )
+        print(json.dumps({"run_dir": str(run.path), "phase": "STARTING"}), flush=True)
+        _print(run_end_to_end(run, args.limit_kvk_check, args.interval, args.export_limit, args.allow_partial))
+        return 0
     if args.command == "companies" and args.companies_command == "merge-lists":
         run = open_run(args.run_dir) if args.run_dir else initialize_run(root, 1, "MERGE_LISTS")
         paths = merge_lists(run, args.left, args.right, args.conflict_policy, _options(args, "left"), _options(args, "right")); _print([str(path) for path in paths]); return 0

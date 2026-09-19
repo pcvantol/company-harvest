@@ -19,9 +19,13 @@
 - In v1.0.0 registreert `export --allow-partial` ook het outputmanifest als
   `PARTIAL`, terwijl `audit verify` dit manifest alleen als `COMPLETE` opzoekt.
   Daardoor geeft de eindaudit dan ten onrechte
-  `MISSING_REQUIRED:outputset_manifest`. Beschouw een partiële levering niet
-  als audit-PASS; de aparte integriteits- en outputcontrole moet in een
-  volgende versie worden hersteld.
+  `MISSING_REQUIRED:outputset_manifest`. Beschouw een partiële v1.0.0-levering
+  niet als audit-PASS. In de nog niet gepubliceerde 1.1.0-broncode leest de
+  audit het nieuwste PARTIAL-manifest en controleert alle hashes en relaties.
+- `run e2e --limit-kvk-check N` bewaart de vaste cohort en haar hash in de
+  run. Gebruik dezelfde `--run-dir` en dezelfde limiet/interval/exportlimiet
+  bij hervatten. Een nieuwe run in dezelfde datamap passeert geen eerder
+  gejournalde publieke toegangs- of rateblokkade.
 - `run is vergrendeld`: controleer eigenaar/proces; verwijder een lock niet op alleen ouderdom.
 - `audit verify` faalt: publiceer/exporteer niet; behoud de run en onderzoek ontbrekende of gewijzigde bestanden.
 - Mergeconflicten zijn datawaarschuwingen, geen technisch mislukte run; inspecteer alle conflictbestanden.

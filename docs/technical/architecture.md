@@ -14,6 +14,14 @@ een byte- en regelversiegebonden KVK-toelatingslijst plus uitsluitingsledger;
 houdt brede brondekking gescheiden van een herzienbare, expliciete
 verificatieprioritering.
 
+`end_to_end` routeert dezelfde services in één expliciete CLI-opdracht.
+`kvk_scope` bindt een begrensde proef vóór de eerste GET aan de volledige
+filterhash en een vaste prefixcohort. De KVK-journal en downstream-closure
+betreffen dan alleen die cohort; de niet-bevraagde rest blijft afzonderlijk
+zichtbaar en de outputstatus is PARTIAL. Audit controleert de cohortbinding,
+request-/eindlijstgrens en ook PARTIAL-outputsets. Een nieuwe E2E-run in
+dezelfde datamap negeert een eerder gejournalde toegangsblokkade niet.
+
 `gleif` is de eerste bulkadapter op de brede-innamebasis. Zij levert hetzelfde `RAW_HEADERS`-
 contract als de kleine bronadapters, maar houdt download-, ZIP- en streamingverwerking
 afzonderlijk zodat `sources collect` nooit impliciet een groot bestand ophaalt. Immutable
