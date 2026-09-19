@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- De nog niet gepubliceerde 1.1.0-tool accepteert uitsluitend Python 3.14.x:
+  packagingmetadata, runtime, hostpreflight, installers en ontwikkelinstellingen
+  wijzen andere minorversies af. De gepubliceerde v1.0.0 blijft ongewijzigd.
 - Broncodeversie 1.1.0: expliciet `run e2e`-commando voor volledige
   vierbronnenvoorbereiding, publieke KVK-check, canonisering, filters, export,
   rapport en audit. `--limit-kvk-check N` bindt een onveranderlijke cohort van

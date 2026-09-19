@@ -9,3 +9,4 @@
 - [ADR-007 Reproduceerbare filter vóór KVK](007-pre-kvk-eligibility-filter.md)
 - [ADR-008 Hervatbare publieke frontend-KVK-check](008-resumable-public-frontend-kvk.md)
 - [ADR-009 Geïntegreerde, runbreed begrensde E2E-verwerking](009-integrated-bounded-e2e.md)
+- [ADR-010 Alleen Python 3.14 voor de actuele tool](010-python-314-only.md)

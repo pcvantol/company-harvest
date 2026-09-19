@@ -5,7 +5,8 @@ van IND/GLEIF/ANBI/DUO, samenvoegen/dedupliceren, pre-KVK-filter, publieke
 KVK-frontendcheck, canonisering, eenmanszaak-/statusfilters, export, rapport en
 audit. Er wordt geen Wikidata gelezen en geen officiële API-key gebruikt.
 Installeer eerst de **1.1.0-wheel zodra die is uitgebracht** in een venv op
-Python 3.14; de huidige v1.0.0-wheel bevat dit commando niet. Een checkout,
+Python 3.14.x; andere Python-minorversies worden geweigerd. De huidige
+v1.0.0-wheel bevat dit commando niet. Een checkout,
 GitHub-login of Codex is tijdens gebruik niet nodig.
 
 Voor een bewust begrensde proef op een nieuwe datamap:

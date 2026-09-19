@@ -17,7 +17,7 @@ from company_harvest.core import HarvestError, Run
 def host(data_dir: Path) -> dict[str, Any]:
     data_dir.mkdir(parents=True, exist_ok=True)
     usage = shutil.disk_usage(data_dir)
-    supported = (3, 11) <= sys.version_info[:2] < (3, 15)
+    supported = sys.version_info[:2] == (3, 14)
     writable = os.access(data_dir, os.W_OK)
     risks = []
     text = str(data_dir).casefold()

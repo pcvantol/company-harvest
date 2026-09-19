@@ -7,6 +7,10 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
+De huidige, nog niet gepubliceerde 1.1.0-broncode en wheel vereisen uitsluitend
+Python 3.14.x. De reeds gepubliceerde v1.0.0-wheel behoudt haar eigen,
+historische compatibiliteitscontract.
+
 Nieuwe runs en bestanden uit de nog niet gepubliceerde 1.1.0-broncode krijgen
 een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
 Bestaande runmappen worden niet hernoemd; de gepubliceerde 1.0.0-wheel houdt
@@ -30,7 +34,7 @@ bronlijst. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
 ## Snel starten
 
 ```bash
-python3 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
 export COMPANY_HARVEST_DATA_DIR="$PWD"
 .venv/bin/company-harvest doctor

@@ -2,7 +2,8 @@
 
 Voor de nieuwe geïntegreerde opdracht in broncodeversie 1.1.0: zie
 [één commando van bronnen tot eindlijst](e2e-command.md). Deze versie is nog
-niet als release gepubliceerd; de onderstaande v1.0.0-commando's blijven de
+niet als release gepubliceerd en vereist Python 3.14.x; de onderstaande
+v1.0.0-commando's blijven de
 handleiding voor de bestaande wheel.
 
 Begin met de [korte functionele snelstart (maximaal ongeveer twee A4)](snelstart-v1.0.0.md)

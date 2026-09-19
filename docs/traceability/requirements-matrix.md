@@ -7,6 +7,7 @@
 | CH-E2E-001 | Geïnstalleerde CLI verbindt vier bronfamilies t/m audit zonder checkout | ADR-009, `end_to_end.py`, `cli.py` | synthetische CLI-E2E en geïsoleerde wheel-smoke |
 | CH-E2E-002 | `--limit-kvk-check N` is runbreed, hervatbaar, hashgebonden en eindoutput ≤N | ADR-009, `kvk_scope.py`, `pre_kvk_kvk.py` | 50-kandidaattest, hervat-/wijzigings-/blokkadetests |
 | CH-E2E-003 | Export met overgeslagen cohortkandidaten is expliciet PARTIAL; unresolved binnen de cohort eist opt-in; audit valideert ook PARTIAL-manifest | ADR-009, `workflow.py`, `audit.py` | scope-/hash-/count-closure- en gedeeltelijke exporttests |
+| CH-PY-001 | Normale installatie van de actuele tool accepteert uitsluitend Python 3.14.x; na geforceerde installatie onder een andere minorversie faalt de start direct | `pyproject.toml`, packageguard, hostpreflight en installers | metadata-/runtime-/wrappertests, onafhankelijke review |
 | CH-DATA-001 | Voorzichtige normalisatie/dedup | ADR-002, `workflow.merge_candidates` | deduptests |
 | CH-DATA-002 | Canoniek uniek KVK + unresolved | `kvk.py`, `workflow.consolidate` | provider/matchtests |
 | CH-DATA-003 | Rechtsvorm/status UNKNOWN apart | `workflow.py` | filtertests |
