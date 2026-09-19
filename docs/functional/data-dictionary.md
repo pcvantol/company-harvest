@@ -14,6 +14,10 @@
 | rejection_reason | Expliciete reden voor identifier- of naamreview, zoals `MISSING_KVK`, `INVALID_KVK`, `NON_KVK_REGISTRATION_AUTHORITY` of `MISSING_LEGAL_NAME`. |
 | raw_record_json | Volledig oorspronkelijk GLEIF-record in lokale rejected-uitvoer; wordt niet gepubliceerd als documentatiebewijs. |
 | source_relations | JSON-cel met bron-ID, URL en oorspronkelijke rij. |
+| source_payloads_json | JSON-cel met alle oorspronkelijke kandidaatrijen die in één pre-KVK-regel vertegenwoordigd zijn; verliesvrije bronlaag, geen verificatie. |
+| source_count | Aantal oorspronkelijke kandidaatrijen in die regel; som over de lijst moet het broninputtotaal sluiten. |
+| dedup_status | `KEPT_SINGLE`, `MERGED_DIRECT_HINT` of `SOURCE_CONFLICT`; alleen identieke naam plus dezelfde geldige directe hint wordt automatisch samengevoegd. |
+| kvk_queue_status | `READY_FOR_KVK_MATCHING`/`READY_FOR_KVK_VERIFICATION` in een complete master, `REVIEW_REQUIRED` bij conflict, of altijd `BLOCKED_SOURCE_INCOMPLETE` in een gedeeltelijke preview. Geen van deze statussen bewijst reeds KVK-verificatie. |
 | response_json | Verliesvrije lokaal bewaarde relevante providerresponse. |
 | raw_legal_form/raw_status | Ongewijzigde publieke providerwaarden. |
 | checked_at | Werkelijk verificatiemoment; cachegebruik verandert dit niet. |

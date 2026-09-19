@@ -342,6 +342,13 @@ bevat vijf bronnen uit vijf bronfamilies. TenderNed is `GO_NEXT`; TED, DNB en AF
 gemotiveerd `PARKED`. Bewijs:
 [`docs/measurements/20260918-r5-source-portfolio.md`](docs/measurements/20260918-r5-source-portfolio.md).
 
+Latere uitvoer CH-2026-09-19-009 probeerde deze vijf actieve bronnen
+eenmalig volledig naar één pre-KVK-lijst te brengen. Vier bronnen zijn
+full-scope ingenomen; Wikidata stopte op HTTP 429. De afzonderlijke
+[vierbronnenpreview](docs/measurements/20260919-pre-kvk-source-snapshot.md)
+is voor KVK geblokkeerd. Dit verandert R5's portfolioacceptatie niet en
+activeert R7 niet; een vijfbronnenmaster is nog niet bewezen.
+
 ### Doel
 
 Verzamel een brede set goede bronnen voordat definitieve verkleining begint. Selecteer op herleidbaarheid, relevante Nederlandse organisatie-evidence, voorwaarden, opbrengst en onderhoudbaarheid. Identifierkwaliteit bepaalt het latere verwerkingspad, niet of een bron bij voorbaat wordt genegeerd.

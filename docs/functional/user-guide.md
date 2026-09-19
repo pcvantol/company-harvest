@@ -67,6 +67,18 @@ beschikbaar. DUO neemt alleen huidige `A`-records als kandidaat, maar verliest h
 regels niet stil: die staan in rejected. Ook huidige DUO-records zonder of met ongeldig
 KVK-veld blijven kandidaat. Bekijk na afloop de twee ingest reports en rejected-bestanden.
 
+`companies pre-kvk-list` bouwt zonder netwerk of KVK-call één brede lijst
+vlak vóór verificatie, maar alleen als alle vijf actieve bronadapters
+onbegrensd en met intact bronbewijs zijn afgerond. De output bevat per
+regel de originele bronpayloads en bewijsrelaties; een directe KVK-hint is
+niet automatisch geverifieerd. Identieke namen zonder gedeelde geldige
+KVK-hint blijven apart om foutieve samenvoegingen te voorkomen. Bij een
+bronblokkade verschijnt geen volledige master. De eenmalige run van
+2026-09-19 heeft wegens Wikidata HTTP 429 alleen een afzonderlijke,
+voor KVK geblokkeerde vierbronnenpreview opgeleverd; zie het
+[meetrapport](../measurements/20260919-pre-kvk-source-snapshot.md). Gebruik
+die preview niet als KVK-invoer.
+
 `companies sample` bouwt de R6-kwaliteitssample zonder netwerkrequests. De verdeling is
 eerst gelijkmatig over actieve bronfamilies en daarna binnen iedere familie over records
 met en zonder geldig direct KVK-nummer. Bij onvoldoende capaciteit wordt het restant

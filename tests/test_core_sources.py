@@ -1,4 +1,6 @@
+import gzip
 import json
+from contextlib import nullcontext
 from pathlib import Path
 
 import httpx
@@ -142,6 +144,9 @@ class FakeResponse:
     def json(self):
         return json.loads(self.content)
 
+    def iter_bytes(self, chunk_size=65536):
+        yield from (self.content[index:index + chunk_size] for index in range(0, len(self.content), chunk_size))
+
 
 class FakeClient:
     headers = {}
@@ -160,6 +165,10 @@ class FakeClient:
             return FakeResponse(b'{"results":{"bindings":[{"orgLabel":{"value":"Wiki BV"},"kvk":{"value":"23456789"}}]}}', "https://query.wikidata.org/sparql")
         return FakeResponse(b"<td>IND BV</td><td>12345678</td>")
 
+    def stream(self, method, url, **kwargs):
+        assert method == "GET" and kwargs.get("follow_redirects") is False
+        return nullcontext(self.get(url, **kwargs))
+
 
 def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     discover(run)
@@ -175,6 +184,100 @@ def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     client = FakeClient()
     with pytest.raises(HarvestError):
         _bounded_get(client, "http://localhost/private")
+
+
+def test_source_redirect_is_validated_before_next_request() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(
+                302,
+                request=request,
+                headers={"location": "https://not-allowed.example/private"},
+            )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(HarvestError, match="niet toegestaan"):
+            _bounded_get(client, "https://ind.nl/register")
+    assert calls == ["https://ind.nl/register"]
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(HarvestError, match="ongeldig"):
+            _bounded_get(client, "https://ind.nl:bad/register")
+    assert calls == ["https://ind.nl/register"]
+
+    def malformed_handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(302, request=request, headers={"location": "https://[invalid"})
+
+    with httpx.Client(transport=httpx.MockTransport(malformed_handler)) as client:
+        with pytest.raises(HarvestError, match="ongeldig"):
+            _bounded_get(client, "https://ind.nl/register")
+    assert calls == ["https://ind.nl/register", "https://ind.nl/register"]
+
+
+def test_source_safe_redirect_and_redirect_limit() -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        if str(request.url).endswith("/final"):
+            return httpx.Response(200, request=request, content=b"ok")
+        return httpx.Response(302, request=request, headers={"location": "/final"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        assert _bounded_get(client, "https://ind.nl/start").content == b"ok"
+    assert calls == ["https://ind.nl/start", "https://ind.nl/final"]
+
+    looping = 0
+
+    def loop_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal looping
+        looping += 1
+        return httpx.Response(302, request=request, headers={"location": "/loop"})
+
+    with httpx.Client(transport=httpx.MockTransport(loop_handler)) as client:
+        with pytest.raises(HarvestError, match="redirectgate"):
+            _bounded_get(client, "https://ind.nl/loop")
+    assert looping == 4
+
+
+def test_source_body_limit_stops_stream_before_full_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("company_harvest.sources.MAX_RESPONSE_BYTES", 70000)
+    emitted = 0
+
+    def body():
+        nonlocal emitted
+        for _ in range(4):
+            emitted += 1
+            yield b"x" * 65536
+
+    class TrackingStream(httpx.SyncByteStream):
+        def __iter__(self):
+            return body()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, request=request, stream=TrackingStream())
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(HarvestError, match="grootte"):
+            _bounded_get(client, "https://ind.nl/start")
+    assert emitted < 4
+
+
+def test_source_gzip_is_decoded_once() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            request=request,
+            headers={"content-encoding": "gzip", "content-length": "25"},
+            content=gzip.compress(b"<table>goed</table>"),
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        response = _bounded_get(client, "https://ind.nl/register")
+    assert response.content == b"<table>goed</table>"
+    assert "content-encoding" not in response.headers
 
 
 def test_live_capability_measurement_is_bounded_and_reconcilable(
@@ -326,6 +429,8 @@ def test_ind_invalid_only_failure_keeps_parser_rejection_count(
 
 def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
+    pauses = []
+    monkeypatch.setattr("company_harvest.sources.time.sleep", pauses.append)
 
     class PagingClient(FakeClient):
         def get(self, url, **kwargs):
@@ -341,9 +446,31 @@ def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.Monkey
     monkeypatch.setattr("company_harvest.sources.httpx.Client", PagingClient)
     output = collect(run, only=["wikidata_nl_companies"])[0]
     assert len(calls) == 2 and len(read_tsv(output)) == 100
+    assert pauses == [3.0]
     assert "wdt:P3220" in calls[0]["params"]["query"]
     assert "wdt:P3821" not in calls[0]["params"]["query"]
     assert read_tsv(output)[0]["registration_validation_status"] == "INVALID"
+
+
+def test_wikidata_429_stops_without_next_page(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    class RateLimitedClient(FakeClient):
+        calls = 0
+
+        def get(self, url, **kwargs):
+            type(self).calls += 1
+            return httpx.Response(
+                429,
+                request=httpx.Request("GET", url),
+                headers={"retry-after": "60"},
+                content=b"rate limited",
+            )
+
+    discover(run)
+    monkeypatch.setattr("company_harvest.sources.httpx.Client", RateLimitedClient)
+    with pytest.raises(httpx.HTTPStatusError):
+        collect(run, only=["wikidata_nl_companies"])
+    assert RateLimitedClient.calls == 1
+    assert run.latest_artifact("02", "source_wikidata_nl_companies") is None
 
 
 def test_generic_source_import_adapters(run, tmp_path: Path) -> None:

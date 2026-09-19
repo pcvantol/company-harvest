@@ -625,6 +625,11 @@ def collect_public_register(
         "input_sha256": archive_hash,
         "user_agent": None,
     }
+    report["candidate_artifact"] = {
+        "path": str(candidate_path.relative_to(run.path)),
+        "sha256": sha256(candidate_path),
+        "size": candidate_path.stat().st_size,
+    }
     json_path = run.artifact_path("02", f"{source_id}_ingest_report", "json")
     atomic_write(json_path, json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     counts = report["counts"]

@@ -30,3 +30,10 @@ score alleen wordt gekoppeld; ieder gekoppeld nummer een exact onafhankelijk bro
 voorlopige verificatiestatus draagt; blokkades en hervatting gesloten zijn; de
 transactionele output/reviewlifecycle is getest; en een hashgebonden gestratificeerde
 review nul false matches en nul uncertain oplevert bij maximaal 5% technische fouten.
+
+Een volledige pre-KVK-master vereist vijf complete, byte- en scopegebonden
+bronnen, unieke bronrij-identiteit, input→master-closure en nul KVK-requests.
+Een geblokkeerde bron staat alleen een apart gemarkeerde preview toe:
+uitgesloten bron zichtbaar, alle wachtrijregels geblokkeerd, geen
+statuspromotie. De 2026-09-19-run haalde de vierbronnenpreviewgate, maar
+faalde de vijfbronnenacceptatie wegens Wikidata HTTP 429.

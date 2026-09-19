@@ -10,3 +10,4 @@
 8. Selectie boven het doel gebruikt een stabiele hash vóór alfabetische sortering. Partiële export vereist toestemming.
 9. Offline merge valideert syntaxis, groepeert op KVK, bewaart naam-/veldconflicten en verifieert niet opnieuw.
 10. Outcome-rapportage telt de laatste complete artefacten per bron en sluit iedere beschikbare overgang afzonderlijk: raw→dedup, kandidaat→KVK-terminal, match→canoniek, rechtsvorm, status en delivery/reserve. Een gedeeltelijke, open of nog niet beschikbare closure wordt nooit als volledig gesloten gepresenteerd.
+11. De brede pre-KVK-master vereist aantoonbaar volledige inname van alle vijf actieve bronnen. Bij een providerblokkade mag alleen een aparte, expliciet voor KVK geblokkeerde preview van de wel complete bronnen ontstaan; die preview wordt nooit automatisch aan verificatie doorgegeven.

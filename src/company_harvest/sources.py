@@ -13,7 +13,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from openpyxl import load_workbook
@@ -33,6 +33,8 @@ from company_harvest.core import (
 MAX_RESPONSE_BYTES = 20 * 1024 * 1024
 MAX_SOURCE_PAGES = 100
 WIKIDATA_PAGE_SIZE = 100
+WIKIDATA_PAGE_PAUSE_SECONDS = 3.0
+MAX_SOURCE_REDIRECTS = 3
 DEFAULT_WIKIDATA_MEASUREMENT_LIMIT = 200
 CAPABILITY_REPORT_SCHEMA_VERSION = 1
 ALLOWED_HOSTS = {"ind.nl", "www.wikidata.org", "query.wikidata.org"}
@@ -251,16 +253,62 @@ def discover(run: Run) -> tuple[Path, Path]:
     return csv_path, md_path
 
 
-def _bounded_get(client: httpx.Client, url: str) -> httpx.Response:
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname not in ALLOWED_HOSTS:
-        raise HarvestError(f"bronhost niet toegestaan: {parsed.hostname}")
-    response = client.get(url)
-    if len(response.content) > MAX_RESPONSE_BYTES:
-        raise HarvestError("bronresponse overschrijdt de maximale grootte")
-    if response.url.host not in ALLOWED_HOSTS:
-        raise HarvestError("bronredirect naar niet-toegestane host")
-    return response
+def _validate_source_url(url: str) -> None:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+        hostname = parsed.hostname
+        username = parsed.username
+        password = parsed.password
+    except ValueError as exc:
+        raise HarvestError("bron-URL is ongeldig") from exc
+    if (
+        parsed.scheme != "https"
+        or hostname not in ALLOWED_HOSTS
+        or port not in (None, 443)
+        or username is not None
+        or password is not None
+    ):
+        raise HarvestError(f"bron-URL niet toegestaan: {hostname}")
+
+
+def _bounded_get(
+    client: httpx.Client, url: str, params: dict[str, str] | None = None
+) -> httpx.Response:
+    current_url = url
+    for redirect_count in range(MAX_SOURCE_REDIRECTS + 1):
+        _validate_source_url(current_url)
+        with client.stream("GET", current_url, params=params, follow_redirects=False) as response:
+            response_url = str(response.url)
+            _validate_source_url(response_url)
+            if 300 <= response.status_code < 400:
+                location = response.headers.get("location")
+                if not location or redirect_count >= MAX_SOURCE_REDIRECTS:
+                    raise HarvestError("bronredirect overschrijdt de redirectgate")
+                try:
+                    current_url = urljoin(response_url, location)
+                except ValueError as exc:
+                    raise HarvestError("bronredirect bevat een ongeldige URL") from exc
+                _validate_source_url(current_url)
+                params = None
+                continue
+            parts: list[bytes] = []
+            received = 0
+            for chunk in response.iter_bytes(chunk_size=65536):
+                received += len(chunk)
+                if received > MAX_RESPONSE_BYTES:
+                    raise HarvestError("bronresponse overschrijdt de maximale grootte")
+                parts.append(chunk)
+            decoded_headers = dict(response.headers)
+            decoded_headers.pop("content-encoding", None)
+            decoded_headers.pop("content-length", None)
+            return httpx.Response(
+                response.status_code,
+                headers=decoded_headers,
+                content=b"".join(parts),
+                request=httpx.Request("GET", response_url),
+            )
+    raise HarvestError("bronredirect overschrijdt de redirectgate")
 
 
 def _parse_ind_html_with_stats(
@@ -446,10 +494,13 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
     will_fetch = any(refresh or not run.latest_artifact("02", f"source_{source.source_id}") for source in enabled)
     if will_fetch:
         run.invalidate_from(3, "source_collection_changed")
-    timeout = httpx.Timeout(20, connect=10, read=20, write=10, pool=10)
+    # WDQS can take longer than a typical page fetch while evaluating a
+    # paginated query.  Keep connect/write bounded, but allow its read phase
+    # to finish within the public endpoint's own query-time budget.
+    timeout = httpx.Timeout(70, connect=10, read=70, write=10, pool=10)
     headers = {"User-Agent": HTTP_USER_AGENT}
     observations = dict(run.metadata().get("runtime_config", {}).get("source_observations", {}))
-    with httpx.Client(timeout=timeout, follow_redirects=True, max_redirects=3, headers=headers) as client:
+    with httpx.Client(timeout=timeout, follow_redirects=False, headers=headers) as client:
         for source in enabled:
             prior = run.latest_artifact("02", f"source_{source.source_id}")
             if prior and not refresh:
@@ -501,12 +552,14 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
             else:
                 rows = []
                 for page in range(MAX_SOURCE_PAGES):
+                    if page:
+                        time.sleep(WIKIDATA_PAGE_PAUSE_SECONDS)
                     remaining = None if limit is None else limit - len(rows)
                     if remaining is not None and remaining <= 0:
                         break
                     page_size = min(WIKIDATA_PAGE_SIZE, remaining) if remaining is not None else WIKIDATA_PAGE_SIZE
                     query = f"SELECT ?org ?orgLabel ?kvk WHERE {{?org wdt:P3220 ?kvk. SERVICE wikibase:label {{ bd:serviceParam wikibase:language 'nl,en'. }} }} ORDER BY ?org LIMIT {page_size} OFFSET {page * WIKIDATA_PAGE_SIZE}"
-                    response = client.get(source.url, params={"query": query, "format": "json"})
+                    response = _bounded_get(client, source.url, {"query": query, "format": "json"})
                     response_count += 1
                     response_bytes += len(response.content)
                     http_statuses.append(int(getattr(response, "status_code", 200)))
@@ -559,6 +612,19 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
                 parser_rejections, limit, collection_complete, rate_limit_headers,
                 source_data_date,
             )
+            final_observation = observations[source.source_id]
+            assert isinstance(final_observation, dict)
+            final_observation["source_artifact"] = {
+                "path": str(path.relative_to(run.path)),
+                "sha256": _hash(path),
+                "size": path.stat().st_size,
+            }
+            final_observation["evidence_artifacts"] = [
+                {"path": str(snapshot.relative_to(run.path)),
+                 "sha256": _hash(snapshot), "size": snapshot.stat().st_size}
+                for snapshot in snapshots
+            ]
+            run.record_config("source_observations", observations)
             run.log("INFO", "source_collect_completed", source_id=source.source_id, count=len(rows), evidence_sha256=[_hash(snapshot) for snapshot in snapshots], refreshed=refresh)
             outputs.append(path)
     _update_inventory(run, {path.name.split("_source_", 1)[1].rsplit("_companies", 1)[0]: len(read_tsv(path)) for path in outputs})

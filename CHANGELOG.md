@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Eenmalige brede pre-KVK-bronmomentopname met full-scope/evidence-gates,
+  verliesvrije conservatieve disk-dedup en aparte geblokkeerde preview bij
+  onvolledige bron; Wikidata HTTP 429 verhindert de vijfbronnenmaster.
+- Bron-HTTP leest begrensd als stream en valideert ook redirectdoelen;
+  Wikidata-paginering pauzeert tussen publieke requests.
 - Geïsoleerde, niet-gepubliceerde tien-GET-capabilitymeting via de publieke
   KVK-frontend-Web-API; R7 en bulkgebruik blijven geparkeerd.
 - GitHub Release-object `v0.1.0` en de vijf assets op eigenaarsverzoek verwijderd; de Git-tag en historische kwalificatie-evidence blijven behouden.

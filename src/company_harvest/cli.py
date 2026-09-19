@@ -16,6 +16,7 @@ from company_harvest.kvk import preflight as kvk_preflight
 from company_harvest.kvk import resolve
 from company_harvest.matching import record_matching_review, run_matching_pilot
 from company_harvest.merge_lists import InputOptions, merge_lists
+from company_harvest.pre_kvk import build_pre_kvk_list
 from company_harvest.preflight import host, run_preflight
 from company_harvest.public_registers import collect_public_register
 from company_harvest.sampling import build_sample, record_sample_review
@@ -67,6 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     companies = commands.add_parser("companies").add_subparsers(dest="companies_command", required=True)
     for name in ("merge", "exclude-sole-proprietorships", "active-only"):
         _run_arg(companies.add_parser(name))
+    _run_arg(companies.add_parser("pre-kvk-list"))
     sample = companies.add_parser("sample"); _run_arg(sample); sample.add_argument("--size", type=int, default=500); sample.add_argument("--review-size", type=int, default=25); sample.add_argument("--pilot-size", type=int, default=50)
     sample_review = companies.add_parser("sample-review"); _run_arg(sample_review); sample_review.add_argument("--input", type=Path, required=True)
     merge = companies.add_parser("merge-lists"); merge.add_argument("--left", type=Path, required=True); merge.add_argument("--right", type=Path, required=True); merge.add_argument("--conflict-policy", choices=("exclude", "prefer-left", "prefer-right"), default="exclude"); merge.add_argument("--run-dir", type=Path)
@@ -119,6 +121,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "companies" and args.companies_command == "sample": _print(build_sample(run, args.size, args.review_size, args.pilot_size)); return 0
     if args.command == "companies" and args.companies_command == "sample-review": _print(record_sample_review(run, args.input)); return 0
     if args.command == "companies" and args.companies_command == "merge": _print(merge_candidates(run)); return 0
+    if args.command == "companies" and args.companies_command == "pre-kvk-list": _print(build_pre_kvk_list(run)); return 0
     if args.command == "kvk" and args.kvk_command == "preflight": print(kvk_preflight(run, args.provider)); return 0
     if args.command == "kvk" and args.kvk_command == "pilot": _print(run_matching_pilot(run, args.provider, args.interval, args.refresh, args.review_size, args.max_live)); return 0
     if args.command == "kvk" and args.kvk_command == "pilot-review": _print(record_matching_review(run, args.input)); return 0

@@ -65,3 +65,14 @@ ontbrekende of ongeldige `KVK_NR` verwijdert de huidige organisatie niet. DUO's
 
 De volledige bronselectie, licentievoorbehouden en gemeten opbrengst staan in
 [`docs/measurements/20260918-r5-source-portfolio.md`](../measurements/20260918-r5-source-portfolio.md).
+
+De eenmalige brede pre-KVK-poging op 2026-09-19 is
+[afzonderlijk gemeten](../measurements/20260919-pre-kvk-source-snapshot.md).
+De directe bronclient valideert iedere redirect opnieuw op HTTPS, exacte
+host, poort en credentials en kapt de gedecomprimeerde respons tijdens
+streaming af op 20 MiB. De Wikidata-vervolgroute scheidt P3220-projectie
+van labelverrijking, bewaart per request hashgebonden lokale evidence en
+stopt bij 401/403/429. Op de derde 500-recordprojectiepagina kwam HTTP
+429; vier andere bronnen waren toen volledig ingenomen. Het exacte
+[pre-KVK-publicatiecontract](pre-kvk-list.md) voorkomt dat een deelrun als
+vijfbronnenmaster wordt behandeld.

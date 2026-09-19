@@ -5,4 +5,9 @@ Releasebewijs wordt uitsluitend na werkelijke kwalificatie/publicatie toegevoegd
 De [geïsoleerde KVK-smoke van 2026-09-19](../measurements/20260919-kvk-frontend-batch10.md)
 wijzigt geen productcode of versie en levert geen releasekwalificatie of assets op.
 
+De [pre-KVK-bronmomentopname](../measurements/20260919-pre-kvk-source-snapshot.md)
+bevat productcodewijzigingen maar is wegens Wikidata HTTP 429 slechts
+gedeeltelijk uitgevoerd. Een lokale vierbronnenpreview en geslaagde
+kwaliteitstest zijn geen releasekwalificatie; er is geen nieuwe tag of asset.
+
 - [v0.1.0](v0.1.0.md) — historisch publicatie- en kwalificatiebewijs; het GitHub Release-object en de assets zijn op 18 september 2026 verwijderd, de tag bleef behouden.
