@@ -34,11 +34,31 @@ dezelfde lokale run onder het nieuwe vierbronnencontract voortgezet: die run
 staat nu `PRE_KVK_COMPLETE` met een apart nieuw masterartefact. Deze actuele
 status verandert de historische previewstatus niet.
 
-`kvk pre-kvk-batch --run-dir RUN_DIR --limit 10` leest uitsluitend deze
-vierbronnenmaster. De publieke HTTP-provider volgt de waargenomen route van de
+`companies pre-kvk-filter --run-dir RUN_DIR` maakt zonder netwerk uit de
+volledige vierbronnenmaster drie nieuwe lokale artefacten: een KVK-geschikte
+TSV met volledige masterrijen, een uitsluitingsledger en JSON-metadata.
+`prepare-pre-kvk` voert deze stap voortaan automatisch na de masterbouw uit.
+De filter heeft een expliciete regelversie. De metadata bevat alle criteria
+en letterlijk uitgevoerde naamregexen met hoofdlettervlag,
+primaire én overlappende redenaantallen, kandidaat-/bestandsaantallen en
+SHA-256-bindingen. Elke uitgesloten kandidaat blijft via zijn ID, naam,
+bron-IDs en alle redenen in de ledger zichtbaar; de volledige bronpayload
+blijft in de ongewijzigde master. `NO_DIRECT_KVK_HINT` is geen bewijs van
+feitelijk ontbreken van een KVK-inschrijving. ANBI en DUO worden op bronrelatie
+uitgesloten; de overige categorieën gebruiken zelfstandige naamtermen,
+geen onbeperkte substringzoekactie. Bronconflicten blijven aparte reviewrijen.
+De count-closure is master = geschikt + uitgesloten. Een regelwijziging of
+bestandsafwijking vereist een nieuw filter; een reeds gebruikte KVK-journal
+blokkeert stil herfilteren.
+
+`kvk pre-kvk-batch --run-dir RUN_DIR --limit 10` leest uitsluitend de
+gefilterde, geregistreerde en aan de actuele master gebonden lijst. Ontbreekt
+die of wijkt de regelversie/hash af, dan stopt de opdracht vóór de provider.
+De publieke HTTP-provider volgt de waargenomen route van de
 KVK-frontend. De opdracht gebruikt de lokale providerlock, requestjournal en
-cooldown, slaat conflictrijen over, vereist voor een kandidaat zonder directe
-KVK-hint behalve een exacte naam ook een exacte plaats, en bewaart responsevidence.
+cooldown, slaat conflictrijen over en bewaart responsevidence. De historische
+naam-zonder-hint-matchvoorwaarde blijft in code maar wordt door deze nieuwe
+filter niet meer bereikt.
 Maximaal tien nieuwe requests per aanroep, minimaal twee seconden tussentijd;
 een gedeeld lokaal pacingjournal overleeft een CLI-herstart en begrenst ook
 opeenvolgende batches. Per kandidaat wordt maximaal één eerste-pagina-GET

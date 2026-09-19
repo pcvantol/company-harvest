@@ -11,14 +11,17 @@ master. Een directe KVK-hint blijft ongeverifieerd; onzekere samenvoegingen
 blijven aparte kandidaten of vereisen review. Historische vijfbronnenreviews
 en de geblokkeerde preview blijven als auditgeschiedenis bewaard.
 
-De master wordt door een expliciete kleine KVK-stap gelezen. Deze gebruikt
+De master werd oorspronkelijk door een expliciete kleine KVK-stap gelezen.
+ADR-007 vervangt dit invoerpad: voortaan leest de stap uitsluitend de
+filterset die aan de volledige master is gebonden. De KVK-stap gebruikt
 alleen de waargenomen publieke frontend-HTTP-route, maximaal tien nieuwe
 kandidaten per opdracht en minimaal twee seconden tussen requests/pagina's.
 De tool bewaart het starttijdstip vóór iedere GET in een lokaal gedeeld
 pacingjournal, zodat ook twee directe opeenvolgende CLI-batches de interval
 respecteren.
-Een naam zonder directe hint vereist tevens een exact overeenkomende plaats;
-een bronconflict wordt niet automatisch bevraagd. De requestjournal verhindert
+De oorspronkelijke naam-zonder-hint-matchvoorwaarde blijft historisch in de
+matchingcode, maar ADR-007 laat zulke kandidaten in deze batchroute niet meer
+door. Bronconflicten worden evenmin bevraagd. De requestjournal verhindert
 stil opnieuw versturen, en toegangs-/rate-/netwerkfouten stoppen de batch.
 De outputsoorten dragen status `PARTIAL` en zijn geen input voor canonieke
 consolidatie of export. Een volledige frontenddoorloop is niet vrijgegeven.

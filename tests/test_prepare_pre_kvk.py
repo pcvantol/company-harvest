@@ -11,6 +11,7 @@ from company_harvest import cli, pre_kvk_kvk, prepare
 from company_harvest.core import HarvestError, Run, open_run, read_tsv
 from company_harvest.kvk import KvkError, ProviderResult
 from company_harvest.pre_kvk import build_pre_kvk_list
+from company_harvest.pre_kvk_filter import build_pre_kvk_filter
 
 
 def test_prepare_collects_four_sources_without_wikidata(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -20,7 +21,8 @@ def test_prepare_collects_four_sources_without_wikidata(run: Run, monkeypatch: p
     monkeypatch.setattr(prepare, "collect_gleif", lambda _run, **kw: calls.append("gleif"))
     monkeypatch.setattr(prepare, "collect_public_register", lambda _run, sid, **kw: calls.append(sid))
     monkeypatch.setattr(prepare, "build_pre_kvk_list", lambda _run: (Path("master"), Path("report")))
-    assert prepare.prepare_pre_kvk(run) == (Path("master"), Path("report"))
+    monkeypatch.setattr(prepare, "build_pre_kvk_filter", lambda _run: (Path("eligible"), Path("excluded"), Path("metadata")))
+    assert prepare.prepare_pre_kvk(run) == (Path("master"), Path("report"), Path("eligible"), Path("excluded"), Path("metadata"))
     assert calls == ["discover", {"only": ("ind_arbeid",), "limit": None, "refresh": False},
                      "gleif", "anbi_register", "duo_education_organisations"]
 
@@ -35,6 +37,7 @@ def test_prepare_stops_before_later_sources_on_error(run: Run, monkeypatch: pyte
 def _ready_master(run: Run) -> None:
     _full_sources(run)
     build_pre_kvk_list(run)
+    build_pre_kvk_filter(run)
 
 
 def test_kvk_batch_is_explicit_bounded_and_resumable(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,7 +52,8 @@ def test_kvk_batch_is_explicit_bounded_and_resumable(run: Run, monkeypatch: pyte
         assert (run.path.parent.parent / ".local" / "kvk-last-request.json").is_file()
         evidence = run.path / "evidence" / f"synthetic-{len(calls)}.json"
         evidence.write_text("{}")
-        return ProviderResult(query, [{"naam": query, "kvkNummer": "11111111", "plaats": "Utrecht",
+        hint = "34567890" if query == "Delta B.V." else "23456789"
+        return ProviderResult(query, [{"naam": query, "kvkNummer": hint, "plaats": "Utrecht",
                                        "land": "Nederland", "rechtsvorm": "Stichting", "status": "Actief"}],
                               True, "public-http", str(evidence.relative_to(run.path)))
 
@@ -96,11 +100,13 @@ def test_kvk_batch_stops_on_access_block(run: Run, monkeypatch: pytest.MonkeyPat
 
 def test_kvk_batch_surfaces_interrupted_journal(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
     _ready_master(run)
-    master = run.latest_artifact("03", "pre_kvk_master")
+    master = run.latest_artifact("03", "pre_kvk_eligible")
     assert master is not None
     first_ready = next(row for row in read_tsv(master) if row["kvk_queue_status"].startswith("READY"))
     digest = pre_kvk_kvk._master(run)[1]
-    run.record_config("pre_kvk_kvk", {"master_sha256": digest, "provider": "public-http"})
+    eligible_digest = pre_kvk_kvk._queue(run)[1]
+    run.record_config("pre_kvk_kvk", {"master_sha256": digest,
+                                      "eligible_sha256": eligible_digest, "provider": "public-http"})
     with run.connect() as connection:
         connection.execute("INSERT INTO kvk_requests(candidate_id,query,state,attempt,provider) "
                            "VALUES(?,?,'IN_FLIGHT',1,'public-http')",

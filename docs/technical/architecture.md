@@ -8,6 +8,12 @@ Broncatalogusschema 2 is het capabilitycontract voor iedere bron. Ruwe bronrecor
 
 `core.HTTP_USER_AGENT` is de enige runtimebron voor `company-lookup/0.1`. Nieuwe runs leggen deze waarde vast in `run.json`; bron- en KVK-clients en outcome-rapportage gebruiken dezelfde waarde.
 
+`pre_kvk` bouwt de volledige vierbronnenmaster. `pre_kvk_filter` maakt daaruit
+een byte- en regelversiegebonden KVK-toelatingslijst plus uitsluitingsledger;
+`pre_kvk_kvk` weigert iedere andere invoer vóór netwerkverkeer. Deze splitsing
+houdt brede brondekking gescheiden van een herzienbare, expliciete
+verificatieprioritering.
+
 `gleif` is de eerste bulkadapter op de brede-innamebasis. Zij levert hetzelfde `RAW_HEADERS`-
 contract als de kleine bronadapters, maar houdt download-, ZIP- en streamingverwerking
 afzonderlijk zodat `sources collect` nooit impliciet een groot bestand ophaalt. Immutable

@@ -5,3 +5,5 @@
 - [ADR-003 Opslag, timestamps en audit](003-storage-and-audit.md)
 - [ADR-004 Coverage en releaseprovenance](004-quality-and-release.md)
 - [ADR-005 Brede bronmomentopname vóór KVK](005-pre-kvk-source-snapshot.md)
+- [ADR-006 Vierbronnenmaster en kleine KVK-batches](006-four-source-tool-and-kvk-batches.md)
+- [ADR-007 Reproduceerbare filter vóór KVK](007-pre-kvk-eligibility-filter.md)

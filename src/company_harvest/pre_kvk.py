@@ -298,6 +298,23 @@ def build_pre_kvk_list(run: Run) -> tuple[Path, Path]:
         return _build_pre_kvk_list_unlocked(run)
 
 
+def validated_master(run: Run) -> tuple[Path, str]:
+    """Controleer master, rapport en de actuele vier volledige bronartefacten."""
+    path, digest = _registered(run, "03", "pre_kvk_master")
+    report_path, _ = _registered(run, "03", "pre_kvk_report")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if (report.get("scope") != list(SOURCE_IDS) or report.get("closure") != "CLOSED"
+            or report.get("master_sha256") != digest
+            or report.get("master_bytes") != path.stat().st_size):
+        raise HarvestError("pre-KVK-master mist een complete vierbronnenbinding")
+    inputs = _source_inputs(run)
+    if {sid: data.get("artifact_sha256") for sid, data in report.get("sources", {}).items()} != {
+        sid: source_hash for sid, _source_path, source_hash, _scope in inputs
+    }:
+        raise HarvestError("pre-KVK-master hoort niet bij de actuele vier bronartefacten")
+    return path, digest
+
+
 def build_blocked_pre_kvk_preview(run: Run) -> tuple[Path, Path]:
     """Maak alleen de vier complete bronnen zichtbaar; nooit KVK-klaar."""
     with run.lock():

@@ -19,7 +19,8 @@ from company_harvest.kvk import (
     _has_source_conflict,
     _match,
 )
-from company_harvest.pre_kvk import MASTER_HEADERS, SOURCE_IDS, _registered, _source_inputs
+from company_harvest.pre_kvk import MASTER_HEADERS, validated_master
+from company_harvest.pre_kvk_filter import validated_filter
 
 MATCH_HEADERS = [
     "candidate_id", "Bedrijfsnaam", "KVK-nummer", "raw_legal_form", "raw_status",
@@ -48,19 +49,13 @@ def _pace_request(run: Run, interval: float) -> None:
 
 
 def _master(run: Run) -> tuple[Path, str]:
-    path, digest = _registered(run, "03", "pre_kvk_master")
-    report_path, _ = _registered(run, "03", "pre_kvk_report")
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    if (report.get("scope") != list(SOURCE_IDS) or report.get("closure") != "CLOSED"
-            or report.get("master_sha256") != digest
-            or report.get("master_bytes") != path.stat().st_size):
-        raise HarvestError("pre-KVK-master mist een complete vierbronnenbinding")
-    inputs = _source_inputs(run)
-    if {sid: data.get("artifact_sha256") for sid, data in report.get("sources", {}).items()} != {
-        sid: source_hash for sid, _source_path, source_hash, _scope in inputs
-    }:
-        raise HarvestError("pre-KVK-master hoort niet bij de actuele vier bronartefacten")
-    return path, digest
+    return validated_master(run)
+
+
+def _queue(run: Run) -> tuple[Path, str, str]:
+    _master_path, master_hash = _master(run)
+    eligible, eligible_hash, _excluded, _excluded_hash, _metadata = validated_filter(run, master_hash)
+    return eligible, eligible_hash, master_hash
 
 
 def resolve_pre_kvk(run: Run, limit: int = 10, interval: float = 2.0) -> tuple[Path, Path, Path]:
@@ -72,10 +67,11 @@ def resolve_pre_kvk(run: Run, limit: int = 10, interval: float = 2.0) -> tuple[P
 def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path, Path, Path]:
     if not 1 <= limit <= 10 or not math.isfinite(interval) or interval < 2.0:
         raise HarvestError("KVK-batch vereist 1–10 verzoeken en minimaal 2 seconden interval")
-    master, digest = _master(run)
+    master, digest, master_hash = _queue(run)
     config = run.metadata().get("runtime_config", {}).get("pre_kvk_kvk")
-    if config and config.get("master_sha256") != digest:
-        raise HarvestError("KVK-journal hoort bij een andere pre-KVK-master")
+    if config and (config.get("master_sha256") != master_hash
+                   or config.get("eligible_sha256") != digest):
+        raise HarvestError("KVK-journal hoort bij een andere pre-KVK-filterset")
     with run.connect() as connection:
         if not config and connection.execute("SELECT 1 FROM kvk_requests LIMIT 1").fetchone():
             raise HarvestError("KVK-journal hoort mogelijk bij een andere kandidatenlijst")
@@ -90,12 +86,13 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
     attempted = 0
     blocked = False
     with run.lock(), ProviderLock(run):
-        locked_master, locked_digest = _master(run)
-        if locked_master != master or locked_digest != digest:
-            raise HarvestError("pre-KVK-master veranderde vóór de KVK-batch")
+        locked_master, locked_digest, locked_master_hash = _queue(run)
+        if (locked_master, locked_digest, locked_master_hash) != (master, digest, master_hash):
+            raise HarvestError("pre-KVK-filter veranderde vóór de KVK-batch")
         locked_config = run.metadata().get("runtime_config", {}).get("pre_kvk_kvk")
-        if locked_config and locked_config.get("master_sha256") != digest:
-            raise HarvestError("KVK-journal hoort bij een andere pre-KVK-master")
+        if locked_config and (locked_config.get("master_sha256") != master_hash
+                              or locked_config.get("eligible_sha256") != digest):
+            raise HarvestError("KVK-journal hoort bij een andere pre-KVK-filterset")
         with run.connect() as connection:
             if not locked_config and connection.execute("SELECT 1 FROM kvk_requests LIMIT 1").fetchone():
                 raise HarvestError("KVK-journal hoort mogelijk bij een andere kandidatenlijst")
@@ -103,7 +100,9 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
                                   "('PUBLIC_ACCESS_BLOCKED','RATE_LIMITED') LIMIT 1").fetchone():
                 raise HarvestError("eerdere KVK-blokkade vereist eerst een afzonderlijk besluit", 4)
         if not config:
-            run.record_config("pre_kvk_kvk", {"master_sha256": digest, "provider": "public-http"})
+            run.record_config("pre_kvk_kvk", {"master_sha256": master_hash,
+                                               "eligible_sha256": digest,
+                                               "provider": "public-http"})
         with run.connect() as connection:
             connection.execute(
                 "UPDATE kvk_requests SET state='SENT_OUTCOME_UNKNOWN',error='INTERRUPTED_BEFORE_DURABLE_OUTCOME' "
@@ -112,7 +111,7 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
         with master.open(encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle, delimiter="\t")
             if not set(MASTER_HEADERS).issubset(reader.fieldnames or []):
-                raise HarvestError("pre-KVK-master mist verplichte kolommen")
+                raise HarvestError("pre-KVK-KVK-wachtrij mist verplichte kolommen")
             for candidate in reader:
                 if attempted >= limit or blocked:
                     break
@@ -176,8 +175,8 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
                 outcomes.append({"candidate_id": candidate_id, "original_name": candidate["original_name"],
                                  "reason": reason, "detail": detail, "checked_at": datetime.now(UTC).isoformat()})
     with run.lock():
-        if _master(run) != (master, digest) or sha256(master) != digest:
-            raise HarvestError("pre-KVK-master veranderde tijdens de KVK-batch")
+        if _queue(run) != (master, digest, master_hash) or sha256(master) != digest:
+            raise HarvestError("pre-KVK-filter veranderde tijdens de KVK-batch")
         match_path = run.artifact_path("04", "pre_kvk_kvk_batch_matches", "tsv")
         outcome_path = run.artifact_path("04", "pre_kvk_kvk_batch_outcomes", "tsv")
         report_path = run.artifact_path("04", "pre_kvk_kvk_batch_report", "json")
@@ -187,7 +186,8 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
             journal_states = {row["state"]: row["count"] for row in connection.execute(
                 "SELECT state,COUNT(*) AS count FROM kvk_requests GROUP BY state"
             )}
-        report_path.write_text(json.dumps({"master_sha256": digest, "attempted": attempted,
+        report_path.write_text(json.dumps({"master_sha256": master_hash,
+                                           "eligible_sha256": digest, "attempted": attempted,
                                            "matched": len(matches), "blocked": blocked,
                                            "complete": False, "provider": "public-http",
                                            "journal_states": journal_states}, indent=2) + "\n", encoding="utf-8")

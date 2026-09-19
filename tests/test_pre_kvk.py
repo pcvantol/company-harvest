@@ -28,7 +28,9 @@ def _raw(source_id: str, row: int, name: str, hint: str = "") -> dict[str, str]:
 
 def _full_sources(run: Run) -> dict[str, Path]:
     rows = {
-        "ind_arbeid": [_raw("ind_arbeid", 1, "Alpha B.V.", "12345678")],
+        "ind_arbeid": [_raw("ind_arbeid", 1, "Alpha B.V.", "12345678"),
+                       _raw("ind_arbeid", 2, "Gamma B.V.", "23456789"),
+                       _raw("ind_arbeid", 3, "Delta B.V.", "34567890")],
         "wikidata_nl_companies": [_raw("wikidata_nl_companies", 1, "Alpha B.V.", "12345678")],
         "gleif_golden_copy": [_raw("gleif_golden_copy", 1, "Alpha B.V.", "87654321")],
         "anbi_register": [_raw("anbi_register", 1, "Beta Stichting")],
@@ -75,9 +77,9 @@ def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     path, report_path = build_pre_kvk_list(run)
     rows = read_tsv(path)
     report = json.loads(report_path.read_text())
-    assert path.suffix == ".tsv" and len(rows) == 4
-    assert sum(int(row["source_count"]) for row in rows) == 4
-    assert report["counts"]["input_source_rows"] == 4
+    assert path.suffix == ".tsv" and len(rows) == 6
+    assert sum(int(row["source_count"]) for row in rows) == 6
+    assert report["counts"]["input_source_rows"] == 6
     assert report["counts"]["merged_source_rows"] == 0
     assert "wikidata_nl_companies" not in report["scope"]
     assert report["closure"] == "CLOSED" and report["kvk_requests"] == 0
@@ -155,8 +157,8 @@ def test_blocked_preview_is_closed_but_never_kvk_ready(run: Run) -> None:
     path, report_path = build_blocked_pre_kvk_preview(run)
     rows = read_tsv(path)
     report = json.loads(report_path.read_text())
-    assert len(rows) == 4
-    assert sum(int(row["source_count"]) for row in rows) == 4
+    assert len(rows) == 6
+    assert sum(int(row["source_count"]) for row in rows) == 6
     assert all(row["kvk_queue_status"] == "BLOCKED_SOURCE_INCOMPLETE" for row in rows)
     assert report["status"] == "BLOCKED_PREVIEW_NOT_KVK_READY"
     assert report["closure"] == "CLOSED_INCLUDED_SCOPE_ONLY"

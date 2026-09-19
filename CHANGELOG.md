@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Herzienbare offline toelatingsfilter tussen vierbronnenmaster en KVK-batch:
+  behoud van de volledige master, afzonderlijke KVK-geschikte lijst en
+  uitsluitingsledger met alle redenen, criteria, hashes en gesloten aantallen.
+  Ontbrekende/stale filtersets en onverenigbare KVK-journals blokkeren requests.
 - Zelfstandige vierbronnenvoorbereiding (IND, GLEIF, ANBI, DUO), zonder
   automatische Wikidata-download, met volledige evidencecontrole en één
   gededupliceerde master; expliciete hervatbare KVK-Web-API-batches van

@@ -108,6 +108,21 @@ de publieke route en een geslaagde kleine batch bewijzen geen toestemming of
 technische geschiktheid voor systematische raadpleging. Een eventuele
 vrijgave vraagt een afzonderlijk aantoonbaar gebruiks- en eigenaarbesluit.
 
+### RD-009 — Expliciete filter vóór de huidige KVK-wachtrij
+
+Op 2026-09-19 heeft de eigenaar besloten de vierbronnenmaster breed en
+verliesvrij te behouden, maar de *huidige* publieke KVK-batch uitsluitend
+gevoed te laten worden door een afzonderlijk gefilterde lijst. Kandidaten
+zonder directe KVK-hint, ANBI-/DUO-instellingen, conflicten en herkenbare
+scholen, holdings/beheermaatschappijen, stichtingen/verenigingen, banken,
+pensioen-/beleggingsfondsen, religieuze organisaties en politieke partijen
+worden vóór die batch uitgesloten. Iedere uitsluiting blijft met regelversie,
+reden, bronidentiteit en masterverwijzing lokaal herleidbaar. Dit verandert
+RD-006's brede bronverzameling niet; het beperkt alleen deze KVK-wachtrij.
+RD-007's toegestane matching zonder initieel nummer blijft voor andere,
+afzonderlijk gekozen trajecten bestaan, maar wordt in deze route niet gestart.
+De filter is heuristisch en kan na expliciet besluit herzien worden.
+
 ## 3. Statuslegenda
 
 | Status | Betekenis |

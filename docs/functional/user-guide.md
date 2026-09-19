@@ -11,7 +11,7 @@ company-harvest run prepare-pre-kvk --run-dir "$RUN_DIR"
 company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
-`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten en bouwt een conservatief gededupliceerde master. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten en het masterrapport. De KVK-opdracht is een expliciete kleine batch via de waargenomen publieke frontend-Web-API. Zij verwerkt maximaal tien nieuwe kandidaten, stopt bij blokkade en publiceert alleen partiële batchartefacten, geen definitieve export. Herhaal geen geblokkeerde requests. Voor systematische bulkverificatie is eerst een afzonderlijk gebruiks- en eigenaarbesluit nodig.
+`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. De KVK-opdracht is een expliciete kleine batch via de waargenomen publieke frontend-Web-API. Zij verwerkt maximaal tien nieuwe kandidaten uit `pre_kvk_eligible`, stopt bij blokkade en publiceert alleen partiële batchartefacten, geen definitieve export. Herhaal geen geblokkeerde requests. Voor systematische bulkverificatie is eerst een afzonderlijk gebruiks- en eigenaarbesluit nodig.
 
 `run execute` voert dezelfde vierbronnenvoorbereiding uit; alleen met een expliciete `--limit` van 1–10 volgt één KVK-batch. Er wordt geen volledige KVK-harvest of downstream-export automatisch gestart. `sources collect` zonder selectie leest alleen IND; Wikidata vereist een expliciet legacy `--only-source` en maakt geen deel uit van deze workflow. Merge van bestaande bestanden blijft beschikbaar via `companies merge-lists --left … --right …`.
 
@@ -66,8 +66,14 @@ niet automatisch geverifieerd. Identieke namen zonder gedeelde geldige
 KVK-hint blijven apart om foutieve samenvoegingen te voorkomen. Bij een
 bronblokkade verschijnt geen volledige master. De historische run van
 2026-09-19 bevat een geblokkeerde preview; die blijft een historisch artefact.
-Een nieuw gebouwde `pre_kvk_master` heeft vier bronnen en is de enige geldige
-invoer voor `kvk pre-kvk-batch`.
+Een nieuw gebouwde `pre_kvk_master` heeft vier bronnen. Voor een bestaande
+master kan `companies pre-kvk-filter --run-dir "$RUN_DIR"` de filter zonder
+herdownload of KVK-verzoek afzonderlijk bouwen. Alleen `pre_kvk_eligible`
+mag naar `kvk pre-kvk-batch`. `pre_kvk_excluded` bevat iedere uitgesloten
+kandidaat met alle redenen; de JSON-metadata legt de criteria, aantallen
+en hashes vast. De volledige master blijft behouden. Zonder directe
+KVK-bronhint betekent hier uitsluiting van de huidige KVK-wachtrij, niet
+dat de organisatie in werkelijkheid geen inschrijving kan hebben.
 
 `companies sample` bouwt de R6-kwaliteitssample zonder netwerkrequests. De verdeling is
 eerst gelijkmatig over actieve bronfamilies en daarna binnen iedere familie over records
