@@ -9,6 +9,7 @@ import os
 import shutil
 import sqlite3
 from collections import Counter
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -183,7 +184,7 @@ def _build_pre_kvk_list_unlocked(run: Run, preview: bool = False) -> tuple[Path,
     counts: Counter[str] = Counter()
     per_source: dict[str, int] = {}
     try:
-        with sqlite3.connect(spool) as connection:
+        with closing(sqlite3.connect(spool)) as connection, connection:
             connection.execute(
                 "CREATE TABLE raw(normalized_name TEXT NOT NULL, source_kvk_hint TEXT NOT NULL, "
                 "source_id TEXT NOT NULL, source_row TEXT NOT NULL, payload_json TEXT NOT NULL, "

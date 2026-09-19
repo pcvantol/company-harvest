@@ -94,6 +94,48 @@ def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     assert build_pre_kvk_list(run) == (path, report_path)
 
 
+def test_pre_kvk_closes_sqlite_spool_before_cleanup(
+    run: Run, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _full_sources(run)
+    from company_harvest import pre_kvk
+
+    original_connect = pre_kvk.sqlite3.connect
+    spool_connections = []
+
+    class TrackedConnection:
+        def __init__(self, connection):
+            self.connection = connection
+            self.closed = False
+
+        def __enter__(self):
+            self.connection.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.connection.__exit__(*args)
+
+        def __getattr__(self, name):
+            return getattr(self.connection, name)
+
+        def close(self):
+            self.connection.close()
+            self.closed = True
+
+    def tracked_connect(database, *args, **kwargs):
+        connection = original_connect(database, *args, **kwargs)
+        if str(database).endswith("_pre_kvk.sqlite3"):
+            tracked = TrackedConnection(connection)
+            spool_connections.append(tracked)
+            return tracked
+        return connection
+
+    monkeypatch.setattr(pre_kvk.sqlite3, "connect", tracked_connect)
+    build_pre_kvk_list(run)
+    assert len(spool_connections) == 1
+    assert spool_connections[0].closed
+
+
 def test_pre_kvk_rejects_limited_and_replaced_source(run: Run) -> None:
     paths = _full_sources(run)
     observations = run.metadata()["runtime_config"]["source_observations"]

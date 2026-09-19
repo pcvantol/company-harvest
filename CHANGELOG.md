@@ -4,6 +4,8 @@
 
 ## 1.0.0 - 2026-09-19
 
+- Sluit het tijdelijke SQLite-spoolbestand van de pre-KVK-master expliciet vóór
+  opruimen, zodat de workflow ook op Windows werkt.
 - Expliciete hervatbare `kvk pre-kvk-run` voor de publieke frontend-Web-API:
   minimaal twee seconden tussen verzoekstarts, per-kandidaatjournal,
   atomische voortgang, duurzame tussentijdse TSV's en pas na een gesloten
