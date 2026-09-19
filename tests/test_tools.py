@@ -50,7 +50,7 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     file.write_bytes(b"bad")
     with pytest.raises(RuntimeError):
         module.verify(manifest_path)
-    assert module._version(ROOT) == "0.1.0"
+    assert module._version(ROOT) == "1.0.0"
     monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v1", "assets": [], "version": "1"})
     monkeypatch.setattr(module, "git", lambda *_: "dirty")
     with pytest.raises(RuntimeError):
@@ -76,21 +76,21 @@ def test_release_build_publish_and_main(tmp_path: Path, monkeypatch: pytest.Monk
     def fake_run(command, cwd=None, **kwargs):
         if "build" in command:
             out = Path(command[command.index("--outdir") + 1])
-            (out / "company_harvest-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+            (out / "company_harvest-1.0.0-py3-none-any.whl").write_bytes(b"wheel")
             source = out / "source.txt"
             source.write_text("sdist")
-            with tarfile.open(out / "company_harvest-0.1.0.tar.gz", "w:gz") as archive:
-                archive.add(source, arcname="company_harvest-0.1.0/source.txt")
+            with tarfile.open(out / "company_harvest-1.0.0.tar.gz", "w:gz") as archive:
+                archive.add(source, arcname="company_harvest-1.0.0/source.txt")
             source.unlink()
         missing = command[:3] == ["gh", "release", "view"] or command[:3] == ["git", "rev-parse", "--verify"]
         return subprocess.CompletedProcess(command, 1 if missing else 0)
 
     monkeypatch.setattr(module.subprocess, "run", fake_run)
-    monkeypatch.setattr(module, "qualify_wheel", lambda wheel, root: {"version": "0.1.0", "import_scope": "isolated-site-packages", "status": "PASS"})
+    monkeypatch.setattr(module, "qualify_wheel", lambda wheel, root: {"version": "1.0.0", "import_scope": "isolated-site-packages", "status": "PASS"})
     manifest_path = module.build(ROOT, tmp_path)
     manifest = module.verify(manifest_path)
     assert len(manifest["assets"]) == 4
-    monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v0.1.0", "assets": [], "version": "0.1.0"})
+    monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v1.0.0", "assets": [], "version": "1.0.0"})
     monkeypatch.setattr(module, "git", lambda root, *args: "x" if args[0] == "rev-parse" else "")
     module.publish(ROOT, manifest_path)
     monkeypatch.setattr(module, "build", lambda *_: manifest_path)

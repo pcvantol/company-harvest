@@ -10,8 +10,10 @@ De tool voert bij installatie of starten nooit automatisch een harvest uit. Echt
 De actuele voorbereidingsopdracht verwerkt IND, GLEIF, ANBI en DUO tot één
 volledige gededupliceerde master en een afzonderlijk gefilterde KVK-wachtrij
 met een herleidbare uitsluitingsledger; Wikidata valt buiten deze workflow. De
-KVK-Web-API-stap is voorlopig alleen een expliciete kleine, partiële batch,
-geen vrijgegeven volledige harvest of export.
+publieke KVK-frontend-Web-API kan via een expliciete kleine batch of een
+hervatbare langlopende opdracht worden geraadpleegd. Die opdracht doet niets
+automatisch bij installatie of starten. Een gesloten kandidatenlijst is nog
+geen bewijs voor 10.000 actieve, geverifieerde bedrijven.
 
 ## Snel starten
 
@@ -27,9 +29,9 @@ Zie [de gebruikershandleiding](docs/functional/user-guide.md), [technische docum
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-Er is momenteel geen gepubliceerde GitHub Release. Het release-object `v0.1.0` en de
-assets zijn op 18 september 2026 op expliciet verzoek van de eigenaar verwijderd; de
-Git-tag en historische kwalificatie-evidence zijn behouden.
+Zie [v1.0.0](docs/releases/v1.0.0.md) voor release-inhoud en beperkingen; de
+GitHub Releases-pagina toont de actuele publicatiestatus. Het historische
+release-object `v0.1.0` en zijn assets zijn verwijderd; de tag bleef behouden.
 
 ## Status van externe toegang
 

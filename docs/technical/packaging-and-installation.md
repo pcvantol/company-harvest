@@ -4,6 +4,6 @@ De Hatchling-wheel bevat de `src`-package en console-entrypoint. Ondersteund: CP
 
 De scripts in `scripts/` ondersteunen hostpreflight, niet-destructieve venvinstallatie, runpreflight en starten op POSIX en PowerShell. Geen script gebruikt sudo, globale pip, Git of GitHub-login.
 
-`run prepare-pre-kvk` en `kvk pre-kvk-batch` zijn consolecommando's van dezelfde
+`run prepare-pre-kvk`, `kvk pre-kvk-batch` en `kvk pre-kvk-run` zijn consolecommando's van dezelfde
 wheel; zij verwijzen niet naar een repositorycheckout of een losse `.local`-
 runner. De datafolder blijft een externe, door de gebruiker gekozen locatie.

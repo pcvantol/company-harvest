@@ -149,7 +149,7 @@ De filter is heuristisch en kan na expliciet besluit herzien worden.
 | R7 | `IN_PROGRESS` | Publieke frontendroute technisch hervatbaar; voorwaarden, schaal, velden en resultaten nog te beoordelen | expliciete activatie eigenaar op 2026-09-19 |
 | R8 | `DONE` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `BLOCKED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
-| R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
+| R10 | `IN_PROGRESS` | Door eigenaar gevraagde toolrelease 1.0.0 met herdownloadkwalificatie | relevante increments + alle gates |
 
 De volgorde is outcome-gedreven. Een later increment mag niet worden gestart omdat het technisch aantrekkelijk is; de afhankelijkheden en exitcriteria moeten eerst zijn gehaald.
 
@@ -582,9 +582,13 @@ Na een geslaagde sample:
 
 ## 15. R10 — Volgende release
 
-Status: `PLANNED`.
+Status: `IN_PROGRESS` voor de expliciet gevraagde toolrelease 1.0.0.
 
-Er komt geen standalone `v0.1.1` uitsluitend voor de User-Agent. De eerstvolgende release volgt pas na een betekenisvol productincrement en gebruikt de versie-impact daarvan; een nieuwe bron- en metriekcapability kan bijvoorbeeld een nieuwe minorversie rechtvaardigen.
+Er komt geen standalone `v0.1.1` uitsluitend voor de User-Agent. De eigenaar
+heeft na de betekenisvolle vierbronnen-, filter- en hervatbare KVK-tooling een
+release 1.0.0 gevraagd. Dat versienummer kwalificeert de distributie van de
+tool, **niet** een voltooide KVK-bulkdoorloop of levering van 10.000 actieve
+bedrijven. R7/R9 blijven afzonderlijke product-/gebruiksgates.
 
 ### Verplichte gates
 

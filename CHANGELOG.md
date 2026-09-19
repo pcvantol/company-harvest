@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+## 1.0.0 - 2026-09-19
+
 - Expliciete hervatbare `kvk pre-kvk-run` voor de publieke frontend-Web-API:
   minimaal twee seconden tussen verzoekstarts, per-kandidaatjournal,
-  atomische voortgang, duurzame tussentijdse TSV's en pas na zekere
-  count-closure COMPLETE-artefacten voor de vervolgworkflow.
+  atomische voortgang, duurzame tussentijdse TSV's en pas na een gesloten
+  kandidaatpartitie COMPLETE-artefacten voor de vervolgworkflow.
 - Herzienbare offline toelatingsfilter tussen vierbronnenmaster en KVK-batch:
   behoud van de volledige master, afzonderlijke KVK-geschikte lijst en
   uitsluitingsledger met alle redenen, criteria, hashes en gesloten aantallen.
