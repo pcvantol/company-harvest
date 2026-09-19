@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from company_harvest.core import (
+from company_lookup.core import (
     HarvestError,
     Run,
     atomic_write,
@@ -23,7 +23,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.kvk import (
+from company_lookup.kvk import (
     KvkError,
     Provider,
     ProviderLock,
@@ -31,7 +31,7 @@ from company_harvest.kvk import (
     _check_cooldown,
     _provider_for_run,
 )
-from company_harvest.sampling import (
+from company_lookup.sampling import (
     _even_allocation,
     _latest_sources,
     _require_registered_integrity,

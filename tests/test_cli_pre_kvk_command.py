@@ -9,10 +9,10 @@ import pytest
 from test_pre_kvk import _full_sources
 from test_tenderned import mock_official_download, snapshots
 
-from company_harvest import cli, prepare
-from company_harvest.core import HarvestError, Run, initialize_run, open_run, read_tsv
-from company_harvest.pre_kvk_kvk import PublicHttpProvider
-from company_harvest.tenderned import collect_tenderned
+from company_lookup import cli, prepare
+from company_lookup.core import HarvestError, Run, initialize_run, open_run, read_tsv
+from company_lookup.pre_kvk_kvk import PublicHttpProvider
+from company_lookup.tenderned import collect_tenderned
 
 
 def _offline_sources(monkeypatch: pytest.MonkeyPatch, calls: list[str], root: Path) -> None:

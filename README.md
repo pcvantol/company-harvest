@@ -1,23 +1,26 @@
-# Company Harvest
+# Company Lookup
 
-Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
+Company Lookup is een lokale, auditbare Python-CLI voor twee workflows:
 
 1. **HARVEST** — publieke bronnen verzamelen, voorzichtig dedupliceren, via de gewone publieke KVK-zoekfunctie verifiëren, rechtsvorm/status filteren en Excel/TSV exporteren.
 2. **MERGE_LISTS** — twee bestaande CSV/XLSX-lijsten offline samenvoegen op een geldig KVK-nummer, met volledige conflictregistratie.
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-De actuele publieke release is 3.0.0; de broncode is de nog niet gepubliceerde
-minorversie 3.1.0. Beide vereisen uitsluitend Python 3.14.x. De publieke
+De actuele publieke release is nog de vroegere 3.0.0-wheel onder de naam
+`company-harvest`; de broncode is de nog niet gepubliceerde, incompatibele
+**4.0.0**-versie onder `company-lookup`. Beide vereisen uitsluitend Python 3.14.x. De publieke
 3.0.0-wheel heeft een [bekende live parserblokkade](docs/measurements/20260919-v3-live-wheel-e2e-10-blocked.md)
 vóór de KVK-check. De lokaal gebouwde 3.0.1-wheel corrigeert die parser en
 is met [een begrensde tiennummerproef](docs/measurements/20260919-v301-local-wheel-e2e-10-pass.md)
 end-to-end gevalideerd; hij is niet gepubliceerd. De ingetrokken v1.0.0-wheel
 had een breder historisch compatibiliteitscontract.
 
-De ongepubliceerde 3.1.0-broncode voegt `run pre-kvk` toe: één opdracht van
+De ongepubliceerde 4.0.0-broncode bevat ook `run pre-kvk`: één opdracht van
 brondownload tot de gefilterde KVK-invoer, zonder KVK-verzoeken. De 3.0.1-
 parserfix is daarin opgenomen. Zie de [gebruikershandleiding](docs/functional/user-guide.md).
+De pakketnaam, Python-import, CLI, configuratievariabele en standaarddatamap
+zijn gewijzigd; zie [migratie](docs/technical/versioning-and-migrations.md).
 
 Nieuwe runs en bestanden vanaf 2.0.0 krijgen
 een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
@@ -58,9 +61,9 @@ is alleen voor lokale ontwikkeling vanuit deze repository:
 ```bash
 python3.14 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
-export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
-.venv/bin/company-harvest doctor
-RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
+export COMPANY_LOOKUP_DATA_DIR="$HOME/Documents/company-lookup-data"
+.venv/bin/company-lookup doctor
+RUN_DIR="$(.venv/bin/company-lookup run init --target 10000 --print-path)"
 ```
 
 Zie de [geïntegreerde gebruikshandleiding](docs/functional/e2e-command.md),

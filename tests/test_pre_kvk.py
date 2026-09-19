@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from company_harvest.core import HarvestError, Run, atomic_write, read_tsv, sha256, write_tsv
-from company_harvest.pre_kvk import (
+from company_lookup.core import HarvestError, Run, atomic_write, read_tsv, sha256, write_tsv
+from company_lookup.pre_kvk import (
     CURRENT_SOURCE_IDS,
     SOURCE_IDS,
     build_blocked_pre_kvk_preview,
     build_pre_kvk_list,
     source_scope,
 )
-from company_harvest.sources import RAW_HEADERS
+from company_lookup.sources import RAW_HEADERS
 
 
 def _raw(source_id: str, row: int, name: str, hint: str = "") -> dict[str, str]:
@@ -145,7 +145,7 @@ def test_pre_kvk_closes_sqlite_spool_before_cleanup(
     run: Run, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _full_sources(run)
-    from company_harvest import pre_kvk
+    from company_lookup import pre_kvk
 
     original_connect = pre_kvk.sqlite3.connect
     spool_connections = []
@@ -216,7 +216,7 @@ def test_pre_kvk_checks_evidence_and_allows_historical_evidence(run: Run) -> Non
 
 def test_pre_kvk_refuses_changed_input_before_publish(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
     paths = _full_sources(run)
-    from company_harvest import pre_kvk
+    from company_lookup import pre_kvk
 
     original = pre_kvk._write_group
     changed = False

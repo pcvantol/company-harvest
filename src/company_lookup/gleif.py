@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
@@ -27,7 +27,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.sources import (
+from company_lookup.sources import (
     RAW_HEADERS,
     SOURCE_HEADERS,
     read_catalog,
@@ -455,7 +455,7 @@ def _collect_gleif_unlocked(
     if limit is not None and limit < 1:
         raise HarvestError("GLEIF-limiet moet positief zijn")
     if not run.latest_artifact("01", "sources_inventory"):
-        from company_harvest.sources import discover
+        from company_lookup.sources import discover
 
         discover(run)
     prior_source = run.latest_artifact("02", f"source_{SOURCE_ID}")

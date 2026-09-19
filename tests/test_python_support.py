@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from company_harvest.preflight import host
+from company_lookup.preflight import host
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,6 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_package_contract_and_current_interpreter(tmp_path: Path) -> None:
     with (ROOT / "pyproject.toml").open("rb") as handle:
         config = tomllib.load(handle)
+    assert config["project"]["name"] == "company-lookup"
+    assert config["project"]["version"] == "4.0.0"
+    assert config["project"]["scripts"] == {"company-lookup": "company_lookup.cli:main"}
+    assert config["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == ["src/company_lookup"]
     assert config["project"]["requires-python"] == ">=3.14,<3.15"
     assert config["tool"]["ruff"]["target-version"] == "py314"
     assert config["tool"]["mypy"]["python_version"] == "3.14"
@@ -29,7 +33,7 @@ def test_package_contract_and_current_interpreter(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("minor", [11, 12, 13, 15])
 def test_forced_import_rejects_other_python_minors(minor: int, monkeypatch: pytest.MonkeyPatch) -> None:
-    source = ROOT / "src" / "company_harvest" / "__init__.py"
+    source = ROOT / "src" / "company_lookup" / "__init__.py"
     # Voer de echte package-guard uit zonder de interpreter van pytest te wisselen.
     with monkeypatch.context() as patch:
         patch.setattr(sys, "version_info", (3, minor, 0))

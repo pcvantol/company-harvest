@@ -6,16 +6,16 @@ import json
 import math
 from typing import Any
 
-from company_harvest.audit import verify
-from company_harvest.console import emit, phase
-from company_harvest.core import HarvestError, Run, read_tsv
-from company_harvest.kvk import PublicHttpProvider
-from company_harvest.kvk import preflight as kvk_preflight
-from company_harvest.kvk_scope import bind_kvk_scope, scope_details
-from company_harvest.pre_kvk_kvk import check_access_blocks, run_pre_kvk
-from company_harvest.preflight import host as host_preflight
-from company_harvest.prepare import prepare_pre_kvk
-from company_harvest.workflow import (
+from company_lookup.audit import verify
+from company_lookup.console import emit, phase
+from company_lookup.core import HarvestError, Run, read_tsv
+from company_lookup.kvk import PublicHttpProvider
+from company_lookup.kvk import preflight as kvk_preflight
+from company_lookup.kvk_scope import bind_kvk_scope, scope_details
+from company_lookup.pre_kvk_kvk import check_access_blocks, run_pre_kvk
+from company_lookup.preflight import host as host_preflight
+from company_lookup.prepare import prepare_pre_kvk
+from company_lookup.workflow import (
     active_only,
     consolidate,
     exclude_sole_proprietorships,

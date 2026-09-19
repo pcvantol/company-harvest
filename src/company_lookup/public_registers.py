@@ -20,7 +20,7 @@ import httpx
 from defusedxml import ElementTree as ET
 from defusedxml.common import DefusedXmlException
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
@@ -29,7 +29,7 @@ from company_harvest.core import (
     timestamp,
     validate_kvk,
 )
-from company_harvest.sources import RAW_HEADERS, SOURCE_HEADERS, read_catalog
+from company_lookup.sources import RAW_HEADERS, SOURCE_HEADERS, read_catalog
 
 MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
@@ -504,7 +504,7 @@ def _update_inventory(run: Run, spec: RegisterSpec, report: dict[str, object]) -
             row["live_measurement_status"] = "MEASURED_LIVE_EVIDENCE"
             row["measured_count"] = str(counts["candidate_records"])
     path = run.artifact_path("01", f"sources_inventory_{spec.source_id}_measured", "csv")
-    from company_harvest.core import write_tsv
+    from company_lookup.core import write_tsv
 
     write_tsv(path, SOURCE_HEADERS, rows)
     run.register_artifact(path, "01", "sources_inventory")
@@ -572,7 +572,7 @@ def _collect_public_register_unlocked(
     if limit is not None and limit < 1:
         raise HarvestError(f"{spec.name}-limiet moet positief zijn")
     if not run.latest_artifact("01", "sources_inventory"):
-        from company_harvest.sources import discover
+        from company_lookup.sources import discover
 
         discover(run)
     kinds = {

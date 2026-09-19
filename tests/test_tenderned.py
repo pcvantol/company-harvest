@@ -12,11 +12,11 @@ import pytest
 from openpyxl import Workbook, load_workbook
 from test_pre_kvk import _full_sources
 
-from company_harvest import tenderned
-from company_harvest.core import HTTP_USER_AGENT, HarvestError, Run, read_tsv
-from company_harvest.pre_kvk import CURRENT_SOURCE_IDS, build_pre_kvk_list, source_scope
-from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.sources import read_catalog
+from company_lookup import tenderned
+from company_lookup.core import HTTP_USER_AGENT, HarvestError, Run, read_tsv
+from company_lookup.pre_kvk import CURRENT_SOURCE_IDS, build_pre_kvk_list, source_scope
+from company_lookup.pre_kvk_filter import build_pre_kvk_filter
+from company_lookup.sources import read_catalog
 
 XLSX_URL = (
     "https://www.tenderned.nl/cms/sites/default/files/2026-07/"

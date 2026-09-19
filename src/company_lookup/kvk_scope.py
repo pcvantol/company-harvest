@@ -7,9 +7,9 @@ import json
 import os
 from typing import cast
 
-from company_harvest.core import HarvestError, Run, atomic_write, sha256
-from company_harvest.pre_kvk import MASTER_HEADERS, _registered, validated_master
-from company_harvest.pre_kvk_filter import validated_filter
+from company_lookup.core import HarvestError, Run, atomic_write, sha256
+from company_lookup.pre_kvk import MASTER_HEADERS, _registered, validated_master
+from company_lookup.pre_kvk_filter import validated_filter
 
 
 def scope_details(run: Run) -> dict[str, int | str] | None:

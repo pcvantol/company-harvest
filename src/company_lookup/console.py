@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-_ACTIVE: ContextVar[bool] = ContextVar("company_harvest_console_active", default=False)
+_ACTIVE: ContextVar[bool] = ContextVar("company_lookup_console_active", default=False)
 _COLORS = {"START": "36;1", "STEP": "34;1", "INFO": "36", "OK": "32;1",
            "WARN": "33;1", "FOUT": "31;1"}
 _SAFE_SCALARS = ("status", "ready", "valid", "audit_valid", "delivery_rows",

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from company_harvest import cli
-from company_harvest.core import Run
+from company_lookup import cli
+from company_lookup.core import Run
 
 
 @pytest.mark.parametrize(("command", "service", "plain"), [

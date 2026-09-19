@@ -11,8 +11,8 @@ import httpx
 import pytest
 from openpyxl import Workbook
 
-from company_harvest import core
-from company_harvest.core import (
+from company_lookup import core
+from company_lookup.core import (
     CSV_FIELD_SIZE_LIMIT,
     HTTP_USER_AGENT,
     HarvestError,
@@ -26,7 +26,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.sources import (
+from company_lookup.sources import (
     _bounded_get,
     _enabled,
     _ind_source_date,
@@ -61,9 +61,12 @@ def test_core_roundtrip_and_validation(tmp_path: Path, monkeypatch: pytest.Monke
     for bad in (True, "123", "1234567²", 123.5, None):
         with pytest.raises(ValueError):
             validate_kvk(bad)
-    monkeypatch.setenv("COMPANY_HARVEST_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("COMPANY_LOOKUP_DATA_DIR", str(tmp_path))
     assert data_root() == tmp_path
     assert data_root(tmp_path / "x") == tmp_path / "x"
+    monkeypatch.delenv("COMPANY_LOOKUP_DATA_DIR")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    assert data_root() == tmp_path / ".local" / "share" / "company-lookup"
 
 
 def test_csv_field_limit_keeps_large_evidence_and_rejects_oversized_field(tmp_path: Path) -> None:
@@ -248,7 +251,7 @@ class FakeClient:
 
 def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     discover(run)
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", FakeClient)
     outputs = collect(run, only=["ind_arbeid", "wikidata_nl_companies"], limit=1)
     assert len(outputs) == 2 and all(read_tsv(path) for path in outputs)
     assert FakeClient.headers["User-Agent"] == "company-lookup/0.1"
@@ -322,7 +325,7 @@ def test_source_safe_redirect_and_redirect_limit() -> None:
 
 
 def test_source_body_limit_stops_stream_before_full_body(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("company_harvest.sources.MAX_RESPONSE_BYTES", 70000)
+    monkeypatch.setattr("company_lookup.sources.MAX_RESPONSE_BYTES", 70000)
     emitted = 0
 
     def body():
@@ -363,7 +366,7 @@ def test_live_capability_measurement_is_bounded_and_reconcilable(
     run, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     discover(run)
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", FakeClient)
     json_path, md_path = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     assert md_path.is_file() and report["all_sources_terminal"]
@@ -406,7 +409,7 @@ def test_capability_report_preserves_terminal_source_failure(
                 raise httpx.ReadTimeout("bounded timeout", request=request)
             return super().get(url, **kwargs)
 
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", PartialClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", PartialClient)
     json_path, _ = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     by_source = {item["source_id"]: item for item in report["sources"]}
@@ -427,7 +430,7 @@ def test_capability_report_preserves_malformed_json_as_terminal_failure(
                 return FakeResponse(b"not-json", "https://query.wikidata.org/sparql")
             return super().get(url, **kwargs)
 
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", MalformedJsonClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", MalformedJsonClient)
     json_path, _ = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     by_source = {item["source_id"]: item for item in report["sources"]}
@@ -440,14 +443,14 @@ def test_capability_report_preserves_malformed_json_as_terminal_failure(
 def test_failed_refresh_does_not_reuse_prior_attempt_observations(
     run, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", FakeClient)
     measure_sources(run, wikidata_limit=1)
 
     class TimeoutClient(FakeClient):
         def get(self, url, **kwargs):
             raise httpx.ReadTimeout("new attempt failed", request=httpx.Request("GET", url))
 
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", TimeoutClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", TimeoutClient)
     json_path, _ = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     for item in report["sources"]:
@@ -470,7 +473,7 @@ def test_http_block_records_current_response_metrics_headers_and_evidence(
                 headers={"retry-after": "60", "x-ratelimit-remaining": "0"},
             )
 
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", BlockedClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", BlockedClient)
     json_path, _ = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     for item in report["sources"]:
@@ -497,7 +500,7 @@ def test_ind_invalid_only_failure_keeps_parser_rejection_count(
                 )
             return super().get(url, **kwargs)
 
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", InvalidIndClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", InvalidIndClient)
     json_path, _ = measure_sources(run, wikidata_limit=1)
     report = json.loads(json_path.read_text())
     ind = next(item for item in report["sources"] if item["source_id"] == "ind_arbeid")
@@ -509,7 +512,7 @@ def test_ind_invalid_only_failure_keeps_parser_rejection_count(
 def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
     pauses = []
-    monkeypatch.setattr("company_harvest.sources.time.sleep", pauses.append)
+    monkeypatch.setattr("company_lookup.sources.time.sleep", pauses.append)
 
     class PagingClient(FakeClient):
         def get(self, url, **kwargs):
@@ -522,7 +525,7 @@ def test_wikidata_paginates_on_raw_binding_count(run, monkeypatch: pytest.Monkey
             return FakeResponse(json.dumps({"results": {"bindings": bindings}}).encode(), "https://query.wikidata.org/sparql")
 
     discover(run)
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", PagingClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", PagingClient)
     output = collect(run, only=["wikidata_nl_companies"])[0]
     assert len(calls) == 2 and len(read_tsv(output)) == 100
     assert pauses == [3.0]
@@ -545,7 +548,7 @@ def test_wikidata_429_stops_without_next_page(run, monkeypatch: pytest.MonkeyPat
             )
 
     discover(run)
-    monkeypatch.setattr("company_harvest.sources.httpx.Client", RateLimitedClient)
+    monkeypatch.setattr("company_lookup.sources.httpx.Client", RateLimitedClient)
     with pytest.raises(httpx.HTTPStatusError):
         collect(run, only=["wikidata_nl_companies"])
     assert RateLimitedClient.calls == 1

@@ -1,5 +1,12 @@
 # Packaging en installatie
 
+De huidige ongepubliceerde broncode bouwt een **4.0.0**-distributie met
+projectnaam `company-lookup`, module `company_lookup` en entrypoint
+`company-lookup`. Installeer deze MAJOR-versie in een nieuwe venv; de
+publieke 3.0.0-wheel hieronder heeft nog de oude naam. Zie
+[de migratie-instructies](versioning-and-migrations.md). Er is nog geen
+nieuwe publieke release of vervangende downloadlink.
+
 De Hatchling-wheel bevat de `src`-package en console-entrypoint. De
 historisch gepubliceerde, inmiddels ingetrokken 2.0.0-wheel en de huidige
 publieke 3.0.0-wheel ondersteunen

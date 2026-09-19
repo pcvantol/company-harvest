@@ -28,5 +28,5 @@ trap cleanup EXIT INT TERM
 CREATED=1
 if [ -n "$WHEELHOUSE" ]; then "$VENV/bin/python" -m pip install --no-index --find-links "$WHEELHOUSE" "$WHEEL"; else "$VENV/bin/python" -m pip install "$WHEEL"; fi
 if [ "$BROWSER" -eq 1 ]; then "$VENV/bin/python" -m playwright install chromium; fi
-"$VENV/bin/company-harvest" --version
+"$VENV/bin/company-lookup" --version
 trap - EXIT INT TERM

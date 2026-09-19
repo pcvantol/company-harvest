@@ -9,8 +9,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from company_harvest.core import HarvestError, Run, read_tsv, sha256, validate_kvk
-from company_harvest.kvk_scope import scope_details
+from company_lookup.core import HarvestError, Run, read_tsv, sha256, validate_kvk
+from company_lookup.kvk_scope import scope_details
 
 
 def verify(run: Run) -> dict[str, Any]:
@@ -199,7 +199,7 @@ def verify(run: Run) -> dict[str, Any]:
                 if schema == 2:
                     light = current_output("delivery_light_csv")
                     if light and delivery and light.is_file() and delivery.is_file():
-                        from company_harvest.workflow import _light_rows
+                        from company_lookup.workflow import _light_rows
 
                         try:
                             expected_headers, expected_rows, expected_source = _light_rows(run, read_tsv(delivery))

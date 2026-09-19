@@ -18,7 +18,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from openpyxl import load_workbook
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,

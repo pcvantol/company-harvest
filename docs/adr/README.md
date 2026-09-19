@@ -19,3 +19,4 @@
 - [ADR-017 Lichte, zakelijk verrijkte export naast auditexport](017-light-business-export.md)
 - [ADR-018 Begrensde CSV-veldlimiet voor bronbewijs](018-bounded-csv-field-size.md)
 - [ADR-019 Eén opdracht tot vóór de KVK-check](019-one-command-pre-kvk.md)
+- [ADR-020 Productidentiteit Company Lookup](020-company-lookup-identity.md)

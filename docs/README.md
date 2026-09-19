@@ -1,7 +1,8 @@
 # Documentatie
 
-De huidige broncode is **3.1.0 (nog niet gepubliceerd)**; de publieke wheel
-blijft **3.0.0**. Beide bevatten
+De huidige broncode is **4.0.0 (nog niet gepubliceerd)** onder de naam
+**Company Lookup**; de publieke wheel blijft de historische 3.0.0 onder
+de oude pakket-/CLI-naam. Beide bevatten
 TenderNed als vijfde bron en een afzonderlijke lichte KVK-/bronexport.
 Versie 2.0.0 was de vorige release zonder die functies, maar de publieke
 release en tag zijn inmiddels ingetrokken; gebruik voor nieuwe installaties
@@ -16,6 +17,9 @@ voor een begrensde tiennummerproef, inclusief eind-Excel en audit. Zie ook
 De broncode bevat nu bovendien een nog niet uitgebrachte
 [`run pre-kvk`-opdracht](functional/user-guide.md) voor één-commando-
 bronvoorbereiding zonder KVK-verkeer; die zit niet in de 3.0.0-wheel.
+Gebruik de [naam- en datamapmigratie](technical/versioning-and-migrations.md)
+voordat bestaande installaties worden vervangen. Een 4.0.0-release is nog
+niet gepubliceerd.
 
 - Canonieke koers en uitvoeringsvolgorde: [roadmap](../ROADMAP.md).
 - Functioneel: [E2E-handleiding (release 3.0.0)](functional/e2e-command.md),

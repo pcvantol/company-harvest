@@ -1,4 +1,4 @@
-"""Volledig command-linecontract voor Company Harvest."""
+"""Volledig command-linecontract voor Company Lookup."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Never
 
-from company_harvest import __version__
-from company_harvest.audit import trace, verify
-from company_harvest.console import active as console_active
-from company_harvest.console import emit, error_text, phase
-from company_harvest.console import result as console_result
-from company_harvest.core import (
+from company_lookup import __version__
+from company_lookup.audit import trace, verify
+from company_lookup.console import active as console_active
+from company_lookup.console import emit, error_text, phase
+from company_lookup.console import result as console_result
+from company_lookup.core import (
     CSV_FIELD_SIZE_LIMIT,
     HarvestError,
     Run,
@@ -25,22 +25,22 @@ from company_harvest.core import (
     initialize_run,
     open_run,
 )
-from company_harvest.end_to_end import run_end_to_end
-from company_harvest.gleif import collect_gleif
-from company_harvest.kvk import preflight as kvk_preflight
-from company_harvest.kvk import resolve
-from company_harvest.matching import record_matching_review, run_matching_pilot
-from company_harvest.merge_lists import InputOptions, merge_lists
-from company_harvest.pre_kvk import build_pre_kvk_list
-from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.pre_kvk_kvk import resolve_pre_kvk, run_pre_kvk
-from company_harvest.preflight import host, run_preflight
-from company_harvest.prepare import prepare_pre_kvk
-from company_harvest.public_registers import collect_public_register
-from company_harvest.sampling import build_sample, record_sample_review
-from company_harvest.sources import collect, discover, import_source, list_sources, measure_sources
-from company_harvest.tenderned import collect_tenderned
-from company_harvest.workflow import (
+from company_lookup.end_to_end import run_end_to_end
+from company_lookup.gleif import collect_gleif
+from company_lookup.kvk import preflight as kvk_preflight
+from company_lookup.kvk import resolve
+from company_lookup.matching import record_matching_review, run_matching_pilot
+from company_lookup.merge_lists import InputOptions, merge_lists
+from company_lookup.pre_kvk import build_pre_kvk_list
+from company_lookup.pre_kvk_filter import build_pre_kvk_filter
+from company_lookup.pre_kvk_kvk import resolve_pre_kvk, run_pre_kvk
+from company_lookup.preflight import host, run_preflight
+from company_lookup.prepare import prepare_pre_kvk
+from company_lookup.public_registers import collect_public_register
+from company_lookup.sampling import build_sample, record_sample_review
+from company_lookup.sources import collect, discover, import_source, list_sources, measure_sources
+from company_lookup.tenderned import collect_tenderned
+from company_lookup.workflow import (
     active_only,
     consolidate,
     exclude_sole_proprietorships,
@@ -69,7 +69,7 @@ class _ConsoleParser(argparse.ArgumentParser):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = _ConsoleParser(prog="company-harvest", description="Lokale, auditbare bedrijfsverzameling en offline lijstmerge")
+    parser = _ConsoleParser(prog="company-lookup", description="Lokale, auditbare bedrijfsverzameling en offline lijstmerge")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--data-dir", type=Path)
     commands = parser.add_subparsers(dest="command", required=True)

@@ -1,6 +1,6 @@
 # Pre-KVK-bronlijst en foutgrenzen
 
-`company-harvest run pre-kvk` is vanaf de huidige ongepubliceerde broncode
+`company-lookup run pre-kvk` is vanaf de huidige ongepubliceerde broncode
 de geïntegreerde ingang vóór de KVK-check. Zonder `--run-dir` initialiseert
 het een nieuwe HARVEST-run; met `--run-dir` opent het precies die bestaande
 run. Na host-/workflowpreflight roept het dezelfde `prepare_pre_kvk`-service
@@ -12,9 +12,9 @@ Er wordt geen KVK-scope gebonden, provider gebruikt of export gestart.
 Voltooide, integere bron-, master- en filterartefacten worden bij hervatten
 hergebruikt; een afgebroken download kan opnieuw moeten beginnen.
 
-`company-harvest run prepare-pre-kvk --run-dir RUN_DIR` downloadt of hergebruikt
+`company-lookup run prepare-pre-kvk --run-dir RUN_DIR` downloadt of hergebruikt
 IND, GLEIF, ANBI, DUO en TenderNed in deze volgorde en bouwt daarna één master. Wikidata
-is uitgesloten. `company-harvest companies pre-kvk-list --run-dir RUN_DIR` is de
+is uitgesloten. `company-lookup companies pre-kvk-list --run-dir RUN_DIR` is de
 afzonderlijke offline lijstbouwopdracht. Zij doet geen bron- of KVK-verzoeken.
 De master eist voor nieuwe runs vijf geselecteerde bronartefacten met
 COMPLETE-registratie, exacte SHA-256/grootte, onbeperkte full-scope-inname,

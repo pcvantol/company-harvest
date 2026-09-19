@@ -22,7 +22,7 @@ try {
   if ($Wheelhouse) { & $Python -m pip install --no-index --find-links $Wheelhouse $Wheel } else { & $Python -m pip install $Wheel }
   if ($LASTEXITCODE -ne 0) { throw 'Installatie mislukt.' }
   if ($Browser) { & $Python -m playwright install chromium; if ($LASTEXITCODE -ne 0) { throw 'Browserinstallatie mislukt.' } }
-  & (Join-Path $Venv 'Scripts\company-harvest.exe') --version
+  & (Join-Path $Venv 'Scripts\company-lookup.exe') --version
   if ($LASTEXITCODE -ne 0) { throw 'Versiecontrole mislukt.' }
 } catch {
   if (Test-Path $Venv) { Remove-Item -LiteralPath $Venv -Recurse -Force }

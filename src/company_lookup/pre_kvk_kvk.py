@@ -13,8 +13,8 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
-from company_harvest.console import emit
-from company_harvest.core import (
+from company_lookup.console import emit
+from company_lookup.core import (
     HarvestError,
     Run,
     atomic_write,
@@ -23,7 +23,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.kvk import (
+from company_lookup.kvk import (
     UNRESOLVED_HEADERS,
     KvkError,
     ProviderLock,
@@ -32,9 +32,9 @@ from company_harvest.kvk import (
     _has_source_conflict,
     _match,
 )
-from company_harvest.kvk_scope import scope_details
-from company_harvest.pre_kvk import MASTER_HEADERS, validated_master
-from company_harvest.pre_kvk_filter import validated_filter
+from company_lookup.kvk_scope import scope_details
+from company_lookup.pre_kvk import MASTER_HEADERS, validated_master
+from company_lookup.pre_kvk_filter import validated_filter
 
 MATCH_HEADERS = [
     "candidate_id", "Bedrijfsnaam", "KVK-nummer", "raw_legal_form", "raw_status",

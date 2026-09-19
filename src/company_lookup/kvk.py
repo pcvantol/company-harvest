@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
@@ -552,7 +552,7 @@ def _check_cooldown(run: Run) -> None:
 
 
 def _match(candidate: dict[str, str], result: ProviderResult) -> dict[str, Any] | None:
-    from company_harvest.core import normalize_name, validate_kvk
+    from company_lookup.core import normalize_name, validate_kvk
 
     source_hint = candidate.get("source_kvk_hint", "")
     if not source_hint:
@@ -598,7 +598,7 @@ def _match(candidate: dict[str, str], result: ProviderResult) -> dict[str, Any] 
 
 
 def _has_source_conflict(candidate: dict[str, str], result: ProviderResult) -> bool:
-    from company_harvest.core import normalize_name, validate_kvk
+    from company_lookup.core import normalize_name, validate_kvk
 
     hint = candidate.get("source_kvk_hint", "")
     if not hint:

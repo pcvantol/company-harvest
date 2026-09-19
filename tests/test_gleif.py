@@ -9,9 +9,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-from company_harvest.cli import build_parser, dispatch
-from company_harvest.core import HTTP_USER_AGENT, HarvestError, read_tsv, sha256, write_tsv
-from company_harvest.gleif import (
+from company_lookup.cli import build_parser, dispatch
+from company_lookup.core import HTTP_USER_AGENT, HarvestError, read_tsv, sha256, write_tsv
+from company_lookup.gleif import (
     DOWNLOAD_URL,
     REQUIRED_COLUMNS,
     _content_length,
@@ -20,8 +20,8 @@ from company_harvest.gleif import (
     _safe_archive,
     collect_gleif,
 )
-from company_harvest.sources import list_sources
-from company_harvest.workflow import merge_candidates, outcome_metrics
+from company_lookup.sources import list_sources
+from company_lookup.workflow import merge_candidates, outcome_metrics
 
 HEADERS = sorted(REQUIRED_COLUMNS)
 
@@ -195,7 +195,7 @@ def test_gleif_archive_and_row_safety_gates(run, tmp_path: Path, monkeypatch) ->
         _safe_archive(unsafe)
 
     source = _representative_archive(tmp_path)
-    monkeypatch.setattr("company_harvest.gleif.MAX_UNCOMPRESSED_BYTES", 1)
+    monkeypatch.setattr("company_lookup.gleif.MAX_UNCOMPRESSED_BYTES", 1)
     with pytest.raises(HarvestError, match="ongecomprimeerde"):
         _safe_archive(source)
 
@@ -230,13 +230,13 @@ def test_gleif_rejects_invalid_limit_columns_space_and_ratio(run, tmp_path: Path
         collect_gleif(run, incomplete, refresh=True)
     assert run.latest_artifact("03", "preserved_on_failed_refresh") == downstream
 
-    monkeypatch.setattr("company_harvest.gleif.MAX_COMPRESSION_RATIO", 0.5)
+    monkeypatch.setattr("company_lookup.gleif.MAX_COMPRESSION_RATIO", 0.5)
     with pytest.raises(HarvestError, match="compressieratio"):
         _safe_archive(source)
-    monkeypatch.setattr("company_harvest.gleif.MAX_COMPRESSION_RATIO", 15.0)
+    monkeypatch.setattr("company_lookup.gleif.MAX_COMPRESSION_RATIO", 15.0)
 
     monkeypatch.setattr(
-        "company_harvest.gleif.shutil.disk_usage",
+        "company_lookup.gleif.shutil.disk_usage",
         lambda _path: type("Usage", (), {"free": 0})(),
     )
     with pytest.raises(HarvestError, match="onvoldoende vrije schijfruimte"):
@@ -302,7 +302,7 @@ def test_gleif_download_is_bounded_and_uses_neutral_user_agent(
 ) -> None:
     source = _representative_archive(tmp_path)
     _StreamClient.response = _StreamResponse(source.read_bytes())
-    monkeypatch.setattr("company_harvest.gleif.httpx.Client", _StreamClient)
+    monkeypatch.setattr("company_lookup.gleif.httpx.Client", _StreamClient)
     evidence, metadata = _download_evidence(run)
     assert evidence.is_file() and sha256(evidence) == sha256(source)
     assert metadata["downloaded_bytes"] == source.stat().st_size
@@ -361,7 +361,7 @@ def test_gleif_download_is_bounded_and_uses_neutral_user_agent(
     _StreamClient.response = _StreamResponse(source.read_bytes())
     with monkeypatch.context() as scoped:
         moments = iter((0.0, 1801.0))
-        scoped.setattr("company_harvest.gleif.time.monotonic", lambda: next(moments))
+        scoped.setattr("company_lookup.gleif.time.monotonic", lambda: next(moments))
         with pytest.raises(HarvestError, match="tijdgate"):
             _download_evidence(run)
 
@@ -369,7 +369,7 @@ def test_gleif_download_is_bounded_and_uses_neutral_user_agent(
         def stream(self, method: str, url: str):
             raise httpx.ReadTimeout("timeout", request=httpx.Request(method, url))
 
-    monkeypatch.setattr("company_harvest.gleif.httpx.Client", TimeoutClient)
+    monkeypatch.setattr("company_lookup.gleif.httpx.Client", TimeoutClient)
     with pytest.raises(HarvestError, match="ReadTimeout"):
         _download_evidence(run)
 

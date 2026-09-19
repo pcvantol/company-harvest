@@ -68,16 +68,16 @@ def scan_asset(path: Path) -> None:
 
 
 def qualify_wheel(wheel: Path, root: Path) -> dict[str, str]:
-    with tempfile.TemporaryDirectory(prefix="company-harvest-install-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="company-lookup-install-") as temporary:
         environment = Path(temporary) / "venv"
         install_log = Path(temporary) / "install.log"
         installer = ["pwsh", "-File", str(root / "scripts" / "install.ps1"), "-Wheel", str(wheel), "-Venv", str(environment), "-Sha256", digest(wheel), "-Log", str(install_log)] if sys.platform == "win32" else ["sh", str(root / "scripts" / "install.sh"), str(wheel), str(environment), "--sha256", digest(wheel), "--log", str(install_log)]
         subprocess.run(installer, check=True)
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-        cli = environment / ("Scripts/company-harvest.exe" if sys.platform == "win32" else "bin/company-harvest")
+        cli = environment / ("Scripts/company-lookup.exe" if sys.platform == "win32" else "bin/company-lookup")
         version = subprocess.run([str(cli), "--version"], check=True, capture_output=True, text=True).stdout.strip()
         subprocess.run([str(cli), "--help"], check=True, capture_output=True, text=True)
-        location = subprocess.run([str(python), "-c", "import company_harvest; print(company_harvest.__file__)"], check=True, capture_output=True, text=True).stdout.strip()
+        location = subprocess.run([str(python), "-c", "import company_lookup; print(company_lookup.__file__)"], check=True, capture_output=True, text=True).stdout.strip()
         data = Path(temporary) / "data"
         left, right = Path(temporary) / "left.csv", Path(temporary) / "right.csv"
         left.write_text("Bedrijfsnaam,KVK-nummer\nAlpha BV,01234567\n", encoding="utf-8")
@@ -89,8 +89,8 @@ def qualify_wheel(wheel: Path, root: Path) -> dict[str, str]:
         subprocess.run([str(cli), "--data-dir", str(data), "companies", "merge", "--run-dir", str(harvest_run)], check=True, capture_output=True, text=True)
         synthetic_export = """import sys
 from pathlib import Path
-from company_harvest.core import open_run,read_tsv,write_tsv
-from company_harvest.workflow import consolidate,exclude_sole_proprietorships,active_only,export
+from company_lookup.core import open_run,read_tsv,write_tsv
+from company_lookup.workflow import consolidate,exclude_sole_proprietorships,active_only,export
 r=open_run(Path(sys.argv[1])); c=read_tsv(r.latest_artifact('03','candidates'))[0]
 p=r.artifact_path('04','kvk_matches','csv'); row={'candidate_id':c['candidate_id'],'Bedrijfsnaam':c['original_name'],'KVK-nummer':c['source_kvk_hint'],'raw_legal_form':'Besloten Vennootschap','raw_status':'Actief','city':'Utrecht','country':'Nederland','match_method':'QUALIFICATION_SYNTHETIC','provider':'qualification','checked_at':'synthetic','response_json':'{}','source_relations':c['source_relations']}
 write_tsv(p,list(row),[row]); r.register_artifact(p,'04','kvk_matches'); u=r.artifact_path('05','kvk_unresolved','csv'); write_tsv(u,['candidate_id','original_name','reason','detail','resumable','checked_at'],[]); r.register_artifact(u,'05','kvk_unresolved'); consolidate(r); exclude_sole_proprietorships(r); active_only(r); export(r,1)
@@ -115,9 +115,9 @@ def build(root: Path, output_root: Path) -> Path:
     folder.mkdir(parents=True, exist_ok=False)
     subprocess.run([sys.executable, "-m", "build", "--outdir", str(folder)], cwd=root, check=True)
     assets = sorted(path for path in folder.iterdir() if path.suffix in {".whl", ".gz"})
-    bundle = folder / f"company-harvest-{version}-online-bundle.zip"
+    bundle = folder / f"company-lookup-{version}-online-bundle.zip"
     with tempfile.TemporaryDirectory() as temporary:
-        stage = Path(temporary) / f"company-harvest-{version}"
+        stage = Path(temporary) / f"company-lookup-{version}"
         stage.mkdir()
         wheel = next(path for path in assets if path.suffix == ".whl")
         shutil.copy2(wheel, stage / wheel.name)
@@ -185,10 +185,10 @@ def publish(root: Path, manifest_path: Path) -> None:
         if tagged_commit != manifest["source_commit"]:
             raise RuntimeError("bestaande tag wijst niet naar de gekwalificeerde broncommit")
     else:
-        subprocess.run(["git", "tag", "-a", tag, "-m", f"Company Harvest {manifest['version']}"], cwd=root, check=True)
+        subprocess.run(["git", "tag", "-a", tag, "-m", f"Company Lookup {manifest['version']}"], cwd=root, check=True)
     subprocess.run(["git", "push", "origin", tag], cwd=root, check=True)
     assets = [str(manifest_path.parent / entry["name"]) for entry in manifest["assets"]] + [str(manifest_path)]
-    subprocess.run(["gh", "release", "create", tag, *assets, "--draft", "--verify-tag", "--title", f"Company Harvest {manifest['version']}", "--notes-file", str(root / "docs" / "releases" / f"v{manifest['version']}.md")], cwd=root, check=True)
+    subprocess.run(["gh", "release", "create", tag, *assets, "--draft", "--verify-tag", "--title", f"Company Lookup {manifest['version']}", "--notes-file", str(root / "docs" / "releases" / f"v{manifest['version']}.md")], cwd=root, check=True)
     subprocess.run(["gh", "release", "edit", tag, "--draft=false"], cwd=root, check=True)
 
 

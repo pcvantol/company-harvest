@@ -30,12 +30,12 @@ jobs:
         run: |
           sh -n scripts/*.sh
           scripts/host-preflight.sh
-          touch /tmp/company-harvest-dry-run.whl
-          scripts/install.sh /tmp/company-harvest-dry-run.whl /tmp/company-harvest-dry-run-venv --dry-run
+          touch /tmp/company-lookup-dry-run.whl
+          scripts/install.sh /tmp/company-lookup-dry-run.whl /tmp/company-lookup-dry-run-venv --dry-run
       - name: Validate PowerShell wrappers
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           ./scripts/host-preflight.ps1
-          New-Item -ItemType File -Path company-harvest-dry-run.whl | Out-Null
-          ./scripts/install.ps1 -Wheel company-harvest-dry-run.whl -Venv company-harvest-dry-run-venv -DryRun
+          New-Item -ItemType File -Path company-lookup-dry-run.whl | Out-Null
+          ./scripts/install.ps1 -Wheel company-lookup-dry-run.whl -Venv company-lookup-dry-run-venv -DryRun

@@ -7,13 +7,13 @@ from pathlib import Path
 import pytest
 from test_pre_kvk import _full_sources
 
-from company_harvest import cli, pre_kvk_kvk, prepare
-from company_harvest.audit import verify
-from company_harvest.core import HarvestError, Run, open_run, read_tsv, write_tsv
-from company_harvest.kvk import KvkError, ProviderResult
-from company_harvest.pre_kvk import build_pre_kvk_list
-from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.workflow import export, outcome_metrics
+from company_lookup import cli, pre_kvk_kvk, prepare
+from company_lookup.audit import verify
+from company_lookup.core import HarvestError, Run, open_run, read_tsv, write_tsv
+from company_lookup.kvk import KvkError, ProviderResult
+from company_lookup.pre_kvk import build_pre_kvk_list
+from company_lookup.pre_kvk_filter import build_pre_kvk_filter
+from company_lookup.workflow import export, outcome_metrics
 
 
 def test_prepare_collects_five_sources_without_wikidata(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:

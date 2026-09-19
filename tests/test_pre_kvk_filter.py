@@ -5,9 +5,9 @@ import json
 import pytest
 from test_pre_kvk import _full_sources
 
-from company_harvest.core import HarvestError, Run, normalize_name, read_tsv, sha256, write_tsv
-from company_harvest.pre_kvk import MASTER_HEADERS, build_pre_kvk_list
-from company_harvest.pre_kvk_filter import (
+from company_lookup.core import HarvestError, Run, normalize_name, read_tsv, sha256, write_tsv
+from company_lookup.pre_kvk import MASTER_HEADERS, build_pre_kvk_list
+from company_lookup.pre_kvk_filter import (
     RULE_VERSION,
     _partition_master,
     _reasons,
@@ -15,7 +15,7 @@ from company_harvest.pre_kvk_filter import (
     build_pre_kvk_filter,
     validated_filter,
 )
-from company_harvest.pre_kvk_kvk import resolve_pre_kvk
+from company_lookup.pre_kvk_kvk import resolve_pre_kvk
 
 
 def _row(name: str, sources: list[str] | None = None, hint: str = "12345678",

@@ -17,7 +17,7 @@ from typing import Any
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
@@ -29,7 +29,7 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.kvk_scope import scope_details
+from company_lookup.kvk_scope import scope_details
 
 OUTCOME_REPORT_SCHEMA_VERSION = 1
 LIGHT_KVK_HEADERS = [
@@ -308,7 +308,7 @@ def _public_hit_fields(row: dict[str, str]) -> dict[str, str]:
 
 def _light_rows(run: Run, selected: list[dict[str, str]]) -> tuple[list[str], list[dict[str, str]], dict[str, str] | None]:
     """Verrijk op stabiele kandidaat-ID; gebruik nooit een fuzzy naamkoppeling."""
-    from company_harvest.pre_kvk import validated_master
+    from company_lookup.pre_kvk import validated_master
 
     master = run.latest_artifact("03", "pre_kvk_master")
     source = validated_master(run)[0] if master else run.latest_artifact("03", "candidates")
@@ -471,7 +471,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
         raw_rows.extend(read_tsv(path))
 
     try:
-        from company_harvest.sources import read_catalog
+        from company_lookup.sources import read_catalog
 
         catalog = read_catalog(run)
     except HarvestError:

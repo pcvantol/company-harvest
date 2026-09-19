@@ -3,16 +3,16 @@ from pathlib import Path
 
 import pytest
 
-import company_harvest.sampling as sampling
-from company_harvest.cli import build_parser, dispatch
-from company_harvest.core import HarvestError, read_tsv, sha256, write_tsv
-from company_harvest.sampling import (
+import company_lookup.sampling as sampling
+from company_lookup.cli import build_parser, dispatch
+from company_lookup.core import HarvestError, read_tsv, sha256, write_tsv
+from company_lookup.sampling import (
     ASSESSMENT_HEADERS,
     _even_allocation,
     build_sample,
     record_sample_review,
 )
-from company_harvest.sources import CATALOG, RAW_HEADERS, discover
+from company_lookup.sources import CATALOG, RAW_HEADERS, discover
 
 
 def _row(source_id: str, index: int, name: str, kvk: str = "") -> dict[str, str]:
@@ -157,7 +157,7 @@ def test_r6_review_prioritizes_merges_and_conflicts(run) -> None:
             connection.execute(
                 "UPDATE artifacts SET sha256=?, size=? WHERE path=?",
                 (
-                    __import__("company_harvest.core", fromlist=["sha256"]).sha256(path),
+                    __import__("company_lookup.core", fromlist=["sha256"]).sha256(path),
                     path.stat().st_size,
                     str(path.relative_to(run.path)),
                 ),

@@ -121,10 +121,10 @@ def validate_kvk(value: object) -> str:
 def data_root(explicit: Path | None = None) -> Path:
     if explicit:
         return explicit.expanduser().resolve()
-    configured = os.environ.get("COMPANY_HARVEST_DATA_DIR")
+    configured = os.environ.get("COMPANY_LOOKUP_DATA_DIR")
     if configured:
         return Path(configured).expanduser().resolve()
-    return (Path.home() / ".local" / "share" / "company-harvest").resolve()
+    return (Path.home() / ".local" / "share" / "company-lookup").resolve()
 
 
 def atomic_write(path: Path, content: str | bytes) -> None:
@@ -233,7 +233,7 @@ class Run:
             handle.flush()
         with (logs / "execution.log").open("a", encoding="utf-8") as handle:
             handle.write(f"{clean['time']} {level} {event} {json.dumps(clean, ensure_ascii=False)}\n")
-        from company_harvest.console import audit_event
+        from company_lookup.console import audit_event
 
         audit_event(level, event, safe_fields)
 

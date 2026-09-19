@@ -1,18 +1,20 @@
 # Consolevoortgang (vanaf 2.0.0)
 
-Ieder `company-harvest`-commando toont op stderr een tijd, een gekleurde
+Ieder `company-lookup`-commando toont op stderr een tijd, een gekleurde
 status (`START`, `STEP`, `INFO`, `OK`, `WARN` of `FOUT`) en een korte
 beschrijving. Bij een E2E-run zie je de hele volgorde van downloads,
 samenvoeging, filter, KVK-check, vervolgfilters, export en audit. De
 langlopende KVK-controle meldt op vaste intervallen het aantal verwerkte
 kandidaten; er verschijnen geen bedrijfsnamen of KVK-nummers in deze regels.
 
-De al bestaande resultaten blijven op stdout, bijvoorbeeld het pad van
-`run init --print-path` en JSON-uitvoer. Daardoor werken bestaande scripts
-en omleidingen ongewijzigd. Wil je alleen het machineleesbare resultaat:
+De resultaatvorm op stdout blijft gelijk, bijvoorbeeld het pad van
+`run init --print-path` en JSON-uitvoer. Omleidingen blijven bruikbaar zodra
+scripts de nieuwe programmanaam `company-lookup` gebruiken; oude scripts
+werken **niet** zonder die naamsaanpassing. Wil je alleen het
+machineleesbare resultaat:
 
 ```sh
-RUN_DIR="$(company-harvest run init --target 10000 --print-path 2>/dev/null)"
+RUN_DIR="$(company-lookup run init --target 10000 --print-path 2>/dev/null)"
 ```
 
 Bij een fout stopt de betreffende fase met `FOUT`; een veilige foutcategorie

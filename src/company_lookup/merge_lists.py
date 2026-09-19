@@ -13,8 +13,8 @@ from typing import Any
 
 from openpyxl import load_workbook
 
-from company_harvest.core import HarvestError, Run, normalize_name, sha256, validate_kvk, write_tsv
-from company_harvest.workflow import write_xlsx
+from company_lookup.core import HarvestError, Run, normalize_name, sha256, validate_kvk, write_tsv
+from company_lookup.workflow import write_xlsx
 
 ALIASES = {
     "name": ("Bedrijfsnaam", "naam"),
@@ -131,7 +131,7 @@ def merge_lists(run: Run, left: Path, right: Path, policy: str, left_options: In
     if policy not in {"exclude", "prefer-left", "prefer-right"}:
         raise HarvestError("ongeldig conflictbeleid")
     with run.lock():
-        from company_harvest.core import timestamp
+        from company_lookup.core import timestamp
 
         left_snapshot = run.path / "snapshots" / f"{timestamp()}_09_left_{left.name}"
         right_snapshot = run.path / "snapshots" / f"{timestamp()}_09_right_{right.name}"

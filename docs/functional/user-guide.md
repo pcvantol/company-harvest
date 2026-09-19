@@ -1,11 +1,14 @@
 # Gebruikershandleiding
 
-Deze handleiding beschrijft de **publieke 3.0.0-wheel** op Python 3.14.x.
+Deze handleiding beschrijft de actuele, **nog niet gepubliceerde 4.0.0-broncode**
+van Company Lookup op Python 3.14.x. De publieke 3.0.0-wheel gebruikt nog
+de oude pakket- en opdrachtnaam; volg voor die historische versie haar
+[eigen E2E-handleiding](e2e-command.md).
 De inmiddels ingetrokken 2.0.0-wheel bevatte noch TenderNed noch de lichte eind-Excel.
-Gebruik voor de geïntegreerde opdracht
-[de actuele E2E-handleiding](e2e-command.md) en voor de drie Excel-varianten
+Gebruik voor de drie Excel-varianten
 [eindbestanden en veldherkomst](output-files.md). Een broncheckout is voor
-gebruik van de 3.0.0-wheel niet nodig.
+gebruik van de historische 3.0.0-wheel niet nodig. De 4.0.0-broncode heeft
+nog geen gepubliceerde wheel; zie de [versie- en naamovergang](../technical/versioning-and-migrations.md).
 
 De [korte historische snelstart](snelstart-v1.0.0.md) beschrijft de vroegere
 installatie, volledige workflow en hervatten, maar de downloadstap werkt niet
@@ -14,7 +17,8 @@ meer.
 De [v1.0.0-commandotabel](v1-end-to-end-commands.md) is alleen historisch:
 de ingetrokken release en haar opties zijn geen actuele installatieroute.
 
-Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`.
+Installeer de 4.0.0-broncode of een later gekwalificeerde wheel in een eigen
+virtual environment en kies `COMPANY_LOOKUP_DATA_DIR`.
 `run init --print-path` maakt uitsluitend een lokale run; `--target 10000`
 is een doelgetal, geen exportlimiet of garantie op 10.000 bedrijven. Nieuwe
 bronvoorbereiding gebruikt IND, GLEIF, ANBI, DUO en TenderNed. Wikidata
@@ -24,12 +28,12 @@ vierbronnenruns behouden hun scope.
 Gebruik voor ontwikkeling bijvoorbeeld:
 
 ```bash
-export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
-company-harvest run pre-kvk
-company-harvest run pre-kvk --run-dir "/absoluut/pad/naar/de/zojuist/getoonde/run"
+export COMPANY_LOOKUP_DATA_DIR="$HOME/Documents/company-lookup-data"
+company-lookup run pre-kvk
+company-lookup run pre-kvk --run-dir "/absoluut/pad/naar/de/zojuist/getoonde/run"
 ```
 
-`run pre-kvk` is een **nieuw, nog niet gepubliceerd 3.1.0-commando**: de
+`run pre-kvk` is een **nieuw, nog niet gepubliceerd 4.0.0-commando**: de
 publieke 3.0.0-wheel kent het niet. De eerste opdracht maakt zelf een run en
 toont onmiddellijk de absolute `run_dir`. Gebruik de tweede opdracht alleen
 bij hervatten van exact die map; zonder `--run-dir` ontstaat een nieuwe run.
@@ -40,7 +44,7 @@ Een latere KVK-check is een afzonderlijke, expliciete opdracht:
 
 ```bash
 RUN_DIR="/absoluut/pad/naar/de/zojuist/getoonde/run"
-company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
+company-lookup kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
 De bestaande lage-niveau-opdracht `run prepare-pre-kvk --run-dir RUN_DIR`
@@ -55,14 +59,28 @@ Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en
 batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe
 kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
 
+De volledige keten tot de eind-Excel blijft één expliciete opdracht, nu
+onder de nieuwe naam. Start geen echte bron-/KVK-run zonder de bronvoorwaarden
+en de gekozen KVK-cohort vooraf te beoordelen:
+
+```bash
+company-lookup run e2e --limit-kvk-check 10 --interval 2
+company-lookup run e2e --run-dir "/absoluut/pad/naar/de/run" --limit-kvk-check 10 --interval 2
+```
+
+De tweede regel hervat alleen de eerder getoonde run met dezelfde limiet
+en hetzelfde interval. De historische
+[3.0.0-E2E-handleiding](e2e-command.md) beschrijft verder het ongewijzigde
+proces en de bekende beperkingen, maar gebruikt terecht de oude programmanaam.
+
 De eigenaar heeft daarnaast de langlopende frontendcontrole expliciet
 geactiveerd. Kies bij `kvk pre-kvk-run` altijd bewust een begrensde sessie of
 de hele resterende lijst:
 
 ```bash
 RUN_DIR="/absoluut/pad/naar/de/bestaande/run"
-company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --max-requests 10 --interval 2
-company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --until-complete --interval 2
+company-lookup kvk pre-kvk-run --run-dir "$RUN_DIR" --max-requests 10 --interval 2
+company-lookup kvk pre-kvk-run --run-dir "$RUN_DIR" --until-complete --interval 2
 ```
 
 Na een pauze of herstart kunt u het tweede commando identiek herhalen. Ctrl+C
@@ -87,7 +105,7 @@ blijven afzonderlijk te beoordelen.
 Een lokale bron hoeft nog geen KVK-nummer te bevatten. Importeer bijvoorbeeld alleen namen met:
 
 ```bash
-company-harvest sources import --run-dir "$RUN_DIR" --input organisaties.csv --source-id eigen_lijst --name-column Naam
+company-lookup sources import --run-dir "$RUN_DIR" --input organisaties.csv --source-id eigen_lijst --name-column Naam
 ```
 
 Geef `--kvk-column KVK` mee wanneer zo'n kolom bestaat. Geldige nummers worden als hint behouden; ontbrekende en ongeldige waarden blijven respectievelijk `MISSING` en `INVALID` en verwijderen het bronrecord niet.
@@ -104,7 +122,7 @@ Copy; gebruik `--limit N` voor een capabilitysample van maximaal N Nederlandse r
 Een reeds gecontroleerde lokale ZIP kan zonder nieuw netwerkrequest worden gebruikt:
 
 ```bash
-company-harvest sources gleif --run-dir "$RUN_DIR" --archive gleif-golden-copy.zip --limit 200
+company-lookup sources gleif --run-dir "$RUN_DIR" --archive gleif-golden-copy.zip --limit 200
 ```
 
 Laat `--limit` alleen weg voor een bewust gekozen volledige inname. Controleer vooraf
@@ -118,8 +136,8 @@ door `sources collect` gestart; de bronvoorbereiding gebruikt ze wel. Gebruik vo
 snapshot bijvoorbeeld:
 
 ```bash
-company-harvest sources anbi --run-dir "$RUN_DIR" --archive anbi.zip --limit 500
-company-harvest sources duo --run-dir "$RUN_DIR" --archive basisgegevens-instellingen.zip --limit 500
+company-lookup sources anbi --run-dir "$RUN_DIR" --archive anbi.zip --limit 500
+company-lookup sources duo --run-dir "$RUN_DIR" --archive basisgegevens-instellingen.zip --limit 500
 ```
 
 ANBI-fiscale nummers zijn geen KVK-nummers en blijven alleen als ruwe bronidentifier
@@ -158,7 +176,7 @@ Vul alle regels uit `r6_review_queue.csv` in een afzonderlijk TSV-bestand aan me
 Registreer het daarna met:
 
 ```bash
-company-harvest companies sample-review --run-dir "$RUN_DIR" --input beoordeling.tsv
+company-lookup companies sample-review --run-dir "$RUN_DIR" --input beoordeling.tsv
 ```
 
 De beoordeling sluit alleen wanneer zij exact bij de actuele queue past. Persoons- en
@@ -180,7 +198,7 @@ Vul alle regels van `r8_review_queue.csv` in een apart TSV-bestand met
 `UNCERTAIN`), `review_seconds` en `review_notes`. Registreer dit met:
 
 ```bash
-company-harvest kvk pilot-review --run-dir "$RUN_DIR" --input r8-beoordeling.tsv
+company-lookup kvk pilot-review --run-dir "$RUN_DIR" --input r8-beoordeling.tsv
 ```
 
 Een gevonden KVK-nummer blijft voorlopig. `observed_legal_form` en `observed_status`
@@ -188,7 +206,7 @@ zijn bronobservaties, geen geverifieerde canonieke velden. Ook een no-match, amb
 technische fout verwijdert de oorspronkelijke kandidaat niet. Een succesvolle R8-review
 activeert R9 niet zolang de R7-productie- en gebruiksgates openstaan.
 
-Na de gewone filterstappen levert `company-harvest export --run-dir "$RUN_DIR"`
+Na de gewone filterstappen levert `company-lookup export --run-dir "$RUN_DIR"`
 alle actieve, geverifieerde bedrijven uit de gekozen KVK-scope. De actuele
 broncode heeft geen `--limit` voor export: een doelgetal kapt de lijst niet
 af. Een begrensde `run e2e` gebruikt uitsluitend `--limit-kvk-check` om vooraf

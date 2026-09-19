@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from company_harvest import cli, console
-from company_harvest.core import HarvestError, Run
+from company_lookup import cli, console
+from company_lookup.core import HarvestError, Run
 
 
 def test_console_color_and_no_color(monkeypatch: pytest.MonkeyPatch,
@@ -208,7 +208,7 @@ def test_known_errors_never_echo_sheet_or_path_data(
 
 
 def test_unexpected_entrypoint_error_has_no_raw_traceback() -> None:
-    script = ("from company_harvest import cli; "
+    script = ("from company_lookup import cli; "
               "cli.dispatch=lambda args: (_ for _ in ()).throw(ValueError('GEHEIME BEDRIJFSNAAM')); "
               "raise SystemExit(cli.main(['doctor']))")
     completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,

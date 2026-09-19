@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from company_harvest.core import (
+from company_lookup.core import (
     HarvestError,
     Run,
     atomic_write,
@@ -23,8 +23,8 @@ from company_harvest.core import (
     validate_kvk,
     write_tsv,
 )
-from company_harvest.sources import RAW_HEADERS, read_catalog
-from company_harvest.workflow import _deduplicate_rows, _missing_source_status
+from company_lookup.sources import RAW_HEADERS, read_catalog
+from company_lookup.workflow import _deduplicate_rows, _missing_source_status
 
 SAMPLE_SCHEMA_VERSION = 1
 DEFAULT_SAMPLE_SIZE = 500

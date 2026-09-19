@@ -20,7 +20,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from openpyxl import load_workbook
 
-from company_harvest.core import (
+from company_lookup.core import (
     HTTP_USER_AGENT,
     HarvestError,
     Run,
@@ -29,7 +29,7 @@ from company_harvest.core import (
     timestamp,
     validate_kvk,
 )
-from company_harvest.sources import RAW_HEADERS, SOURCE_HEADERS, read_catalog
+from company_lookup.sources import RAW_HEADERS, SOURCE_HEADERS, read_catalog
 
 SOURCE_ID = "tenderned_awards"
 PAGE_URL = "https://www.tenderned.nl/cms/nl/aanbesteden-in-cijfers/datasets-aanbestedingen"
@@ -382,7 +382,7 @@ def collect_tenderned(
         if (xlsx is None) != (json_file is None):
             raise HarvestError("TenderNed vereist beide lokale bestanden of geen van beide")
         if not run.latest_artifact("01", "sources_inventory"):
-            from company_harvest.sources import discover
+            from company_lookup.sources import discover
             discover(run)
         kinds = {
             "source": f"source_{SOURCE_ID}", "rejected": f"{SOURCE_ID}_rejected",
@@ -495,7 +495,7 @@ def collect_tenderned(
                 )
                 row["measured_count"] = str(counts["candidate_records"])
         inventory = run.artifact_path("01", "sources_inventory_tenderned_measured", "csv")
-        from company_harvest.core import write_tsv
+        from company_lookup.core import write_tsv
         write_tsv(inventory, SOURCE_HEADERS, rows)
         run.register_artifact(inventory, "01", "sources_inventory")
         paths = {

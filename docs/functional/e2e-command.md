@@ -1,5 +1,12 @@
 # Eén commando van bronnen tot eindlijst (release 3.0.0)
 
+Dit is de historische handleiding voor de publieke 3.0.0-wheel met de
+oorspronkelijke pakket-/opdrachtnaam. De actuele, nog niet gepubliceerde
+4.0.0-broncode heet **Company Lookup** en gebruikt `company-lookup`.
+Zie [gebruik](user-guide.md) en [naam-/datamapmigratie](../technical/versioning-and-migrations.md)
+voor de nieuwe tool. De oude wheelbestandsnaam en commando's hieronder
+blijven staan omdat zij bij de werkelijke 3.0.0-release horen.
+
 > **Actuele beperking (live meting 19 september 2026):** de ongewijzigde
 > v3.0.0-wheel haalde alle vijf bronnen binnen, maar stopte op één te lang
 > CSV-veld bij de pre-KVK-filter. Er waren nul KVK-verzoeken en er ontstond

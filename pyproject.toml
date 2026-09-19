@@ -3,12 +3,12 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "company-harvest"
-version = "3.1.0"
+name = "company-lookup"
+version = "4.0.0"
 description = "Lokale, auditbare tooling voor Nederlandse bedrijfsverzameling en lijstmerge"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
-authors = [{name = "Company Harvest contributors"}]
+authors = [{name = "Company Lookup contributors"}]
 dependencies = [
   "defusedxml==0.7.1",
   "httpx==0.28.1",
@@ -26,10 +26,10 @@ dev = [
 ]
 
 [project.scripts]
-company-harvest = "company_harvest.cli:main"
+company-lookup = "company_lookup.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/company_harvest"]
+packages = ["src/company_lookup"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -37,7 +37,7 @@ addopts = "-q"
 
 [tool.coverage.run]
 branch = true
-source = ["src/company_harvest", "tools"]
+source = ["src/company_lookup", "tools"]
 parallel = false
 
 [tool.coverage.report]
@@ -58,5 +58,5 @@ ignore = ["S101", "S311", "S603", "S607", "E501", "E701", "E702", "B008"]
 [tool.mypy]
 python_version = "3.14"
 strict = true
-packages = ["company_harvest"]
+packages = ["company_lookup"]
 ignore_missing_imports = true

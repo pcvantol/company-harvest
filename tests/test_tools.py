@@ -65,7 +65,7 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     file.write_bytes(b"bad")
     with pytest.raises(RuntimeError):
         module.verify(manifest_path)
-    assert module._version(ROOT) == "3.1.0"
+    assert module._version(ROOT) == "4.0.0"
     monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v1", "assets": [], "version": "1"})
     monkeypatch.setattr(module, "git", lambda *_: "dirty")
     with pytest.raises(RuntimeError):
@@ -91,11 +91,11 @@ def test_release_build_publish_and_main(tmp_path: Path, monkeypatch: pytest.Monk
     def fake_run(command, cwd=None, **kwargs):
         if "build" in command:
             out = Path(command[command.index("--outdir") + 1])
-            (out / "company_harvest-1.0.0-py3-none-any.whl").write_bytes(b"wheel")
+            (out / "company_lookup-1.0.0-py3-none-any.whl").write_bytes(b"wheel")
             source = out / "source.txt"
             source.write_text("sdist")
-            with tarfile.open(out / "company_harvest-1.0.0.tar.gz", "w:gz") as archive:
-                archive.add(source, arcname="company_harvest-1.0.0/source.txt")
+            with tarfile.open(out / "company_lookup-1.0.0.tar.gz", "w:gz") as archive:
+                archive.add(source, arcname="company_lookup-1.0.0/source.txt")
             source.unlink()
         missing = command[:3] == ["gh", "release", "view"] or command[:3] == ["git", "rev-parse", "--verify"]
         return subprocess.CompletedProcess(command, 1 if missing else 0)
@@ -140,9 +140,9 @@ def test_release_scan_asset(tmp_path: Path) -> None:
 
 
 def test_package_main(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("company_harvest.cli.main", lambda: 0)
+    monkeypatch.setattr("company_lookup.cli.main", lambda: 0)
     with pytest.raises(SystemExit) as result:
-        runpy.run_module("company_harvest.__main__", run_name="__main__")
+        runpy.run_module("company_lookup.__main__", run_name="__main__")
     assert result.value.code == 0
 
 

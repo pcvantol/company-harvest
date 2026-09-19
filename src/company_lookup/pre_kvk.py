@@ -13,7 +13,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-from company_harvest.core import (
+from company_lookup.core import (
     HarvestError,
     Run,
     atomic_write,
@@ -22,7 +22,7 @@ from company_harvest.core import (
     timestamp,
     validate_kvk,
 )
-from company_harvest.sources import RAW_HEADERS
+from company_lookup.sources import RAW_HEADERS
 
 SOURCE_IDS = (
     "ind_arbeid",

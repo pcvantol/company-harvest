@@ -11,8 +11,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from company_harvest.core import HarvestError, Run, atomic_write, sha256
-from company_harvest.pre_kvk import (
+from company_lookup.core import HarvestError, Run, atomic_write, sha256
+from company_lookup.pre_kvk import (
     CURRENT_SOURCE_IDS,
     MASTER_HEADERS,
     _registered,

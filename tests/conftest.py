@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from company_harvest.core import Run, initialize_run
+from company_lookup.core import Run, initialize_run
 
 
 @pytest.fixture

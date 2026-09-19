@@ -5,11 +5,11 @@ from typing import Any
 
 import pytest
 
-import company_harvest.matching as matching
-from company_harvest.cli import build_parser, dispatch
-from company_harvest.core import HarvestError, read_tsv, sha256, write_tsv
-from company_harvest.kvk import KvkError, ProviderLock, ProviderResult
-from company_harvest.matching import (
+import company_lookup.matching as matching
+from company_lookup.cli import build_parser, dispatch
+from company_lookup.core import HarvestError, read_tsv, sha256, write_tsv
+from company_lookup.kvk import KvkError, ProviderLock, ProviderResult
+from company_lookup.matching import (
     REVIEW_VERDICTS,
     _candidate_features,
     _offline_match,
@@ -19,8 +19,8 @@ from company_harvest.matching import (
     record_matching_review,
     run_matching_pilot,
 )
-from company_harvest.sampling import ASSESSMENT_HEADERS, build_sample, record_sample_review
-from company_harvest.sources import CATALOG, RAW_HEADERS, discover
+from company_lookup.sampling import ASSESSMENT_HEADERS, build_sample, record_sample_review
+from company_lookup.sources import CATALOG, RAW_HEADERS, discover
 
 
 def _source_row(source_id: str, index: int, name: str, kvk: str = "") -> dict[str, str]:

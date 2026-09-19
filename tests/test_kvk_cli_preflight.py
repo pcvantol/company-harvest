@@ -8,9 +8,9 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
-from company_harvest import cli
-from company_harvest.core import HarvestError, read_tsv, write_tsv
-from company_harvest.kvk import (
+from company_lookup import cli
+from company_lookup.core import HarvestError, read_tsv, write_tsv
+from company_lookup.kvk import (
     AutoProvider,
     KvkError,
     ProviderLock,
@@ -27,7 +27,7 @@ from company_harvest.kvk import (
     resolve,
     retry_after,
 )
-from company_harvest.preflight import host, run_preflight
+from company_lookup.preflight import host, run_preflight
 
 
 class FakeProvider:
@@ -99,7 +99,7 @@ def test_retry_extract_match_and_cooldown(run) -> None:
 def test_http_preflight_and_resolve(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert PublicHttpProvider(run).preflight()["status"] == "IMPLEMENTED"
     _candidates(run, ["Alpha", "Blocked", "Later"])
-    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: FakeProvider())
+    monkeypatch.setattr("company_lookup.kvk._provider_for_run", lambda *_: FakeProvider())
     matches, unresolved = resolve(run, "auto", None, False, False, False, 0)
     assert len(read_tsv(matches)) == 1
     assert read_tsv(unresolved)[0]["reason"] == "PUBLIC_ACCESS_BLOCKED"
@@ -121,7 +121,7 @@ def test_generic_resolve_never_searches_by_name_without_hint(run, monkeypatch: p
     run.register_artifact(replacement, "03", "candidates")
     provider = FakeProvider()
     monkeypatch.setattr(provider, "search", lambda *_args, **_kwargs: pytest.fail("naamquery verstuurd"))
-    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: provider)
+    monkeypatch.setattr("company_lookup.kvk._provider_for_run", lambda *_: provider)
     matches, unresolved = resolve(run, "auto", None, False, False, False, 0)
     assert read_tsv(matches) == []
     assert read_tsv(unresolved)[0]["reason"] == "NO_DIRECT_KVK_HINT"
@@ -169,7 +169,7 @@ def test_http_search_observed(run, monkeypatch: pytest.MonkeyPatch) -> None:
     (folder / "kvk_observed_http.json").write_text(
         '{"endpoint":"https://www.kvk.nl/public-search","query_parameter":"q"}'
     )
-    monkeypatch.setattr("company_harvest.kvk.httpx.Client", HttpClient)
+    monkeypatch.setattr("company_lookup.kvk.httpx.Client", HttpClient)
     provider = PublicHttpProvider(run)
     assert provider.preflight()["available"]
     result = provider.search("01234567")
@@ -203,7 +203,7 @@ def test_http_single_page_is_partial_and_bounded(run, monkeypatch: pytest.Monkey
             type(self).calls += 1
             yield PartialResponse()
 
-    monkeypatch.setattr("company_harvest.kvk.httpx.Client", PartialClient)
+    monkeypatch.setattr("company_lookup.kvk.httpx.Client", PartialClient)
     result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert result.complete is False and len(result.hits) == 1
     assert (run.path / result.evidence).is_file()
@@ -223,7 +223,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
             type(self).calls += 1
             yield BlockedResponse()
 
-    monkeypatch.setattr("company_harvest.kvk.httpx.Client", BlockedClient)
+    monkeypatch.setattr("company_lookup.kvk.httpx.Client", BlockedClient)
     with pytest.raises(KvkError) as blocked:
         PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert blocked.value.reason == "PUBLIC_ACCESS_BLOCKED"
@@ -242,7 +242,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
             type(self).calls += 1
             yield ServerErrorResponse()
 
-    monkeypatch.setattr("company_harvest.kvk.httpx.Client", ServerErrorClient)
+    monkeypatch.setattr("company_lookup.kvk.httpx.Client", ServerErrorClient)
     with pytest.raises(KvkError) as server_error:
         PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert server_error.value.reason == "NETWORK_ERROR"
@@ -258,7 +258,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
         def stream(self, *args, **kwargs):
             yield OversizeResponse()
 
-    monkeypatch.setattr("company_harvest.kvk.httpx.Client", OversizeClient)
+    monkeypatch.setattr("company_lookup.kvk.httpx.Client", OversizeClient)
     with pytest.raises(KvkError) as oversize:
         PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert oversize.value.reason == "PARSING_ERROR"
@@ -341,7 +341,7 @@ def test_auto_fallback_and_provider_lock(run, monkeypatch: pytest.MonkeyPatch) -
 
 def test_resume_and_limit(run, monkeypatch: pytest.MonkeyPatch) -> None:
     _candidates(run, ["Alpha", "Beta"])
-    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: FakeProvider())
+    monkeypatch.setattr("company_lookup.kvk._provider_for_run", lambda *_: FakeProvider())
     matches, unresolved = resolve(run, "auto", 1, False, False, False, 0)
     assert len(read_tsv(matches)) == 1
     assert read_tsv(unresolved)[0]["reason"] == "NOT_PROCESSED_LIMIT"
@@ -357,7 +357,7 @@ def test_incomplete_and_unknown_outcome_not_resent(run, monkeypatch: pytest.Monk
     _candidates(run, ["Alpha"])
     provider = FakeProvider()
     monkeypatch.setattr(provider, "search", lambda *args, **kwargs: ProviderResult("Alpha", [], False, "fake", "x"))
-    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: provider)
+    monkeypatch.setattr("company_lookup.kvk._provider_for_run", lambda *_: provider)
     _, unresolved = resolve(run, "auto", None, False, False, False, 0)
     assert read_tsv(unresolved)[0]["reason"] == "TRUNCATED_RESULTS"
     with run.connect() as connection:

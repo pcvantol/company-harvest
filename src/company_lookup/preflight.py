@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from company_harvest import __version__
-from company_harvest.core import HarvestError, Run
+from company_lookup import __version__
+from company_lookup.core import HarvestError, Run
 
 
 def host(data_dir: Path) -> dict[str, Any]:

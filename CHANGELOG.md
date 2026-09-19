@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — 4.0.0
+
+- De tool heet voortaan **Company Lookup**: distributie `company-lookup`,
+  Python-package `company_lookup`, consolecommando `company-lookup`, scripts,
+  CI en actuele documentatie volgen die naam. De configuratievariabele is
+  `COMPANY_LOOKUP_DATA_DIR`; de standaarddatamap is
+  `~/.local/share/company-lookup`. Dit is een incompatibele MAJOR-wijziging;
+  oude runs en publieke releaseassets worden niet herschreven. Een GitHub-
+  repositoryrename wordt afzonderlijk geverifieerd (CH-2026-09-19-043,
+  ADR-020). Nog geen publieke 4.0.0-release.
+
 ## Unreleased — 3.1.0
 
 - Nieuw `company-harvest run pre-kvk` maakt met één opdracht een lokale run

@@ -1,4 +1,4 @@
-# Company Harvest — canonieke roadmap
+# Company Lookup — canonieke roadmap
 
 Statusdatum: 2026-09-18  
 Roadmap-eigenaar: repository-eigenaar  

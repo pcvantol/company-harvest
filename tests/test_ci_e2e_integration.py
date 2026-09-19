@@ -12,12 +12,12 @@ from openpyxl import load_workbook
 from test_pre_kvk import _full_sources, _raw
 from test_tenderned import mock_official_download, snapshots
 
-from company_harvest import cli, pre_kvk_kvk, prepare, tenderned
-from company_harvest.audit import verify
-from company_harvest.core import Run, open_run, read_tsv, sha256, write_tsv
-from company_harvest.kvk import ProviderResult, PublicHttpProvider
-from company_harvest.sources import RAW_HEADERS
-from company_harvest.tenderned import collect_tenderned
+from company_lookup import cli, pre_kvk_kvk, prepare, tenderned
+from company_lookup.audit import verify
+from company_lookup.core import Run, open_run, read_tsv, sha256, write_tsv
+from company_lookup.kvk import ProviderResult, PublicHttpProvider
+from company_lookup.sources import RAW_HEADERS
+from company_lookup.tenderned import collect_tenderned
 
 
 def _local_ipc(family: int, address: object) -> bool:

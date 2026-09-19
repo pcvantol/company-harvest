@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from company_harvest.audit import verify
-from company_harvest.core import HarvestError, initialize_run, read_tsv
-from company_harvest.merge_lists import InputOptions, _detect_delimiter, merge_lists
+from company_lookup.audit import verify
+from company_lookup.core import HarvestError, initialize_run, read_tsv
+from company_lookup.merge_lists import InputOptions, _detect_delimiter, merge_lists
 
 
 def _csv(path: Path, content: str) -> None:

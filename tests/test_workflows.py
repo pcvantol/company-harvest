@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from company_harvest.audit import _overlap, trace, verify
-from company_harvest.core import HarvestError, initialize_run, read_tsv, sha256, write_tsv
-from company_harvest.workflow import (
+from company_lookup.audit import _overlap, trace, verify
+from company_lookup.core import HarvestError, initialize_run, read_tsv, sha256, write_tsv
+from company_lookup.workflow import (
     _light_rows,
     _peak_memory,
     active_only,
@@ -208,14 +208,14 @@ def test_light_export_audit_projection_fills_missing_optional_fields(run) -> Non
 
 
 def test_peak_memory_has_explicit_windows_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("company_harvest.workflow.sys.platform", "win32")
+    monkeypatch.setattr("company_lookup.workflow.sys.platform", "win32")
     assert _peak_memory() == (None, "UNAVAILABLE_ON_PLATFORM")
 
 
 def test_partition_overlap_and_atomic_export_failure(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _overlap([[{"KVK-nummer": "01234567"}], [{"KVK-nummer": "01234567"}]])
     _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer"], [{"Bedrijfsnaam": "Alpha", "KVK-nummer": "01234567"}])
-    monkeypatch.setattr("company_harvest.workflow.write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("fault")))
+    monkeypatch.setattr("company_lookup.workflow.write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("fault")))
     with pytest.raises(OSError):
         export(run)
     assert not list((run.path / "artifacts").glob("*_08_delivery_outputset"))

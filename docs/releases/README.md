@@ -1,5 +1,11 @@
 # Releases
 
+De huidige bronversie 4.0.0 is lokaal hernoemd naar **Company Lookup**,
+maar nog niet als publieke release gepubliceerd. De hieronder genoemde
+3.0.0-wheel en historische releases behouden hun oorspronkelijke
+assetnamen en checksums; hernoemen van de GitHub-repository verandert de
+bytes van die assets niet.
+
 Releasebewijs wordt uitsluitend na werkelijke kwalificatie/publicatie toegevoegd. Lokale builds en geblokkeerde pogingen worden niet als release gepresenteerd.
 
 De [geïsoleerde KVK-smoke van 2026-09-19](../measurements/20260919-kvk-frontend-batch10.md)

@@ -9,9 +9,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-from company_harvest.cli import build_parser, dispatch
-from company_harvest.core import HTTP_USER_AGENT, HarvestError, read_tsv, sha256, write_tsv
-from company_harvest.public_registers import (
+from company_lookup.cli import build_parser, dispatch
+from company_lookup.core import HTTP_USER_AGENT, HarvestError, read_tsv, sha256, write_tsv
+from company_lookup.public_registers import (
     ANBI,
     DUO,
     _candidate,
@@ -20,8 +20,8 @@ from company_harvest.public_registers import (
     _safe_archive,
     collect_public_register,
 )
-from company_harvest.sources import list_sources
-from company_harvest.workflow import merge_candidates, outcome_metrics
+from company_lookup.sources import list_sources
+from company_lookup.workflow import merge_candidates, outcome_metrics
 
 
 def _anbi_archive(path: Path, rows: list[dict[str, str]]) -> Path:
@@ -212,19 +212,19 @@ def test_public_register_limit_reuse_refresh_and_failures(
     assert [row["original_name"] for row in read_tsv(repaired[0])] == ["Een"]
 
     original_update = __import__(
-        "company_harvest.public_registers", fromlist=["_update_inventory"]
+        "company_lookup.public_registers", fromlist=["_update_inventory"]
     )._update_inventory
     config_before_failure = run.metadata()["runtime_config"][f"{DUO.source_id}_collect"]
 
     def fail_inventory(*_args) -> None:
         raise RuntimeError("inventory update failed")
 
-    monkeypatch.setattr("company_harvest.public_registers._update_inventory", fail_inventory)
+    monkeypatch.setattr("company_lookup.public_registers._update_inventory", fail_inventory)
     with pytest.raises(RuntimeError, match="inventory update failed"):
         collect_public_register(run, DUO.source_id, source, limit=1, refresh=True)
     assert run.metadata()["runtime_config"][f"{DUO.source_id}_collect"] == config_before_failure
     failed_candidate = run.latest_artifact("02", f"source_{DUO.source_id}")
-    monkeypatch.setattr("company_harvest.public_registers._update_inventory", original_update)
+    monkeypatch.setattr("company_lookup.public_registers._update_inventory", original_update)
     recovered = collect_public_register(run, DUO.source_id, source, limit=1)
     assert recovered[0] != failed_candidate
 
@@ -290,12 +290,12 @@ def test_public_register_archive_and_candidate_gates(run, tmp_path: Path, monkey
         _safe_archive(wrong_member, ANBI)
 
     source = _anbi_archive(tmp_path / "anbi.zip", [{"naam": "X"}])
-    monkeypatch.setattr("company_harvest.public_registers.MAX_COMPRESSION_RATIO", 0.5)
+    monkeypatch.setattr("company_lookup.public_registers.MAX_COMPRESSION_RATIO", 0.5)
     with pytest.raises(HarvestError, match="compressieratio"):
         _safe_archive(source, ANBI)
-    monkeypatch.setattr("company_harvest.public_registers.MAX_COMPRESSION_RATIO", 25.0)
+    monkeypatch.setattr("company_lookup.public_registers.MAX_COMPRESSION_RATIO", 25.0)
     monkeypatch.setattr(
-        "company_harvest.public_registers.shutil.disk_usage",
+        "company_lookup.public_registers.shutil.disk_usage",
         lambda _path: type("Usage", (), {"free": 0})(),
     )
     with pytest.raises(HarvestError, match="onvoldoende vrije schijfruimte"):
@@ -374,7 +374,7 @@ def test_public_register_download_bounds_redirects_and_user_agent(
 ) -> None:
     source = _anbi_archive(tmp_path / "anbi.zip", [{"naam": "X"}])
     _StreamClient.response = _StreamResponse(source.read_bytes())
-    monkeypatch.setattr("company_harvest.public_registers.httpx.Client", _StreamClient)
+    monkeypatch.setattr("company_lookup.public_registers.httpx.Client", _StreamClient)
     evidence, metadata = _download_evidence(run, ANBI)
     assert sha256(evidence) == sha256(source)
     assert metadata["downloaded_bytes"] == source.stat().st_size
@@ -421,7 +421,7 @@ def test_public_register_download_bounds_redirects_and_user_agent(
         def stream(self, method: str, url: str):
             raise httpx.ReadTimeout("timeout", request=httpx.Request(method, url))
 
-    monkeypatch.setattr("company_harvest.public_registers.httpx.Client", TimeoutClient)
+    monkeypatch.setattr("company_lookup.public_registers.httpx.Client", TimeoutClient)
     with pytest.raises(HarvestError, match="ReadTimeout"):
         _download_evidence(run, ANBI)
 

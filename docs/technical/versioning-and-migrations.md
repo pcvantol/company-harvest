@@ -2,7 +2,21 @@
 
 Packageversie is gezaghebbend in `pyproject.toml`; CLI/changelog/tag gebruiken dezelfde waarde. Vanaf 1.0.0 verhogen incompatibele publieke contractwijzigingen MAJOR, nieuwe compatibele functies MINOR en fixes PATCH. Tool-, run-/databaseschema-, export- en providerschemaversies zijn afzonderlijk.
 
-De actuele bronversie **3.1.0** is een nog niet gepubliceerde compatibele
+De actuele **4.0.0-broncode** heet Company Lookup. Installatie- en
+importnamen zijn `company-lookup` en `company_lookup`; het consolecommando
+is `company-lookup`. Dit is een MAJOR-wijziging ten opzichte van de oude
+`company-harvest`-distributie en de lokaal gebouwde 3.1.0-wheel. De nieuwe
+omgevingsvariabele heet `COMPANY_LOOKUP_DATA_DIR`; zonder `--data-dir` of die
+variabele is de standaardmap nu `~/.local/share/company-lookup`. Oude
+installaties, snelkoppelingen en scripts schakelen niet automatisch over.
+Zet de nieuwe variabele bewust op de bestaande datamap of geef het absolute
+oude runpad met `--run-dir` mee; de tool verplaatst of herschrijft bestaande
+runs niet. Installeer in een **nieuwe** virtuele omgeving om de oude en
+nieuwe distributies niet te mengen. Bestaande run-/database-/outputschema's
+blijven leesbaar via een expliciet pad, onder de gewone integriteitschecks.
+Er is nog geen publieke 4.0.0-wheel of migratie van historische releaseassets.
+
+De voorgaande bronversie **3.1.0** was een niet gepubliceerde compatibele
 minorversie boven de publieke 3.0.0-wheel. Zij bevat de eveneens nog niet
 gepubliceerde 3.0.1-parserfix: de begrensde CSV-veldparser en foutmelding wijzigen,
 en drie in een begrensde live proef waargenomen zakelijke KVK-veldpaden

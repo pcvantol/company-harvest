@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from company_harvest.console import phase
-from company_harvest.core import Run
-from company_harvest.gleif import collect_gleif
-from company_harvest.pre_kvk import CURRENT_SOURCE_IDS, build_pre_kvk_list, source_scope
-from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.public_registers import collect_public_register
-from company_harvest.sources import collect, discover
-from company_harvest.tenderned import collect_tenderned
+from company_lookup.console import phase
+from company_lookup.core import Run
+from company_lookup.gleif import collect_gleif
+from company_lookup.pre_kvk import CURRENT_SOURCE_IDS, build_pre_kvk_list, source_scope
+from company_lookup.pre_kvk_filter import build_pre_kvk_filter
+from company_lookup.public_registers import collect_public_register
+from company_lookup.sources import collect, discover
+from company_lookup.tenderned import collect_tenderned
 
 
 def prepare_pre_kvk(run: Run, refresh: bool = False) -> tuple[Path, Path, Path, Path, Path]:

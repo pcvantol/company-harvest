@@ -67,7 +67,7 @@
   oudste tijdgestempelde map. Zie [het outputcontract](../functional/output-files.md).
 - Een bestaande ontwikkel-venv kan na wijziging van `pyproject.toml` nog een
   oude distributieversie melden, ook als de broncode bewerkt is. Installeer
-  de actuele bron opnieuw in die venv en controleer `company-harvest
-  --version` vóór de E2E-run; een 2.0.0- of oudere melding bewijst niet dat
-  de nieuwe lichte export geïnstalleerd is.
+  de actuele bron opnieuw in die venv en controleer `company-lookup
+  --version` vóór de E2E-run. Een oude 3.0.0- of 2.0.0-melding bewijst niet
+  dat de nieuwe pakketnaam of de actuele correcties geïnstalleerd zijn.
 - Mergeconflicten zijn datawaarschuwingen, geen technisch mislukte run; inspecteer alle conflictbestanden.

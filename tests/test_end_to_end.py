@@ -9,10 +9,10 @@ from pathlib import Path
 import pytest
 from test_pre_kvk import _full_sources, _raw
 
-from company_harvest import cli, end_to_end, pre_kvk_kvk, prepare
-from company_harvest.audit import verify
-from company_harvest.console import active as console_active
-from company_harvest.core import (
+from company_lookup import cli, end_to_end, pre_kvk_kvk, prepare
+from company_lookup.audit import verify
+from company_lookup.console import active as console_active
+from company_lookup.core import (
     HarvestError,
     Run,
     initialize_run,
@@ -21,12 +21,12 @@ from company_harvest.core import (
     sha256,
     write_tsv,
 )
-from company_harvest.kvk import KvkError, ProviderResult
-from company_harvest.kvk_scope import bind_kvk_scope, scope_details
-from company_harvest.pre_kvk import build_pre_kvk_list
-from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.sources import RAW_HEADERS
-from company_harvest.workflow import export, outcome_metrics, report, write_xlsx
+from company_lookup.kvk import KvkError, ProviderResult
+from company_lookup.kvk_scope import bind_kvk_scope, scope_details
+from company_lookup.pre_kvk import build_pre_kvk_list
+from company_lookup.pre_kvk_filter import build_pre_kvk_filter
+from company_lookup.sources import RAW_HEADERS
+from company_lookup.workflow import export, outcome_metrics, report, write_xlsx
 
 
 def _prepare(run: Run) -> tuple[Path, Path, Path, Path, Path]:
