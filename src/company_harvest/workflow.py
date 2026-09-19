@@ -47,8 +47,9 @@ _PUBLIC_HIT_ALLOWED = {
     "rechtsvormCode", "actief", "inschrijvingsdatum", "inschrijvingstype",
     "activiteitomschrijving", "activiteiten", "vestiging", "vestigingsnummer",
     "huidigeStatutaireNaam", "huidigeHandelsNamen", "huidigeNamen",
+    "oudeHandelsnamen", "oudeNamen",
     *(f"{address}.{part}" for address in ("bezoeklocatie", "postlocatie")
-      for part in ("straat", "huisnummer", "huisletter", "toevoeging", "postcode", "plaats", "land")),
+      for part in ("straat", "huisnummer", "huisletter", "huisnummerToevoeging", "toevoeging", "postcode", "plaats", "land")),
     *(f"activiteiten.{part}" for part in ("code", "omschrijving", "sbiCode", "sbiOmschrijving")),
 }
 _PUBLIC_HIT_LABELS = {
@@ -63,14 +64,18 @@ _PUBLIC_HIT_LABELS = {
     "huidigeStatutaireNaam": "Statutaire naam (KVK)",
     "huidigeHandelsNamen": "Handelsnamen (KVK)",
     "huidigeNamen": "Huidige namen (KVK)",
+    "oudeHandelsnamen": "Oude handelsnamen (KVK)",
+    "oudeNamen": "Oude namen (KVK)",
     "bezoeklocatie.straat": "Straat bezoekadres (KVK)",
     "bezoeklocatie.huisnummer": "Huisnummer bezoekadres (KVK)",
     "bezoeklocatie.huisletter": "Huisletter bezoekadres (KVK)",
+    "bezoeklocatie.huisnummerToevoeging": "Huisnummertoevoeging bezoekadres (KVK)",
     "bezoeklocatie.toevoeging": "Toevoeging bezoekadres (KVK)",
     "bezoeklocatie.postcode": "Postcode bezoekadres (KVK)",
     "bezoeklocatie.plaats": "Plaats bezoekadres (KVK)",
     "postlocatie.straat": "Straat postadres (KVK)",
     "postlocatie.huisnummer": "Huisnummer postadres (KVK)",
+    "postlocatie.huisnummerToevoeging": "Huisnummertoevoeging postadres (KVK)",
     "postlocatie.postcode": "Postcode postadres (KVK)",
     "postlocatie.plaats": "Plaats postadres (KVK)",
 }

@@ -47,3 +47,14 @@ De publieke zoekrespons kan veranderen. Onbekende velden vergen dan eerst
 een inhoudelijke beoordeling en uitbreiding van het veldcontract. Afwezigheid
 in de lichte lijst is geen bevestigde negatieve KVK-uitspraak. Er is geen
 live KVK-run uitgevoerd voor dit besluit.
+
+## Aanvulling voor lokale 3.0.1-patch (CH-2026-09-19-040)
+
+De begrensde live herhaling met tien nummerverzoeken gaf drie zakelijke
+veldpaden die de 3.0.0-allowlist niet kende:
+`bezoeklocatie.huisnummerToevoeging`, `oudeHandelsnamen` en `oudeNamen`.
+Deze worden vanaf de lokale 3.0.1-bronversie als afzonderlijke lichte
+kolommen toegelaten. Ook de overeenkomstige huisnummertoevoeging van het
+postadres wordt als zakelijk adresonderdeel toegelaten. De oorspronkelijke
+veiligheidsregel blijft: ieder ander onbekend veld met inhoud stopt de export.
+Dit wijzigt geen ruwe KVK-respons of eerdere publieke wheel.

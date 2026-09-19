@@ -7,7 +7,11 @@
   1.048.576 tekens per veld geldt voor master, filter, cohort, KVK-snapshot en export.
   Een grotere of ongeldige invoer geeft een recordvrije validatiefout.
   Synthetische volledige E2E- en grensregressies toegevoegd
-  (CH-2026-09-19-040, ADR-018). Nog niet gepubliceerd.
+  (CH-2026-09-19-040, ADR-018). Een begrensde live proef ontdekte daarnaast
+  drie zakelijke KVK-veldpaden die de lichte export nog afwees:
+  `bezoeklocatie.huisnummerToevoeging`, `oudeHandelsnamen` en `oudeNamen`.
+  Die zijn gericht aan de exportallowlist en regressietests toegevoegd;
+  onbekende metadata blijft geblokkeerd. Nog niet gepubliceerd.
 
 - Live proef van de ongewijzigde publieke 3.0.0-wheel met vijf volledige
   bronnen en maximaal tien KVK-checks stopte vóór de KVK-fase: één

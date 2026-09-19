@@ -38,8 +38,12 @@ def test_harvest_offline_pipeline(run) -> None:
     match_headers = ["candidate_id", "Bedrijfsnaam", "KVK-nummer", "raw_legal_form", "raw_status", "city", "country", "match_method", "provider", "checked_at", "response_json", "source_relations"]
     public_hit = {"naam": "Alpha B.V.", "kvkNummer": "01234567", "rechtsvormCode": "BV",
                   "actief": True, "inschrijvingsdatum": "20200101", "activiteitomschrijving": "Bouwen",
-                  "bezoeklocatie": {"straat": "Dorpsstraat", "huisnummer": 1, "postcode": "1234AB", "plaats": "Utrecht"},
-                  "huidigeHandelsNamen": ["Alpha", "Alpha Bouw"], "id": "technical", "bron": "technical", "set": "technical"}
+                  "bezoeklocatie": {"straat": "Dorpsstraat", "huisnummer": 1,
+                                    "huisnummerToevoeging": "A", "postcode": "1234AB", "plaats": "Utrecht"},
+                  "postlocatie": {"huisnummerToevoeging": "B"},
+                  "huidigeHandelsNamen": ["Alpha", "Alpha Bouw"],
+                  "oudeHandelsnamen": ["Alpha Oud"], "oudeNamen": ["Alpha Voorheen"],
+                  "id": "technical", "bron": "technical", "set": "technical"}
     _register(run, "04", "kvk_matches", match_headers, [{"candidate_id": candidate_id, "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567", "raw_legal_form": "Besloten vennootschap", "raw_status": "Actief", "city": "Utrecht", "country": "Nederland", "match_method": "SOURCE_KVK_CONFIRMED", "provider": "mock", "checked_at": "now", "response_json": json.dumps([public_hit]), "source_relations": "[]"}])
     _register(run, "05", "kvk_unresolved", ["candidate_id", "reason"], [])
     canonical = consolidate(run)
@@ -66,11 +70,16 @@ def test_harvest_offline_pipeline(run) -> None:
     assert light[0]["Activiteitomschrijving (KVK)"] == "Bouwen"
     assert light[0]["Straat bezoekadres (KVK)"] == "Dorpsstraat"
     assert light[0]["Handelsnamen (KVK)"] == "Alpha; Alpha Bouw"
+    assert light[0]["Huisnummertoevoeging bezoekadres (KVK)"] == "A"
+    assert light[0]["Huisnummertoevoeging postadres (KVK)"] == "B"
+    assert light[0]["Oude handelsnamen (KVK)"] == "Alpha Oud"
+    assert light[0]["Oude namen (KVK)"] == "Alpha Voorheen"
     assert not any(key in light[0] for key in ("response_json", "source_relations", "id", "bron", "set", "provider", "checked_at"))
     light_sheet = load_workbook(outputs[3])["Bedrijven"]
     assert light_sheet["B2"].value == "01234567"
     assert "response_json" not in [cell.value for cell in light_sheet[1]]
     assert "source_relations" not in [cell.value for cell in light_sheet[1]]
+    assert "Huisnummertoevoeging postadres (KVK)" in [cell.value for cell in light_sheet[1]]
     assert json.loads(outputs[-1].read_text())["schema"] == 2
     assert report(run).is_file()
     outcome = outcome_metrics(run)

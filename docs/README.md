@@ -7,7 +7,8 @@ Versie 2.0.0 was de vorige release zonder die functies, maar de publieke
 release en tag zijn inmiddels ingetrokken; gebruik voor nieuwe installaties
 alleen 3.0.0.
 Handleidingen hieronder beschrijven het publieke 3.0.0-contract en
-markeren de 3.0.1-parsercorrectie afzonderlijk; 3.0.0 stopte in een
+markeren de 3.0.1-parsercorrectie en gerichte lichte-veldtoelating
+afzonderlijk; 3.0.0 stopte in een
 [live E2E-proef](measurements/20260919-v3-live-wheel-e2e-10-blocked.md)
 vóór KVK. Zie ook
 [versies en migraties](technical/versioning-and-migrations.md).

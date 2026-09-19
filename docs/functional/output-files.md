@@ -36,7 +36,9 @@ Wanneer aanwezig komen daarnaast de zakelijke velden uit het waargenomen
 publieke responscontract in aparte kolommen: rechtsvormcode, actief-vlag,
 inschrijfdatum en -type, activiteitomschrijving/-velden, vestiging en
 vestigingsnummer, statutaire/handelsnamen, en onderdelen van bezoek- en
-postadres. De kolomset kan per run variëren omdat afwezige responsvelden
+postadres. De lokale 3.0.1-patch kwalificeert bovendien oude handelsnamen,
+oude namen en `huisnummerToevoeging` als afzonderlijke KVK-kolommen. De
+kolomset kan per run variëren omdat afwezige responsvelden
 geen kolom krijgen. Geneste velden worden platte kolommen; meerdere waarden
 in één veld worden met `; ` gescheiden. Een lege waarde betekent *niet
 beschikbaar*, niet een door KVK bevestigde ontkenning. Een onbekend nieuw
