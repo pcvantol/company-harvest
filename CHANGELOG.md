@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## Unreleased — 3.1.0
+
+- Nieuw `company-harvest run pre-kvk` maakt met één opdracht een lokale run
+  aan of hervat die via `--run-dir`, verzamelt de vijf gebonden bronnen,
+  bouwt de gededupliceerde master en gefilterde KVK-invoer en stopt zonder
+  KVK-verzoek. De CLI toont meteen de runmap en na afloop alleen paden en
+  aantallen. Synthetische CLI- en hervattests; 3.1.0-wheel alleen lokaal
+  gebouwd en op import/CLI-help gecontroleerd, niet gepubliceerd
+  (CH-2026-09-19-042, ADR-019).
 
 - Brononderzoek zonder software- of packagewijziging: directe KVK-velden
   vastgesteld in publieke SBB-profielen, BOVAG-certificaten en het

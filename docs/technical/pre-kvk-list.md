@@ -1,5 +1,17 @@
 # Pre-KVK-bronlijst en foutgrenzen
 
+`company-harvest run pre-kvk` is vanaf de huidige ongepubliceerde broncode
+de geïntegreerde ingang vóór de KVK-check. Zonder `--run-dir` initialiseert
+het een nieuwe HARVEST-run; met `--run-dir` opent het precies die bestaande
+run. Na host-/workflowpreflight roept het dezelfde `prepare_pre_kvk`-service
+aan als de bestaande voorbereiding. Het commando toont de runmap vóór de
+lange broninname en geeft daarna het masterpad, rapportpad, gefilterde
+`kvk_input`, uitsluitingsledger, metadata en gesloten aantallen terug.
+`PRE_KVK_READY` in de CLI-uitvoer is een resultaatlabel, geen KVK-status.
+Er wordt geen KVK-scope gebonden, provider gebruikt of export gestart.
+Voltooide, integere bron-, master- en filterartefacten worden bij hervatten
+hergebruikt; een afgebroken download kan opnieuw moeten beginnen.
+
 `company-harvest run prepare-pre-kvk --run-dir RUN_DIR` downloadt of hergebruikt
 IND, GLEIF, ANBI, DUO en TenderNed in deze volgorde en bouwt daarna één master. Wikidata
 is uitgesloten. `company-harvest companies pre-kvk-list --run-dir RUN_DIR` is de

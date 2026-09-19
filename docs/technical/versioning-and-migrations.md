@@ -2,8 +2,9 @@
 
 Packageversie is gezaghebbend in `pyproject.toml`; CLI/changelog/tag gebruiken dezelfde waarde. Vanaf 1.0.0 verhogen incompatibele publieke contractwijzigingen MAJOR, nieuwe compatibele functies MINOR en fixes PATCH. Tool-, run-/databaseschema-, export- en providerschemaversies zijn afzonderlijk.
 
-De actuele bronversie **3.0.1** is een nog niet gepubliceerde patch op de
-publieke 3.0.0-wheel: de begrensde CSV-veldparser en foutmelding wijzigen,
+De actuele bronversie **3.1.0** is een nog niet gepubliceerde compatibele
+minorversie boven de publieke 3.0.0-wheel. Zij bevat de eveneens nog niet
+gepubliceerde 3.0.1-parserfix: de begrensde CSV-veldparser en foutmelding wijzigen,
 en drie in een begrensde live proef waargenomen zakelijke KVK-veldpaden
 worden gericht toegelaten in de lichte export. Ontbrekende optionele
 exportvelden worden voor de eindaudit expliciet leeg geprojecteerd. Run-, database- en
@@ -11,6 +12,11 @@ outputsetschema blijven gelijk. Een v3.0.0-run
 die vóór KVK op de veldgrens stopte kan met 3.0.1 dezelfde runmap hervatten
 na de gebruikelijke hash-/configvalidatie; maak geen nieuwe run als omweg
 voor een echte KVK-toegangsblokkade. Zie [ADR-018](../adr/018-bounded-csv-field-size.md).
+Nieuw in de 3.1.0-broncode is `run pre-kvk`, een additieve eencommando-route
+die vóór KVK stopt en dezelfde run-/artefactstructuur gebruikt. Er is geen
+schema- of migratiewijziging; de 3.1.0-wheel is alleen lokaal gebouwd en
+op import/CLI-help gecontroleerd, niet gepubliceerd of als volledige
+releasekandidaat gekwalificeerd. Zie [ADR-019](../adr/019-one-command-pre-kvk.md).
 
 De overgang van v1.0.0 naar 2.0.0 is MAJOR omdat de ondersteunde
 Python-minorversies van 3.11–3.14 naar uitsluitend 3.14 veranderen. Een

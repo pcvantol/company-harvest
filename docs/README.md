@@ -1,6 +1,6 @@
 # Documentatie
 
-De huidige broncode is **3.0.1 (nog niet gepubliceerd)**; de publieke wheel
+De huidige broncode is **3.1.0 (nog niet gepubliceerd)**; de publieke wheel
 blijft **3.0.0**. Beide bevatten
 TenderNed als vijfde bron en een afzonderlijke lichte KVK-/bronexport.
 Versie 2.0.0 was de vorige release zonder die functies, maar de publieke
@@ -13,6 +13,9 @@ afzonderlijk; 3.0.0 stopte in een
 vóór KVK. De lokale 3.0.1-wheel [slaagde daarna](measurements/20260919-v301-local-wheel-e2e-10-pass.md)
 voor een begrensde tiennummerproef, inclusief eind-Excel en audit. Zie ook
 [versies en migraties](technical/versioning-and-migrations.md).
+De broncode bevat nu bovendien een nog niet uitgebrachte
+[`run pre-kvk`-opdracht](functional/user-guide.md) voor één-commando-
+bronvoorbereiding zonder KVK-verkeer; die zit niet in de 3.0.0-wheel.
 
 - Canonieke koers en uitvoeringsvolgorde: [roadmap](../ROADMAP.md).
 - Functioneel: [E2E-handleiding (release 3.0.0)](functional/e2e-command.md),

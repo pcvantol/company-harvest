@@ -87,6 +87,8 @@ def build_parser() -> argparse.ArgumentParser:
     e2e_mode.add_argument("--all-kvk", action="store_true")
     e2e.add_argument("--interval", type=float, default=2.0)
     e2e.add_argument("--allow-partial", action="store_true")
+    pre_kvk = run.add_parser("pre-kvk", help="Download bronnen en bouw de KVK-invoer zonder KVK-verzoeken")
+    pre_kvk.add_argument("--run-dir", type=Path, help="Hervat een bestaande HARVEST-run")
     prepare = run.add_parser("prepare-pre-kvk"); _run_arg(prepare); prepare.add_argument("--refresh", action="store_true")
     sources = commands.add_parser("sources").add_subparsers(dest="sources_command", required=True)
     for name in ("discover", "list"):
@@ -155,6 +157,25 @@ def _dispatch_new_run(args: argparse.Namespace, root: Path) -> int:
     if args.run_command == "list":
         paths = sorted((root / "runs").glob("*")) if (root / "runs").exists() else []
         _print([str(path) for path in paths if (path / "run.json").is_file()])
+        return 0
+    if args.run_command == "pre-kvk":
+        run = open_run(args.run_dir) if args.run_dir else initialize_run(root, 10000)
+        print(json.dumps({"run_dir": str(run.path), "phase": "STARTING"}), flush=True)
+        emit("INFO", "Runmap aangemaakt of hervat; er volgen geen KVK-verzoeken")
+        if not run_preflight(run, "HARVEST")["ready"]:
+            raise HarvestError("host/run-preflight is niet gereed; controleer run en opslag")
+        master, report, eligible, excluded, metadata_path = prepare_pre_kvk(run)
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        _print({
+            "run_dir": str(run.path),
+            "status": "PRE_KVK_READY",
+            "master": str(master),
+            "master_report": str(report),
+            "kvk_input": str(eligible),
+            "excluded": str(excluded),
+            "filter_metadata": str(metadata_path),
+            "counts": metadata["counts"],
+        })
         return 0
     if args.run_command == "e2e":
         if ((args.limit_kvk_check is not None and args.limit_kvk_check < 1)
@@ -275,7 +296,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "doctor":
         _print(host(root))
         return 0
-    if args.command == "run" and args.run_command in {"init", "list", "e2e"}:
+    if args.command == "run" and args.run_command in {"init", "list", "pre-kvk", "e2e"}:
         return _dispatch_new_run(args, root)
     if args.command == "companies" and args.companies_command == "merge-lists":
         run = open_run(args.run_dir) if args.run_dir else initialize_run(root, 1, "MERGE_LISTS")

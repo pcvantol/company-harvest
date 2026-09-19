@@ -25,12 +25,35 @@ Gebruik voor ontwikkeling bijvoorbeeld:
 
 ```bash
 export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
-RUN_DIR="$(company-harvest run init --target 10000 --print-path)"
-company-harvest run prepare-pre-kvk --run-dir "$RUN_DIR"
+company-harvest run pre-kvk
+company-harvest run pre-kvk --run-dir "/absoluut/pad/naar/de/zojuist/getoonde/run"
+```
+
+`run pre-kvk` is een **nieuw, nog niet gepubliceerd 3.1.0-commando**: de
+publieke 3.0.0-wheel kent het niet. De eerste opdracht maakt zelf een run en
+toont onmiddellijk de absolute `run_dir`. Gebruik de tweede opdracht alleen
+bij hervatten van exact die map; zonder `--run-dir` ontstaat een nieuwe run.
+Na afloop staan de gededupliceerde master, de gefilterde `kvk_input`, de
+uitsluitingen en de filtermetadata met aantallen en criteria in de runmap.
+Er vindt geen KVK-aanroep, eenmanszaakfilter of eind-Excel-export plaats.
+Een latere KVK-check is een afzonderlijke, expliciete opdracht:
+
+```bash
+RUN_DIR="/absoluut/pad/naar/de/zojuist/getoonde/run"
 company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
-`prepare-pre-kvk` downloadt voor een nieuwe run vijf volledige bronnen sequentieel (IND, GLEIF, ANBI, DUO, TenderNed), hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Oude vierbronnenruns blijven op hun gebonden scope. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. `kvk pre-kvk-batch` blijft een expliciete kleine batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
+De bestaande lage-niveau-opdracht `run prepare-pre-kvk --run-dir RUN_DIR`
+blijft beschikbaar na een afzonderlijke `run init`. De voorbereiding
+downloadt voor een nieuwe run vijf volledige bronnen sequentieel (IND,
+GLEIF, ANBI, DUO, TenderNed), hergebruikt eerder voltooide bronartefacten,
+bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Oude
+vierbronnenruns blijven op hun gebonden scope. Gebruik `--refresh` alleen
+bij die lage-niveau-opdracht voor een bewust nieuwe bronmomentopname.
+Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en
+`pre_kvk_filter_metadata`. `kvk pre-kvk-batch` blijft een expliciete kleine
+batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe
+kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
 
 De eigenaar heeft daarnaast de langlopende frontendcontrole expliciet
 geactiveerd. Kies bij `kvk pre-kvk-run` altijd bewust een begrensde sessie of

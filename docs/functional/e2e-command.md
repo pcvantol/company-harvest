@@ -21,6 +21,12 @@ vier bronnen en maakte geen `companies_delivery_light.xlsx`. Alleen Python 3.14.
 ondersteund. Controleer vóór installatie de wheelhash tegen de
 `SHA256SUMS.txt` van [release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0).
 
+Wie alleen de bronnen, master en gefilterde KVK-invoer wil maken, gebruikt
+in de **nog niet gepubliceerde broncode** `run pre-kvk` (eventueel met
+`--run-dir` om dezelfde run te hervatten). Dit stopt vóór KVK en maakt geen
+eindlijst. Zie de [gebruikershandleiding](user-guide.md); de publieke
+3.0.0-wheel bevat dit nieuwe commando nog niet.
+
 Installeer de gedownloade wheel in een nieuwe virtuele omgeving:
 
 ```bash

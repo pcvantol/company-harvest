@@ -5,7 +5,9 @@
 - `PUBLIC_ACCESS_BLOCKED`/429: stop; de publieke KVK-check blokkeert vervolgverzoeken
   op deze run tot een afzonderlijk toegang-/gebruiksbesluit. Wissel niet naar
   browser of een nieuw journal om de blokkade te omzeilen.
-- `run prepare-pre-kvk` kan lang duren en veel lokale schijfruimte gebruiken:
+- `run pre-kvk` (nog ongepubliceerd; nieuwe run of dezelfde `--run-dir`)
+  en `run prepare-pre-kvk` (bestaande run) kunnen lang duren en veel lokale
+  schijfruimte gebruiken:
   inspecteer eerst de bron- en evidencegates; dezelfde run hergebruikt afgeronde
   downloadartefacten en een identieke master.
 - De publieke v3.0.0-wheel kan op actuele brondata vóór KVK stoppen met

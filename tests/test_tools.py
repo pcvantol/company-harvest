@@ -65,7 +65,7 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     file.write_bytes(b"bad")
     with pytest.raises(RuntimeError):
         module.verify(manifest_path)
-    assert module._version(ROOT) == "3.0.1"
+    assert module._version(ROOT) == "3.1.0"
     monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v1", "assets": [], "version": "1"})
     monkeypatch.setattr(module, "git", lambda *_: "dirty")
     with pytest.raises(RuntimeError):
