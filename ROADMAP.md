@@ -409,6 +409,20 @@ Dit geeft geen vrijgave van bulk-/KVK-harvest of externe datapublicatie. Zie
 [`vervolgmeting`](docs/measurements/20260919-tenderned-qualification.md) en
 [`ADR-014`](docs/adr/014-tenderned-kvk-source.md).
 
+De aanvullende nummer-only verkenning `CH-2026-09-19-041` kwalificeert SBB,
+brancheleden, exposanten, Rijksleveranciers, groeilijsten en gemeentelijke
+bedrijventerreinsites **zonder** portfolio-uitbreiding. SBB publiceert nummers
+in profielen maar de Stagemarkt-disclaimer sluit commerciële verwerking en
+kopieën van (delen van) het databestand uit. BOVAG-certificaten publiceren
+nummer en lidstatus en verdienen een beperkte rechten-/toegangsproef.
+Rijkscontracten heeft een direct leveranciers-KVK-veld maar geen aparte
+leveranciersnaam, zodat een identifier-only gegevenscontract eerst nodig is.
+De bekeken spend-, expo- en groeipublicaties leveren geen direct nummer per
+gepubliceerd bedrijf; de bekeken gemeentelijke atlassen zijn op dat punt
+onbewezen. Dit is een specifiek huidig bronselectiecriterium en herschrijft
+de historische bredere R5-innamefilosofie niet. Zie de
+[`kwalificatienotitie`](docs/measurements/20260919-extra-number-source-qualification.md).
+
 Latere uitvoer CH-2026-09-19-009 probeerde deze vijf actieve bronnen
 eenmalig volledig naar één pre-KVK-lijst te brengen. Vier bronnen zijn
 full-scope ingenomen; Wikidata stopte op HTTP 429. De afzonderlijke

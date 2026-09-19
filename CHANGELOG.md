@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Brononderzoek zonder software- of packagewijziging: directe KVK-velden
+  vastgesteld in publieke SBB-profielen, BOVAG-certificaten en het
+  Rijkscontracten-CSV. SBB-hergebruik is geblokkeerd door de gepubliceerde
+  Stagemarkt-disclaimer; BOVAG-rechten en een identifier-only contract voor
+  Rijkscontracten vereisen vervolgkwalificatie. Bekeken spend-, expo- en
+  groeipublicaties en gemeentelijke atlassen zijn niet als nieuwe bron
+  geactiveerd (CH-2026-09-19-041).
+
 - Bronversie 3.0.1 herstelt de CSV-/TSV-parser voor verliesvrije
   bronbewijsvelden boven Python's standaardgrens: één begrensde limiet van
   1.048.576 tekens per veld geldt voor master, filter, cohort, KVK-snapshot en export.
