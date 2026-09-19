@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Nieuwe run-, artefact-, evidence- en snapshotnamen beginnen met een leesbare
+  UTC-tijd `yyyy.mm.dd_hhMMss` plus een korte willekeurige suffix, zonder de
+  lange nanosecondeprefixed waarde. Bestaande runs en bestandsnamen blijven
+  ongewijzigd en leesbaar; broncodeversie 1.0.1 is nog niet gepubliceerd.
 - De historische Git-tag `v0.1.0` is op eigenaarsverzoek uit de lokale
   checkout en van `origin` verwijderd; broncommit en releasebewijs blijven.
 - Korte functionele v1.0.0-snelstart met exacte commando's, hervatpad en

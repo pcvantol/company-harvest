@@ -78,7 +78,7 @@ def utc_now() -> datetime:
 
 def timestamp() -> str:
     now = utc_now()
-    return f"{time.time_ns()}_{now:%Y%m%dT%H%M%S.%fZ}_{secrets.token_hex(3)}"
+    return f"{now:%Y.%m.%d_%H%M%S}_{secrets.token_hex(6)}"
 
 
 def sha256(path: Path) -> str:

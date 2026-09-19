@@ -1,6 +1,8 @@
 import gzip
 import json
+import re
 from contextlib import nullcontext
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -59,6 +61,45 @@ def test_core_roundtrip_and_validation(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv("COMPANY_HARVEST_DATA_DIR", str(tmp_path))
     assert data_root() == tmp_path
     assert data_root(tmp_path / "x") == tmp_path / "x"
+
+
+def test_timestamp_is_readable_utc_with_same_second_uniqueness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(core, "utc_now", lambda: datetime(2026, 9, 19, 10, 39, 17, tzinfo=UTC))
+    suffixes = iter(("0123456789ab", "abcdef012345"))
+
+    def next_suffix(byte_count: int) -> str:
+        assert byte_count == 6
+        return next(suffixes)
+
+    monkeypatch.setattr(core.secrets, "token_hex", next_suffix)
+    assert core.timestamp() == "2026.09.19_103917_0123456789ab"
+    assert core.timestamp() == "2026.09.19_103917_abcdef012345"
+
+
+def test_new_names_and_old_run_path_remain_usable(tmp_path: Path) -> None:
+    fresh = core.initialize_run(tmp_path, 1)
+    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}_\d{6}_[0-9a-f]{12}", fresh.path.name)
+    artifact = fresh.artifact_path("01", "demo", "txt")
+    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}_\d{6}_[0-9a-f]{12}_01_demo\.txt", artifact.name)
+    artifact.write_text("bewaard", encoding="utf-8")
+    fresh.register_artifact(artifact, "01", "demo")
+
+    legacy = fresh.path.with_name("1789809357641683000_20260919T091557.641560Z_aa1cb6")
+    fresh.path.rename(legacy)
+    metadata = json.loads((legacy / "run.json").read_text(encoding="utf-8"))
+    metadata["run_id"] = legacy.name
+    (legacy / "run.json").write_text(json.dumps(metadata), encoding="utf-8")
+    reopened = open_run(legacy)
+    assert reopened.metadata()["run_id"] == legacy.name
+    preserved = reopened.latest_artifact("01", "demo")
+    assert preserved is not None and preserved.read_text(encoding="utf-8") == "bewaard"
+    continuation = reopened.artifact_path("02", "continued", "txt")
+    assert re.fullmatch(r"\d{4}\.\d{2}\.\d{2}_\d{6}_[0-9a-f]{12}_02_continued\.txt", continuation.name)
+    continuation.write_text("nieuw", encoding="utf-8")
+    reopened.register_artifact(continuation, "02", "continued")
+    assert reopened.latest_artifact("02", "continued") == continuation
 
 
 def test_run_lock_artifacts_and_open(run, tmp_path: Path) -> None:

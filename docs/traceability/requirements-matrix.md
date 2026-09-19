@@ -14,6 +14,7 @@
 | CH-KVK-SMOKE-001 | Een expliciete kleine publieke frontendmeting mag niet ongemerkt tot bulk of een productprovider uitgroeien | RD-001; geïsoleerde lokale runner buiten wheel | [tien-GET-meting](../measurements/20260919-kvk-frontend-batch10.md), onafhankelijke pre-/postreview; R7 blijft `PARKED` |
 | CH-RES-001 | Unieke run, SQLite, lock, snapshots | ADR-003, `core.py` | recoverytests |
 | CH-RES-002 | Resume/requestjournal/cooldown | `kvk.py` | resumetests |
+| CH-RES-003 | Leesbare UTC-prefix voor nieuwe run-/bestandsnamen zonder legacy-runs te breken | `core.timestamp`, `open_run` | vastgezette tijd-/botsings- en legacy-open-tests; [persistencecontract](../technical/persistence-and-recovery.md) |
 | CH-SEC-001 | Bounds, allowlists, redactie | `sources.py`, `core.redact` | securitytests |
 | CH-MERGE-001 | CSV/TSV/XLSX + aliases/overrides | `merge_lists.py` | mergetests |
 | CH-MERGE-002 | Conflictpolicies exact | ADR-002, `merge_lists.merge_lists` | policytests |

@@ -7,6 +7,11 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
+Nieuwe runs en bestanden uit de nog niet gepubliceerde 1.0.1-broncode krijgen
+een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
+Bestaande runmappen worden niet hernoemd; de gepubliceerde 1.0.0-wheel houdt
+zijn oorspronkelijke naamformaat.
+
 De actuele voorbereidingsopdracht verwerkt IND, GLEIF, ANBI en DUO tot één
 volledige gededupliceerde master en een afzonderlijk gefilterde KVK-wachtrij
 met een herleidbare uitsluitingsledger; Wikidata valt buiten deze workflow. De
