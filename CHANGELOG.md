@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Live proef van de ongewijzigde publieke 3.0.0-wheel met vijf volledige
+  bronnen en maximaal tien KVK-checks stopte vóór de KVK-fase: één
+  `source_payloads_json`-veld in de master overschrijdt Python's standaard
+  CSV-veldgrens. Geen KVK-aanvraag of eind-Excel; `audit verify` gold alleen
+  voor bron-/masterartefacten. Een toekomstige versie moet dit begrensd
+  verhelpen en opnieuw E2E toetsen (CH-2026-09-19-039).
+
 - Distributiebeheer zonder software- of pakketversiewijziging: op
   eigenaarsverzoek zijn alle GitHub Releases en lokale/remote tags onder
   3.0 verwijderd. Alleen `v2.0.0` bestond nog; haar vijf publieke assets
