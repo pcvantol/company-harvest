@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Read-only naamsvariantenmeting op de 119.801 pre-KVK-geschikte kandidaten:
+  283 schrijfwijze-/`BV`-botsingsgroepen en 285 hypothetische overschotregels,
+  maar telkens verschillende opgegeven KVK-nummers. Geen fuzzy filter of
+  automatische uitsluiting toegevoegd; besluit daarover staat open.
 - Beide Python-3.14-CI-platformjobs hebben nu een apart zichtbare offline
   E2E-integratieproef: CLI vanaf lege run, gesimuleerde broncollectors en
   KVK-check, echte filtering/export/audit en hervatten; netwerkverkeer is in
