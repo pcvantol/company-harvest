@@ -1,9 +1,11 @@
 # Bron- en KVK-providers
 
-De IND-adapter leest het actuele openbare register Arbeid. De Wikidata-adapter gebruikt
+De actuele `run prepare-pre-kvk`-workflow leest IND, GLEIF, ANBI en DUO en
+laat Wikidata geheel buiten de download en master. De oudere, alleen expliciet
+op te roepen Wikidata-adapter gebruikt
 Wikidata-property `P3220` (KvK company ID) met deterministische, begrensde
 SPARQL-paginering; de veiligheidslimiet blokkeert een schijnbaar volledig resultaat.
-`sources collect` hergebruikt standaard het laatste bronartefact en `--refresh` maakt en
+`sources collect` leest standaard alleen IND, hergebruikt het laatste bronartefact en `--refresh` maakt en
 registreert nieuwe evidence.
 
 `sources import` voegt lokale CSV-, TSV-, XLSX- en HTML-tabellen met een expliciete naamkolom en optionele KVK-kolom toe. Iedere input krijgt eerst een unieke evidence-snapshot. Ontbrekende of ongeldige KVK-waarden blijven als kandidaten bewaard en worden afzonderlijk gemeten. Alle bronnen blijven biased en vormen geen gegarandeerd volledige populatie.
@@ -66,7 +68,7 @@ ontbrekende of ongeldige `KVK_NR` verwijdert de huidige organisatie niet. DUO's
 De volledige bronselectie, licentievoorbehouden en gemeten opbrengst staan in
 [`docs/measurements/20260918-r5-source-portfolio.md`](../measurements/20260918-r5-source-portfolio.md).
 
-De eenmalige brede pre-KVK-poging op 2026-09-19 is
+De historische brede pre-KVK-poging op 2026-09-19 is
 [afzonderlijk gemeten](../measurements/20260919-pre-kvk-source-snapshot.md).
 De directe bronclient valideert iedere redirect opnieuw op HTTPS, exacte
 host, poort en credentials en kapt de gedecomprimeerde respons tijdens
@@ -74,5 +76,5 @@ streaming af op 20 MiB. De Wikidata-vervolgroute scheidt P3220-projectie
 van labelverrijking, bewaart per request hashgebonden lokale evidence en
 stopt bij 401/403/429. Op de derde 500-recordprojectiepagina kwam HTTP
 429; vier andere bronnen waren toen volledig ingenomen. Het exacte
-[pre-KVK-publicatiecontract](pre-kvk-list.md) voorkomt dat een deelrun als
-vijfbronnenmaster wordt behandeld.
+[pre-KVK-publicatiecontract](pre-kvk-list.md) beschrijft nu de geselecteerde
+vierbronnenmaster. De historische vijfbronnenblokkade blijft apart bewijs.

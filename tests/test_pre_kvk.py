@@ -76,9 +76,10 @@ def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     rows = read_tsv(path)
     report = json.loads(report_path.read_text())
     assert path.suffix == ".tsv" and len(rows) == 4
-    assert sum(int(row["source_count"]) for row in rows) == 5
-    assert report["counts"]["input_source_rows"] == 5
-    assert report["counts"]["merged_source_rows"] == 1
+    assert sum(int(row["source_count"]) for row in rows) == 4
+    assert report["counts"]["input_source_rows"] == 4
+    assert report["counts"]["merged_source_rows"] == 0
+    assert "wikidata_nl_companies" not in report["scope"]
     assert report["closure"] == "CLOSED" and report["kvk_requests"] == 0
     assert report["master_sha256"] == sha256(path)
     alpha = [row for row in rows if row["original_name"] == "Alpha B.V."]
@@ -86,19 +87,19 @@ def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     assert {row["source_kvk_hint"] for row in alpha} == {"12345678", "87654321"}
     assert all(row["kvk_queue_status"] == "REVIEW_REQUIRED" for row in alpha)
     assert len([row for row in rows if row["original_name"] == "Beta Stichting"]) == 2
-    merged = next(row for row in alpha if row["source_count"] == "2")
-    assert len(json.loads(merged["source_payloads_json"])) == 2
+    assert all(len(json.loads(row["source_payloads_json"])) == 1 for row in alpha)
     assert run.latest_artifact("03", "pre_kvk_master") == path
+    assert build_pre_kvk_list(run) == (path, report_path)
 
 
 def test_pre_kvk_rejects_limited_and_replaced_source(run: Run) -> None:
     paths = _full_sources(run)
     observations = run.metadata()["runtime_config"]["source_observations"]
-    observations["wikidata_nl_companies"]["collection_complete"] = False
+    observations["ind_arbeid"]["collection_complete"] = False
     run.record_config("source_observations", observations)
     with pytest.raises(HarvestError, match="volledig"):
         build_pre_kvk_list(run)
-    observations["wikidata_nl_companies"]["collection_complete"] = True
+    observations["ind_arbeid"]["collection_complete"] = True
     run.record_config("source_observations", observations)
     imported = run.artifact_path("02", "source_ind_arbeid_import", "csv")
     write_tsv(imported, RAW_HEADERS, [_raw("ind_arbeid", 99, "Import B.V.")])
@@ -116,7 +117,7 @@ def test_pre_kvk_checks_evidence_and_allows_historical_evidence(run: Run) -> Non
     run.register_artifact(old, "02", "evidence_ind_arbeid")
     build_pre_kvk_list(run)
 
-    current = run.path / "evidence" / "wikidata_nl_companies.dat"
+    current = run.path / "evidence" / "ind_arbeid.dat"
     current.write_bytes(b"beschadigd")
     with pytest.raises(HarvestError, match="response-evidence"):
         build_pre_kvk_list(run)

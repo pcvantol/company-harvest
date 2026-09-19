@@ -18,7 +18,15 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from company_harvest.core import HTTP_USER_AGENT, HarvestError, Run, read_tsv, timestamp, write_tsv
+from company_harvest.core import (
+    HTTP_USER_AGENT,
+    HarvestError,
+    Run,
+    read_tsv,
+    redact,
+    timestamp,
+    write_tsv,
+)
 
 KVK_HOSTS = {"www.kvk.nl", "kvk.nl", "web-api.kvk.nl"}
 PUBLIC_SEARCH_ENDPOINT = "https://web-api.kvk.nl/zoeken/v3/search"
@@ -43,9 +51,11 @@ class Provider(Protocol):
 
 
 class KvkError(HarvestError):
-    def __init__(self, reason: str, message: str, exit_code: int = 5) -> None:
+    def __init__(self, reason: str, message: str, exit_code: int = 5,
+                 evidence: str | None = None) -> None:
         super().__init__(message, exit_code)
         self.reason = reason
+        self.evidence = evidence
 
 
 def retry_after(value: str | None, now: datetime | None = None) -> float | None:
@@ -67,8 +77,14 @@ def retry_after(value: str | None, now: datetime | None = None) -> float | None:
 class PublicHttpProvider:
     name = "public-http"
 
-    def __init__(self, run: Run, endpoint: str | None = None) -> None:
+    def __init__(self, run: Run, endpoint: str | None = None,
+                 max_pages: int = 20, page_interval: float = 0.0,
+                 max_attempts: int = 3) -> None:
         self.run = run
+        self.max_pages = max_pages
+        self.page_interval = page_interval
+        self.max_attempts = max_attempts
+        self.last_error_evidence: str | None = None
         observed_endpoint, observed_parameter = self._observed_route()
         self.endpoint = endpoint or observed_endpoint or PUBLIC_SEARCH_ENDPOINT
         self.query_parameter = "q" if endpoint else observed_parameter or "q"
@@ -92,6 +108,7 @@ class PublicHttpProvider:
 
     def search(self, query: str, headed: bool = False) -> ProviderResult:
         del headed
+        self.last_error_evidence = None
         if not self.endpoint or not self.query_parameter:
             raise KvkError("BROWSER_REQUIRED", "geen publieke HTTP-route waargenomen", 5)
         parsed = urlparse(self.endpoint)
@@ -103,28 +120,30 @@ class PublicHttpProvider:
         hits: list[dict[str, Any]] = []
         start, total = 0, None
         with httpx.Client(timeout=timeout, follow_redirects=False, headers=headers) as client:
-            for _page in range(20):
+            for page in range(self.max_pages):
+                if page and self.page_interval:
+                    time.sleep(self.page_interval)
                 params = {self.query_parameter: query, "language": "nl", "site": "kvk2014", "size": "10", "start": str(start)}
                 response = self._get_with_retries(client, params)
                 if response.status_code in {401, 403}:
-                    raise KvkError("PUBLIC_ACCESS_BLOCKED", "publieke KVK-toegang geweigerd", 4)
+                    raise KvkError("PUBLIC_ACCESS_BLOCKED", "publieke KVK-toegang geweigerd", 4, self.last_error_evidence)
                 if response.status_code == 429:
                     self._cooldown(retry_after(response.headers.get("Retry-After")) or 300, "HTTP 429")
-                    raise KvkError("RATE_LIMITED", "KVK-rate limit actief; hervat later", 4)
+                    raise KvkError("RATE_LIMITED", "KVK-rate limit actief; hervat later", 4, self.last_error_evidence)
                 if response.status_code >= 500:
                     raise KvkError("NETWORK_ERROR", f"tijdelijke KVK-serverfout {response.status_code}")
                 try:
                     response.raise_for_status()
                 except httpx.HTTPError as exc:
-                    raise KvkError("PUBLIC_ACCESS_BLOCKED", f"KVK HTTP-fout: {exc}", 4) from exc
-                if len(response.content) > 5 * 1024 * 1024:
-                    raise KvkError("PARSING_ERROR", "KVK-response te groot")
+                    raise KvkError("PUBLIC_ACCESS_BLOCKED", f"KVK HTTP-fout: {exc}", 4, self.last_error_evidence) from exc
                 try:
                     payload = response.json()
                 except ValueError as exc:
-                    raise KvkError("PARSING_ERROR", "KVK-response is geen geldige JSON") from exc
+                    self._save_error_evidence(response.status_code, response.content, response.headers)
+                    raise KvkError("PARSING_ERROR", "KVK-response is geen geldige JSON", evidence=self.last_error_evidence) from exc
                 if not isinstance(payload, dict):
-                    raise KvkError("PARSING_ERROR", "onverwacht KVK-responseschema")
+                    self._save_error_evidence(response.status_code, response.content, response.headers)
+                    raise KvkError("PARSING_ERROR", "onverwacht KVK-responseschema", evidence=self.last_error_evidence)
                 payloads.append(payload)
                 page_hits, page_total = _extract_public_search(payload)
                 hits.extend(page_hits)
@@ -132,8 +151,8 @@ class PublicHttpProvider:
                 start += len(page_hits)
                 if not page_hits or total is None or start >= total:
                     break
-            else:
-                raise KvkError("TRUNCATED_RESULTS", "KVK-paginabudget bereikt")
+            # De bewaarde response toont bij een bereikt paginabudget expliciet
+            # dat de zoekactie onvolledig is; geen automatische match volgt.
         evidence = self.run.path / "evidence" / f"{timestamp()}_04_kvk_http_response.json"
         evidence.write_text(json.dumps(payloads, ensure_ascii=False), encoding="utf-8")
         complete = total is not None and start >= total
@@ -141,17 +160,41 @@ class PublicHttpProvider:
 
     def _get_with_retries(self, client: httpx.Client, params: dict[str, str]) -> httpx.Response:
         last_error: Exception | None = None
-        for attempt in range(3):
+        for attempt in range(self.max_attempts):
             try:
-                response = client.get(self.endpoint, params=params)
+                with client.stream("GET", self.endpoint, params=params) as streamed:
+                    chunks: list[bytes] = []
+                    size = 0
+                    for chunk in streamed.iter_bytes(chunk_size=64 * 1024):
+                        size += len(chunk)
+                        if size > 5 * 1024 * 1024:
+                            self._save_error_evidence(streamed.status_code, b"".join(chunks), streamed.headers, truncated=True)
+                            raise KvkError("PARSING_ERROR", "KVK-response te groot", evidence=self.last_error_evidence)
+                        chunks.append(chunk)
+                    body = b"".join(chunks)
+                    response = httpx.Response(streamed.status_code, headers=streamed.headers,
+                                              content=body, request=streamed.request)
+                if response.status_code >= 400:
+                    self._save_error_evidence(response.status_code, body, response.headers)
                 if response.status_code < 500:
                     return response
                 last_error = KvkError("NETWORK_ERROR", f"tijdelijke KVK-serverfout {response.status_code}")
             except httpx.HTTPError as exc:
                 last_error = exc
-            if attempt < 2:
+            if attempt < self.max_attempts - 1:
                 time.sleep((2**attempt) + random.uniform(0, 0.25))
-        raise KvkError("NETWORK_ERROR", f"KVK-netwerkfout na begrensde retries: {last_error}")
+        raise KvkError("NETWORK_ERROR", f"KVK-netwerkfout na begrensde retries: {last_error}", evidence=self.last_error_evidence)
+
+    def _save_error_evidence(self, status: int, body: bytes, headers: Any,
+                             truncated: bool = False) -> None:
+        evidence = self.run.path / "evidence" / f"{timestamp()}_04_kvk_http_error.json"
+        payload = {"status": status, "body_sha256": hashlib.sha256(body).hexdigest(),
+                   "captured_bytes": len(body), "truncated": truncated,
+                   "body_preview": redact(body[:4096].decode("utf-8", errors="replace")),
+                   "retry_after": headers.get("Retry-After")}
+        evidence.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        self.run.register_artifact(evidence, "04", "evidence_public-http-error")
+        self.last_error_evidence = str(evidence.relative_to(self.run.path))
 
     def _cooldown(self, seconds: float, reason: str) -> None:
         with self.run.connect() as connection:

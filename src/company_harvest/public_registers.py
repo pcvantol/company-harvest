@@ -553,6 +553,17 @@ def collect_public_register(
     limit: int | None = None,
     refresh: bool = False,
 ) -> tuple[Path, Path, Path, Path]:
+    with run.lock():
+        return _collect_public_register_unlocked(run, source_id, archive, limit, refresh)
+
+
+def _collect_public_register_unlocked(
+    run: Run,
+    source_id: str,
+    archive: Path | None,
+    limit: int | None,
+    refresh: bool,
+) -> tuple[Path, Path, Path, Path]:
     """Download or import one public register snapshot and preserve every selected candidate."""
     try:
         spec = SPECS[source_id]

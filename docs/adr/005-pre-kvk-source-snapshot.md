@@ -3,6 +3,10 @@
 Status: Accepted (2026-09-19). Requirements: CH-PREKVK-001..003,
 CH-DATA-001/004, CH-RES-001, RD-001/004/006/007.
 
+Historisch besluit voor CH-2026-09-19-009. De operationele bronselectie is
+later vervangen door [ADR-006](006-four-source-tool-and-kvk-batches.md);
+deze historische vijfbronnenclaim wordt niet achteraf herschreven.
+
 De volledige pre-KVK-master wordt pas gepubliceerd wanneer de kandidaatlaag
 van alle vijf actieve bronnen full-scope is ingenomen, de originele evidence
 en bronoutputs byte-gebonden zijn en input→lijst-closure sluit. KVK-hints uit

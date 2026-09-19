@@ -1,27 +1,19 @@
 # Gebruikershandleiding
 
-Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`. `run init --print-path` maakt uitsluitend een lokale run. Voer daarna de CLI-stappen in de volgorde uit die `company-harvest --help` en subcommand-help tonen. `run execute` gebruikt dezelfde services en checkpoints.
+Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`. `run init --print-path` maakt uitsluitend een lokale run. De nieuwe standaardvoorbereiding gebruikt IND, GLEIF, ANBI en DUO; Wikidata wordt niet gedownload of aan de master toegevoegd.
 
 Gebruik voor ontwikkeling bijvoorbeeld:
 
 ```bash
 export COMPANY_HARVEST_DATA_DIR=/Users/pcvantol/Documents/GitHub/company-harvest
 RUN_DIR="$(company-harvest run init --target 10000 --print-path)"
-company-harvest sources discover --run-dir "$RUN_DIR"
-company-harvest sources measure --run-dir "$RUN_DIR" --wikidata-limit 200
-company-harvest sources collect --run-dir "$RUN_DIR"
-company-harvest sources gleif --run-dir "$RUN_DIR" --limit 200
-company-harvest sources anbi --run-dir "$RUN_DIR" --limit 500
-company-harvest sources duo --run-dir "$RUN_DIR" --limit 500
-company-harvest companies sample --run-dir "$RUN_DIR" --size 500 --review-size 25 --pilot-size 50
-company-harvest companies merge --run-dir "$RUN_DIR"
-company-harvest kvk preflight --run-dir "$RUN_DIR" --provider auto
-company-harvest kvk pilot --run-dir "$RUN_DIR" --provider public-http --interval 2 --review-size 20
-company-harvest kvk resolve --run-dir "$RUN_DIR" --provider auto --limit 1
-company-harvest report --run-dir "$RUN_DIR"
+company-harvest run prepare-pre-kvk --run-dir "$RUN_DIR"
+company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
-Stop bij een providerblokkade en hervat later met dezelfde run en `--resume`. Een browserfallback vereist apart geïnstalleerd Chromium. Merge gebruikt `companies merge-lists --left … --right …`; standaard worden naamconflicten uitgesloten. Bekijk altijd reports, conflicts, rejected en reviewbestanden.
+`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten en bouwt een conservatief gededupliceerde master. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten en het masterrapport. De KVK-opdracht is een expliciete kleine batch via de waargenomen publieke frontend-Web-API. Zij verwerkt maximaal tien nieuwe kandidaten, stopt bij blokkade en publiceert alleen partiële batchartefacten, geen definitieve export. Herhaal geen geblokkeerde requests. Voor systematische bulkverificatie is eerst een afzonderlijk gebruiks- en eigenaarbesluit nodig.
+
+`run execute` voert dezelfde vierbronnenvoorbereiding uit; alleen met een expliciete `--limit` van 1–10 volgt één KVK-batch. Er wordt geen volledige KVK-harvest of downstream-export automatisch gestart. `sources collect` zonder selectie leest alleen IND; Wikidata vereist een expliciet legacy `--only-source` en maakt geen deel uit van deze workflow. Merge van bestaande bestanden blijft beschikbaar via `companies merge-lists --left … --right …`.
 
 Een lokale bron hoeft nog geen KVK-nummer te bevatten. Importeer bijvoorbeeld alleen namen met:
 
@@ -38,8 +30,7 @@ machineleesbaar en een leesbaar capabilityrapport, ook wanneer een bron met `BLO
 niet als een actuele meting labelen. De meting is geen productieharvest en de
 Wikidata-steekproef is geen populatieschatting.
 
-`sources gleif` is een expliciete bulkactie en wordt niet door `sources collect` of `run
-execute` gestart. Zonder `--archive` downloadt het commando de officiële huidige Golden
+`sources gleif` is een afzonderlijke bulkactie en wordt niet door `sources collect` gestart; `run prepare-pre-kvk` en `run execute` starten haar wel expliciet als onderdeel van de vierbronnenvoorbereiding. Zonder `--archive` downloadt het commando de officiële huidige Golden
 Copy; gebruik `--limit N` voor een capabilitysample van maximaal N Nederlandse records.
 Een reeds gecontroleerde lokale ZIP kan zonder nieuw netwerkrequest worden gebruikt:
 
@@ -53,8 +44,8 @@ forceert nieuwe evidence en verwerking; zonder deze optie wordt exact dezelfde i
 limiet hergebruikt. Bekijk na afloop altijd `gleif_ingest_report`, `gleif_rejected` en het
 outcome-rapport. GLEIF-status en -rechtsvorm zijn brondata, geen KVK-verificatie.
 
-`sources anbi` en `sources duo` zijn net als GLEIF expliciete bulkacties en worden nooit
-door `sources collect` of `run execute` gestart. Gebruik voor een gecontroleerde lokale
+`sources anbi` en `sources duo` zijn net als GLEIF afzonderlijke bulkacties en worden niet
+door `sources collect` gestart; de vierbronnenvoorbereiding gebruikt ze wel. Gebruik voor een gecontroleerde lokale
 snapshot bijvoorbeeld:
 
 ```bash
@@ -68,16 +59,15 @@ regels niet stil: die staan in rejected. Ook huidige DUO-records zonder of met o
 KVK-veld blijven kandidaat. Bekijk na afloop de twee ingest reports en rejected-bestanden.
 
 `companies pre-kvk-list` bouwt zonder netwerk of KVK-call één brede lijst
-vlak vóór verificatie, maar alleen als alle vijf actieve bronadapters
+vlak vóór verificatie, maar alleen als de vier geselecteerde bronadapters
 onbegrensd en met intact bronbewijs zijn afgerond. De output bevat per
 regel de originele bronpayloads en bewijsrelaties; een directe KVK-hint is
 niet automatisch geverifieerd. Identieke namen zonder gedeelde geldige
 KVK-hint blijven apart om foutieve samenvoegingen te voorkomen. Bij een
-bronblokkade verschijnt geen volledige master. De eenmalige run van
-2026-09-19 heeft wegens Wikidata HTTP 429 alleen een afzonderlijke,
-voor KVK geblokkeerde vierbronnenpreview opgeleverd; zie het
-[meetrapport](../measurements/20260919-pre-kvk-source-snapshot.md). Gebruik
-die preview niet als KVK-invoer.
+bronblokkade verschijnt geen volledige master. De historische run van
+2026-09-19 bevat een geblokkeerde preview; die blijft een historisch artefact.
+Een nieuw gebouwde `pre_kvk_master` heeft vier bronnen en is de enige geldige
+invoer voor `kvk pre-kvk-batch`.
 
 `companies sample` bouwt de R6-kwaliteitssample zonder netwerkrequests. De verdeling is
 eerst gelijkmatig over actieve bronfamilies en daarna binnen iedere familie over records

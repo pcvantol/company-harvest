@@ -90,6 +90,24 @@ Daarbij gelden de volgende grenzen:
 - KVK-nummermatching bewijst niet automatisch rechtsvorm, status of activiteit;
 - kleine, sequentiële matchingmetingen zijn toegestaan; bulkgebruik van de publieke KVK-frontend en migratie naar een andere KVK-route blijven onder RD-001/R7 geparkeerd.
 
+### RD-008 — Vierbronnenvoorbereiding zonder Wikidata
+
+Op 2026-09-19 heeft de eigenaar voor de zelfstandige tool de geselecteerde
+pre-KVK-invoer teruggebracht tot IND, GLEIF, ANBI en DUO. Wikidata is geen
+vereiste of automatische download meer voor deze workflow. De historische
+vijfbronnenmeting en R5-portfoliobesluiten blijven als toenmalig bewijs
+ongewijzigd; de nieuwe master claimt uitsluitend sluiting over de vier
+geselecteerde bronnen. De tool downloadt/hergebruikt deze vier bronnen,
+controleert full-scope evidence en dedupliceert ze vóór KVK.
+
+De eigenaar vroeg koppeling aan de door de frontend gebruikte publieke
+Web-API. Hiervoor is alleen een expliciete batch van maximaal tien kandidaten
+per opdracht beschikbaar, met lokaal journal en partiële outputs. De
+full-list-KVK-verificatie en finale export blijven onder RD-001/R7 geparkeerd:
+de publieke route en een geslaagde kleine batch bewijzen geen toestemming of
+technische geschiktheid voor systematische raadpleging. Een eventuele
+vrijgave vraagt een afzonderlijk aantoonbaar gebruiks- en eigenaarbesluit.
+
 ## 3. Statuslegenda
 
 | Status | Betekenis |
@@ -600,6 +618,12 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-19 — zelfstandige vierbronnenworkflow:** op expliciete vervolgvraag
+  vallen Wikidata-download en -vereiste buiten de nieuwe pre-KVK-master.
+  IND/GLEIF/ANBI/DUO worden door de tool zelf ingenomen en verliesvrij
+  samengebracht; de lokale master sloot 292.666→289.916. Alleen kleine,
+  expliciete KVK-Web-API-batches zijn geïmplementeerd. R7-bulkverificatie en
+  downstream-export blijven `PARKED`/`BLOCKED` onder RD-001/004/008.
 - **2026-09-18 — R8 afgerond:** de byte-exact aan pilot en bronartefactset gebonden
   50-recordmatchingpilot sloot met 15 voorlopige matches, 28 no-match, 6 ambigu, nul
   bronconflicten en 1 technische fout. De hashgebonden review bevestigde 20/20

@@ -1,9 +1,11 @@
 import json
 import time
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from company_harvest import cli
@@ -85,6 +87,10 @@ class HttpResponse:
     status_code = 200
     content = b'{"data":{"numberOfHits":1,"items":[{"naam":"Alpha","kvkNummer":"01234567","rechtsvormOmschrijving":"Besloten Vennootschap","actief":true,"bezoeklocatie":{"plaats":"Utrecht"}}]}}'
     headers = {"content-type": "application/json"}
+    request = httpx.Request("GET", "https://www.kvk.nl/public-search")
+
+    def iter_bytes(self, chunk_size=65536):
+        yield self.content
 
     def raise_for_status(self):
         return None
@@ -105,8 +111,9 @@ class HttpClient:
     def __exit__(self, *args):
         return None
 
-    def get(self, *args, **kwargs):
-        return HttpResponse()
+    @contextmanager
+    def stream(self, *args, **kwargs):
+        yield HttpResponse()
 
 
 def test_http_search_observed(run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -126,6 +133,80 @@ def test_http_search_observed(run, monkeypatch: pytest.MonkeyPatch) -> None:
     assert _choose_provider(run, "public-browser").name == "public-browser"
     with pytest.raises(HarvestError):
         _choose_provider(run, "bad")
+
+
+def test_http_single_page_is_partial_and_bounded(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    class PartialResponse(HttpResponse):
+        content = b'{"data":{"numberOfHits":20,"items":[{"naam":"Alpha","kvkNummer":"01234567","bezoeklocatie":{"plaats":"Utrecht"}}]}}'
+
+    class PartialClient(HttpClient):
+        calls = 0
+
+        @contextmanager
+        def stream(self, *args, **kwargs):
+            type(self).calls += 1
+            yield PartialResponse()
+
+    monkeypatch.setattr("company_harvest.kvk.httpx.Client", PartialClient)
+    result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+    assert result.complete is False and len(result.hits) == 1
+    assert (run.path / result.evidence).is_file()
+    assert PartialClient.calls == 1
+
+
+def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    class BlockedResponse(HttpResponse):
+        status_code = 403
+        content = b"access denied"
+
+    class BlockedClient(HttpClient):
+        calls = 0
+
+        @contextmanager
+        def stream(self, *args, **kwargs):
+            type(self).calls += 1
+            yield BlockedResponse()
+
+    monkeypatch.setattr("company_harvest.kvk.httpx.Client", BlockedClient)
+    with pytest.raises(KvkError) as blocked:
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+    assert blocked.value.reason == "PUBLIC_ACCESS_BLOCKED"
+    assert blocked.value.evidence and (run.path / blocked.value.evidence).is_file()
+    assert BlockedClient.calls == 1
+
+    class ServerErrorResponse(HttpResponse):
+        status_code = 500
+        content = b"temporary"
+
+    class ServerErrorClient(HttpClient):
+        calls = 0
+
+        @contextmanager
+        def stream(self, *args, **kwargs):
+            type(self).calls += 1
+            yield ServerErrorResponse()
+
+    monkeypatch.setattr("company_harvest.kvk.httpx.Client", ServerErrorClient)
+    with pytest.raises(KvkError) as server_error:
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+    assert server_error.value.reason == "NETWORK_ERROR"
+    assert ServerErrorClient.calls == 1
+
+    class OversizeResponse(HttpResponse):
+        def iter_bytes(self, chunk_size=65536):
+            for _ in range(81):
+                yield b"x" * chunk_size
+
+    class OversizeClient(HttpClient):
+        @contextmanager
+        def stream(self, *args, **kwargs):
+            yield OversizeResponse()
+
+    monkeypatch.setattr("company_harvest.kvk.httpx.Client", OversizeClient)
+    with pytest.raises(KvkError) as oversize:
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+    assert oversize.value.reason == "PARSING_ERROR"
+    assert oversize.value.evidence and (run.path / oversize.value.evidence).is_file()
 
 
 class Locator:

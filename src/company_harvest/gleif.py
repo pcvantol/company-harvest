@@ -441,6 +441,16 @@ def collect_gleif(
     limit: int | None = None,
     refresh: bool = False,
 ) -> tuple[Path, Path, Path, Path]:
+    with run.lock():
+        return _collect_gleif_unlocked(run, archive, limit, refresh)
+
+
+def _collect_gleif_unlocked(
+    run: Run,
+    archive: Path | None,
+    limit: int | None,
+    refresh: bool,
+) -> tuple[Path, Path, Path, Path]:
     """Download of importeer GLEIF evidence en verwerk die streaming."""
     if limit is not None and limit < 1:
         raise HarvestError("GLEIF-limiet moet positief zijn")

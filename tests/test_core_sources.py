@@ -70,10 +70,14 @@ def test_run_lock_artifacts_and_open(run, tmp_path: Path) -> None:
     run.log("INFO", "token_test", token="fake")
     assert "[REDACTED]" in (run.path / "logs" / "events.jsonl").read_text()
     with run.lock():
-        with pytest.raises(HarvestError) as error:
-            with run.lock():
-                pass
-        assert error.value.exit_code == 6
+        with run.lock():
+            assert (run.path / "run.lock").is_file()
+    (run.path / "run.lock").write_text("other owner")
+    with pytest.raises(HarvestError) as error:
+        with run.lock():
+            pass
+    assert error.value.exit_code == 6
+    (run.path / "run.lock").unlink()
     assert open_run(run.path).path == run.path
     with pytest.raises(HarvestError):
         open_run(tmp_path / "missing")
@@ -120,10 +124,8 @@ def test_sources_discovery_and_parsers(run) -> None:
     assert parsed[1]["registration_validation_status"] == "INVALID"
     assert parse_wikidata({}, "x") == []
     assert [item.source_id for item in _enabled(["ind_arbeid"], [])] == ["ind_arbeid"]
-    assert {item.source_id for item in _enabled([], [])} == {
-        "ind_arbeid",
-        "wikidata_nl_companies",
-    }
+    assert {item.source_id for item in _enabled([], [])} == {"ind_arbeid"}
+    assert {item.source_id for item in _enabled(["wikidata_nl_companies"], [])} == {"wikidata_nl_companies"}
     with pytest.raises(HarvestError, match="sources gleif"):
         _enabled(["gleif_golden_copy"], [])
     with pytest.raises(HarvestError):
@@ -173,14 +175,17 @@ class FakeClient:
 def test_collect_and_bounds(run, monkeypatch: pytest.MonkeyPatch) -> None:
     discover(run)
     monkeypatch.setattr("company_harvest.sources.httpx.Client", FakeClient)
-    outputs = collect(run, limit=1)
+    outputs = collect(run, only=["ind_arbeid", "wikidata_nl_companies"], limit=1)
     assert len(outputs) == 2 and all(read_tsv(path) for path in outputs)
     assert FakeClient.headers["User-Agent"] == "company-lookup/0.1"
     assert "github" not in FakeClient.headers["User-Agent"].casefold()
-    assert collect(run, limit=1) == outputs
+    assert collect(run, only=["ind_arbeid", "wikidata_nl_companies"], limit=1) == outputs
     downstream = run.artifact_path("03", "downstream", "csv"); write_tsv(downstream, ["x"], [{"x": "1"}]); run.register_artifact(downstream, "03", "downstream")
     assert len(collect(run, only=["ind_arbeid"], limit=1, refresh=True)) == 1
     assert run.latest_artifact("03", "downstream") is None
+    full_ind = collect(run, only=["ind_arbeid"], limit=None)
+    assert len(full_ind) == 1 and full_ind[0] != outputs[0]
+    assert run.metadata()["runtime_config"]["source_observations"]["ind_arbeid"]["collection_complete"] is True
     client = FakeClient()
     with pytest.raises(HarvestError):
         _bounded_get(client, "http://localhost/private")

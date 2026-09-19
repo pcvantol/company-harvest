@@ -10,6 +10,7 @@ import re
 import secrets
 import sqlite3
 import sys
+import threading
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -22,6 +23,7 @@ RUN_SCHEMA_VERSION = 1
 HTTP_USER_AGENT = "company-lookup/0.1"
 KVK_RE = re.compile(r"^[0-9]{8}$", re.ASCII)
 SECRET_RE = re.compile(r"(?i)(authorization|cookie|token|secret|password)([=: ]+)([^\s,;]+)")
+_RUN_LOCKS = threading.local()
 
 
 class HarvestError(RuntimeError):
@@ -192,6 +194,10 @@ class Run:
     @contextmanager
     def lock(self, wait_seconds: float = 0) -> Iterator[None]:
         lock_path = self.path / "run.lock"
+        held: set[Path] = getattr(_RUN_LOCKS, "paths", set())
+        if lock_path in held:
+            yield
+            return
         started = time.monotonic()
         descriptor: int | None = None
         while descriptor is None:
@@ -203,8 +209,11 @@ class Run:
                     raise HarvestError(f"run is vergrendeld: {lock_path}", 6) from exc
                 time.sleep(0.1)
         try:
+            held.add(lock_path)
+            _RUN_LOCKS.paths = held
             yield
         finally:
+            held.remove(lock_path)
             os.close(descriptor)
             try:
                 lock_path.unlink()

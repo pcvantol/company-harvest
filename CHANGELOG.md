@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Zelfstandige vierbronnenvoorbereiding (IND, GLEIF, ANBI, DUO), zonder
+  automatische Wikidata-download, met volledige evidencecontrole en één
+  gededupliceerde master; expliciete hervatbare KVK-Web-API-batches van
+  maximaal tien kandidaten publiceren uitsluitend partiële uitkomsten.
 - Eenmalige brede pre-KVK-bronmomentopname met full-scope/evidence-gates,
   verliesvrije conservatieve disk-dedup en aparte geblokkeerde preview bij
   onvolledige bron; Wikidata HTTP 429 verhindert de vijfbronnenmaster.

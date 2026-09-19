@@ -17,7 +17,9 @@ from company_harvest.kvk import resolve
 from company_harvest.matching import record_matching_review, run_matching_pilot
 from company_harvest.merge_lists import InputOptions, merge_lists
 from company_harvest.pre_kvk import build_pre_kvk_list
+from company_harvest.pre_kvk_kvk import resolve_pre_kvk
 from company_harvest.preflight import host, run_preflight
+from company_harvest.prepare import prepare_pre_kvk
 from company_harvest.public_registers import collect_public_register
 from company_harvest.sampling import build_sample, record_sample_review
 from company_harvest.sources import collect, discover, import_source, list_sources, measure_sources
@@ -51,6 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("status", "preflight"):
         _run_arg(run.add_parser(name))
     execute = run.add_parser("execute"); _run_arg(execute); execute.add_argument("--kvk-provider", choices=("auto", "public-http", "public-browser"), default="auto"); execute.add_argument("--limit", type=int)
+    prepare = run.add_parser("prepare-pre-kvk"); _run_arg(prepare); prepare.add_argument("--refresh", action="store_true")
     sources = commands.add_parser("sources").add_subparsers(dest="sources_command", required=True)
     for name in ("discover", "list"):
         _run_arg(sources.add_parser(name))
@@ -77,6 +80,7 @@ def build_parser() -> argparse.ArgumentParser:
     kvk = commands.add_parser("kvk").add_subparsers(dest="kvk_command", required=True)
     kp = kvk.add_parser("preflight"); _run_arg(kp); _provider_arg(kp)
     kr = kvk.add_parser("resolve"); _run_arg(kr); _provider_arg(kr); kr.add_argument("--resume", action="store_true"); kr.add_argument("--refresh", action="store_true"); kr.add_argument("--headed", action="store_true"); kr.add_argument("--limit", type=int); kr.add_argument("--interval", type=float, default=2.0)
+    kb = kvk.add_parser("pre-kvk-batch"); _run_arg(kb); kb.add_argument("--limit", type=int, default=10); kb.add_argument("--interval", type=float, default=2.0)
     pilot = kvk.add_parser("pilot"); _run_arg(pilot); _provider_arg(pilot); pilot.add_argument("--refresh", action="store_true"); pilot.add_argument("--interval", type=float, default=2.0); pilot.add_argument("--review-size", type=int, default=20); pilot.add_argument("--max-live", type=int)
     pilot_review = kvk.add_parser("pilot-review"); _run_arg(pilot_review); pilot_review.add_argument("--input", type=Path, required=True)
     kc = kvk.add_parser("consolidate"); _run_arg(kc)
@@ -111,6 +115,7 @@ def dispatch(args: argparse.Namespace) -> int:
     run = open_run(args.run_dir)
     if args.command == "run" and args.run_command == "status": _print(run.metadata()); return 0
     if args.command == "run" and args.run_command == "preflight": _print(run_preflight(run)); return 0
+    if args.command == "run" and args.run_command == "prepare-pre-kvk": _print(prepare_pre_kvk(run, args.refresh)); return 0
     if args.command == "sources" and args.sources_command == "discover": _print(discover(run)); return 0
     if args.command == "sources" and args.sources_command == "list": _print(list_sources(run)); return 0
     if args.command == "sources" and args.sources_command == "collect": _print(collect(run, args.only_source, args.skip_source, args.limit, args.refresh)); return 0
@@ -126,6 +131,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "kvk" and args.kvk_command == "pilot": _print(run_matching_pilot(run, args.provider, args.interval, args.refresh, args.review_size, args.max_live)); return 0
     if args.command == "kvk" and args.kvk_command == "pilot-review": _print(record_matching_review(run, args.input)); return 0
     if args.command == "kvk" and args.kvk_command == "resolve": _print(resolve(run, args.provider, args.limit, args.resume, args.refresh, args.headed, args.interval)); return 0
+    if args.command == "kvk" and args.kvk_command == "pre-kvk-batch": _print(resolve_pre_kvk(run, args.limit, args.interval)); return 0
     if args.command == "kvk" and args.kvk_command == "consolidate": print(consolidate(run)); return 0
     if args.command == "companies" and args.companies_command == "exclude-sole-proprietorships": _print(exclude_sole_proprietorships(run)); return 0
     if args.command == "companies" and args.companies_command == "active-only": _print(active_only(run)); return 0
@@ -134,7 +140,11 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "audit" and args.audit_command == "verify": _print(verify(run)); return 0
     if args.command == "audit" and args.audit_command == "trace": _print(trace(run, args.kvk_number)); return 0
     if args.command == "run" and args.run_command == "execute":
-        discover(run); collect(run); merge_candidates(run); kvk_preflight(run, args.kvk_provider); resolve(run, args.kvk_provider, args.limit, True, False, False); consolidate(run); exclude_sole_proprietorships(run); active_only(run); export(run, run.metadata()["target"]); report(run); return 0
+        if args.kvk_provider != "auto":
+            raise HarvestError("run execute gebruikt alleen de publieke HTTP-route; gebruik kvk pre-kvk-batch")
+        prepared_paths = prepare_pre_kvk(run)
+        _print({"pre_kvk": prepared_paths, "kvk_batch": resolve_pre_kvk(run, args.limit) if args.limit else None})
+        return 0
     raise HarvestError("onbekend commando")
 
 

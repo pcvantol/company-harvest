@@ -451,7 +451,7 @@ def _enabled(only: Iterable[str], skip: Iterable[str]) -> list[Source]:
         source
         for source in CATALOG
         if source.source_id in DIRECT_COLLECT_SOURCE_IDS
-        and (not only_set or source.source_id in only_set)
+        and (source.source_id == "ind_arbeid" if not only_set else source.source_id in only_set)
         and source.source_id not in skip_set
     ]
 
@@ -489,21 +489,33 @@ def _record_source_observation(
 
 
 def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit: int | None = None, refresh: bool = False) -> list[Path]:
+    with run.lock():
+        return _collect_unlocked(run, only, skip, limit, refresh)
+
+
+def _collect_unlocked(run: Run, only: Iterable[str], skip: Iterable[str], limit: int | None, refresh: bool) -> list[Path]:
     outputs: list[Path] = []
     enabled = _enabled(only, skip)
-    will_fetch = any(refresh or not run.latest_artifact("02", f"source_{source.source_id}") for source in enabled)
-    if will_fetch:
-        run.invalidate_from(3, "source_collection_changed")
+    observations = dict(run.metadata().get("runtime_config", {}).get("source_observations", {}))
+
+    def reusable(source_id: str) -> Path | None:
+        prior = run.latest_artifact("02", f"source_{source_id}")
+        observation = observations.get(source_id)
+        if (refresh or not prior or not isinstance(observation, dict)
+                or observation.get("limit") != limit
+                or (limit is None and observation.get("collection_complete") is not True)):
+            return None
+        return prior
+
     # WDQS can take longer than a typical page fetch while evaluating a
     # paginated query.  Keep connect/write bounded, but allow its read phase
     # to finish within the public endpoint's own query-time budget.
     timeout = httpx.Timeout(70, connect=10, read=70, write=10, pool=10)
     headers = {"User-Agent": HTTP_USER_AGENT}
-    observations = dict(run.metadata().get("runtime_config", {}).get("source_observations", {}))
     with httpx.Client(timeout=timeout, follow_redirects=False, headers=headers) as client:
         for source in enabled:
-            prior = run.latest_artifact("02", f"source_{source.source_id}")
-            if prior and not refresh:
+            prior = reusable(source.source_id)
+            if prior:
                 run.log("INFO", "source_collect_reused", source_id=source.source_id, path=str(prior.relative_to(run.path)))
                 outputs.append(prior)
                 continue
@@ -600,6 +612,7 @@ def collect(run: Run, only: Iterable[str] = (), skip: Iterable[str] = (), limit:
             path = run.artifact_path("02", f"source_{source.source_id}_companies", "csv")
             rows.sort(key=lambda row: (row["original_name"].casefold(), row["source_kvk_hint"]))
             write_tsv(path, RAW_HEADERS, rows)
+            run.invalidate_from(3, "source_collection_changed")
             run.register_artifact(path, "02", f"source_{source.source_id}")
             parser_rejections = (
                 parser_rejections
