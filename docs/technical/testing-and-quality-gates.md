@@ -2,6 +2,12 @@
 
 `python tools/quality.py check` draait offline pytest met branchcoverage, maakt coverage-JSON, eist per eigen Pythonbestand `5 × covered > 4 × statements`, voert Ruff/mypy uit en scant gevolgde publicatiebestanden. Niet-geïmporteerde bestanden worden als `MISSING` afgekeurd; nul statements is `N/A`.
 
+`tests/test_cli_routing.py` bewaakt na ADR-011 de servicekeuze, de
+JSON-versus-tekstuitvoer en expliciet de doorgifte van optiecombinaties per
+commandofamilie. De pre-KVK-filtertests bewaken dat bijna-gelijke namen met
+verschillende KVK-hints niet stil worden samengevoegd. Een offline E2E-proef
+blijft de gedeelde keten met gemockte KVK-verzoeken toetsen.
+
 CI doet geen live harvest. Live bron-/KVK-smokes blijven lokaal en klein. De actieve
 CI-matrix bestaat uitsluitend uit Python 3.14 op `macos-latest` en `windows-latest`.
 Elke matrixjob heeft na de algemene gate een afzonderlijke **offline E2E-

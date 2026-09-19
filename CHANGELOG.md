@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Interne gedragsbehoudende refactor: CLI-routering per commandofamilie en
+  pre-KVK-streamingpartitie los van metadata-/artefactpublicatie. Extra
+  route-/optie- en naambehoudtests; geen nieuwe fuzzy filter of datamigratie.
 - Read-only naamsvariantenmeting op de 119.801 pre-KVK-geschikte kandidaten:
   283 schrijfwijze-/`BV`-botsingsgroepen en 285 hypothetische overschotregels,
   maar telkens verschillende opgegeven KVK-nummers. Geen fuzzy filter of

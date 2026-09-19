@@ -9,7 +9,7 @@ import re
 import shutil
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from company_harvest.core import HarvestError, Run, atomic_write, sha256
 from company_harvest.pre_kvk import MASTER_HEADERS, SOURCE_IDS, _registered, validated_master
@@ -74,6 +74,89 @@ def _reasons(row: dict[str, str]) -> tuple[list[str], list[str]]:
     return reasons, sources
 
 
+class _PartitionStats(NamedTuple):
+    counts: Counter[str]
+    primary: Counter[str]
+    all_reasons: Counter[str]
+    source_eligible: Counter[str]
+    source_excluded: Counter[str]
+
+
+def _partition_master(master: Path, eligible_tmp: Path, excluded_tmp: Path) -> _PartitionStats:
+    """Stream de volledige master eenmaal naar behoud en uitsluitingsledger."""
+    counts: Counter[str] = Counter()
+    primary: Counter[str] = Counter()
+    all_reasons: Counter[str] = Counter()
+    source_eligible: Counter[str] = Counter()
+    source_excluded: Counter[str] = Counter()
+    seen_ids: set[str] = set()
+    with (master.open(encoding="utf-8-sig", newline="") as source,
+          eligible_tmp.open("w", encoding="utf-8", newline="") as keep,
+          excluded_tmp.open("w", encoding="utf-8", newline="") as drop):
+        reader = csv.DictReader(source, delimiter="\t")
+        if reader.fieldnames != MASTER_HEADERS:
+            raise HarvestError("pre-KVK-master mist het verwachte kolomcontract")
+        keep_writer = csv.DictWriter(keep, fieldnames=MASTER_HEADERS, delimiter="\t")
+        drop_writer = csv.DictWriter(drop, fieldnames=EXCLUDED_HEADERS, delimiter="\t")
+        keep_writer.writeheader()
+        drop_writer.writeheader()
+        for row in reader:
+            candidate_id = row["candidate_id"]
+            if not candidate_id or candidate_id in seen_ids:
+                raise HarvestError("pre-KVK-master bevat ontbrekende of dubbele kandidaat-ID")
+            seen_ids.add(candidate_id)
+            reasons, sources = _reasons(row)
+            counts["master_rows"] += 1
+            if reasons:
+                drop_writer.writerow({
+                    "candidate_id": candidate_id,
+                    "original_name": row["original_name"],
+                    "source_kvk_hint": row["source_kvk_hint"],
+                    "source_ids_json": json.dumps(sources, ensure_ascii=False),
+                    "kvk_queue_status": row["kvk_queue_status"],
+                    "primary_reason": reasons[0],
+                    "all_reasons_json": json.dumps(reasons, ensure_ascii=False),
+                })
+                counts["excluded_rows"] += 1
+                primary[reasons[0]] += 1
+                all_reasons.update(reasons)
+                source_excluded.update(sources)
+            else:
+                keep_writer.writerow(row)
+                counts["eligible_rows"] += 1
+                source_eligible.update(sources)
+        for handle in (keep, drop):
+            handle.flush()
+            os.fsync(handle.fileno())
+    return _PartitionStats(counts, primary, all_reasons, source_eligible, source_excluded)
+
+
+def _filter_metadata(run: Run, master: Path, master_hash: str,
+                     eligible: Path, excluded: Path, stats: _PartitionStats) -> dict[str, Any]:
+    """Bind de gepubliceerde partitie aan bron, regels en gesloten aantallen."""
+    return {
+        "schema_version": 1,
+        "rule_version": RULE_VERSION,
+        "rules": RULES,
+        "patterns": PATTERN_METADATA,
+        "master_path": str(master.relative_to(run.path)),
+        "master_sha256": master_hash,
+        "eligible_path": str(eligible.relative_to(run.path)),
+        "eligible_sha256": sha256(eligible),
+        "eligible_bytes": eligible.stat().st_size,
+        "excluded_path": str(excluded.relative_to(run.path)),
+        "excluded_sha256": sha256(excluded),
+        "excluded_bytes": excluded.stat().st_size,
+        "counts": dict(stats.counts),
+        "primary_reason_counts": dict(stats.primary),
+        "all_reason_counts": dict(stats.all_reasons),
+        "eligible_source_relations": dict(stats.source_eligible),
+        "excluded_source_relations": dict(stats.source_excluded),
+        "count_closure": "CLOSED",
+        "kvk_requests": 0,
+    }
+
+
 def validated_filter(run: Run, master_sha256: str) -> tuple[Path, str, Path, str, Path]:
     """Fail-closed: alleen de actuele, byte- en regelgebonden filterset is KVK-input."""
     eligible, eligible_hash = _registered(run, "03", "pre_kvk_eligible")
@@ -129,78 +212,15 @@ def build_pre_kvk_filter(run: Run) -> tuple[Path, Path, Path]:
         metadata_path = run.artifact_path("03", "pre_kvk_filter_metadata", "json")
         eligible_tmp = eligible.with_name(f".{eligible.name}.tmp")
         excluded_tmp = excluded.with_name(f".{excluded.name}.tmp")
-        counts: Counter[str] = Counter()
-        primary: Counter[str] = Counter()
-        all_reasons: Counter[str] = Counter()
-        source_eligible: Counter[str] = Counter()
-        source_excluded: Counter[str] = Counter()
-        seen_ids: set[str] = set()
         try:
-            with (master.open(encoding="utf-8-sig", newline="") as source,
-                  eligible_tmp.open("w", encoding="utf-8", newline="") as keep,
-                  excluded_tmp.open("w", encoding="utf-8", newline="") as drop):
-                reader = csv.DictReader(source, delimiter="\t")
-                if reader.fieldnames != MASTER_HEADERS:
-                    raise HarvestError("pre-KVK-master mist het verwachte kolomcontract")
-                keep_writer = csv.DictWriter(keep, fieldnames=MASTER_HEADERS, delimiter="\t")
-                drop_writer = csv.DictWriter(drop, fieldnames=EXCLUDED_HEADERS, delimiter="\t")
-                keep_writer.writeheader()
-                drop_writer.writeheader()
-                for row in reader:
-                    candidate_id = row["candidate_id"]
-                    if not candidate_id or candidate_id in seen_ids:
-                        raise HarvestError("pre-KVK-master bevat ontbrekende of dubbele kandidaat-ID")
-                    seen_ids.add(candidate_id)
-                    reasons, sources = _reasons(row)
-                    counts["master_rows"] += 1
-                    if reasons:
-                        drop_writer.writerow({
-                            "candidate_id": candidate_id,
-                            "original_name": row["original_name"],
-                            "source_kvk_hint": row["source_kvk_hint"],
-                            "source_ids_json": json.dumps(sources, ensure_ascii=False),
-                            "kvk_queue_status": row["kvk_queue_status"],
-                            "primary_reason": reasons[0],
-                            "all_reasons_json": json.dumps(reasons, ensure_ascii=False),
-                        })
-                        counts["excluded_rows"] += 1
-                        primary[reasons[0]] += 1
-                        all_reasons.update(reasons)
-                        source_excluded.update(sources)
-                    else:
-                        keep_writer.writerow(row)
-                        counts["eligible_rows"] += 1
-                        source_eligible.update(sources)
-                for handle in (keep, drop):
-                    handle.flush()
-                    os.fsync(handle.fileno())
-            if counts["master_rows"] != counts["eligible_rows"] + counts["excluded_rows"]:
+            stats = _partition_master(master, eligible_tmp, excluded_tmp)
+            if stats.counts["master_rows"] != stats.counts["eligible_rows"] + stats.counts["excluded_rows"]:
                 raise HarvestError("pre-KVK-filter sluit niet op masterlijst")
             if validated_master(run) != (master, master_hash) or sha256(master) != master_hash:
                 raise HarvestError("pre-KVK-master veranderde tijdens filtering")
             os.replace(eligible_tmp, eligible)
             os.replace(excluded_tmp, excluded)
-            metadata: dict[str, Any] = {
-                "schema_version": 1,
-                "rule_version": RULE_VERSION,
-                "rules": RULES,
-                "patterns": PATTERN_METADATA,
-                "master_path": str(master.relative_to(run.path)),
-                "master_sha256": master_hash,
-                "eligible_path": str(eligible.relative_to(run.path)),
-                "eligible_sha256": sha256(eligible),
-                "eligible_bytes": eligible.stat().st_size,
-                "excluded_path": str(excluded.relative_to(run.path)),
-                "excluded_sha256": sha256(excluded),
-                "excluded_bytes": excluded.stat().st_size,
-                "counts": dict(counts),
-                "primary_reason_counts": dict(primary),
-                "all_reason_counts": dict(all_reasons),
-                "eligible_source_relations": dict(source_eligible),
-                "excluded_source_relations": dict(source_excluded),
-                "count_closure": "CLOSED",
-                "kvk_requests": 0,
-            }
+            metadata = _filter_metadata(run, master, master_hash, eligible, excluded, stats)
             atomic_write(metadata_path, json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
             run.register_artifact_set([
                 (eligible, "03", "pre_kvk_eligible", "COMPLETE"),

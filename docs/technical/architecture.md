@@ -2,6 +2,12 @@
 
 `cli` routeert naar gedeelde services. `core` beheert runs, SQLite, locks, logging en snapshots. `sources` bevat de begrensde catalogus/adapters. `kvk` implementeert één canoniek providercontract voor waargenomen publieke HTTP en gewone Playwright-interactie. `workflow` verzorgt dedup, filters en export; `merge_lists` is de zelfstandige offline workflow; `audit` verifieert en traceert.
 
+De CLI-parser definieert het publieke contract. De dispatch gebruikt aparte
+handlers voor run-, bron-, bedrijven-, KVK- en auditcommando's. Nieuwe runs en
+`MERGE_LISTS` worden vóór het openen van een bestaande HARVEST-run gerouteerd;
+alle overige commando's gebruiken dezelfde bestaande services. Deze interne
+groepering verandert geen CLI-argument of uitvoerformaat (ADR-011).
+
 Externe inhoud is uitsluitend data. Host allowlists, HTTPS, response-/redirectgrenzen en syntactische schema-validatie beperken invoer. De runtime gebruikt een gebruikersschrijfbare dataroot, nooit packagebestanden.
 
 Broncatalogusschema 2 is het capabilitycontract voor iedere bron. Ruwe bronrecords behouden de oorspronkelijke identifiertekst en een afzonderlijke validatiestatus, zodat ontbrekende of ongeldige KVK-nummers geen dataverlies veroorzaken. Identifierloze of ongeldige naamgenoten blijven afzonderlijke kandidaten; meerdere geldige KVK-hints bij dezelfde genormaliseerde naam gaan naar conflict. `workflow.outcome_metrics` leest de laatste complete artefacten en produceert via `report` zowel JSON als Markdown. Count-closure wordt afzonderlijk gemeten voor raw→dedup, kandidaat→KVK-terminal, match→canoniek, rechtsvormpartitie, statuspartitie en actief→delivery/reserve. Niet uitgevoerde overgangen staan expliciet op `NOT_AVAILABLE`.
@@ -13,6 +19,9 @@ een byte- en regelversiegebonden KVK-toelatingslijst plus uitsluitingsledger;
 `pre_kvk_kvk` weigert iedere andere invoer vóór netwerkverkeer. Deze splitsing
 houdt brede brondekking gescheiden van een herzienbare, expliciete
 verificatieprioritering.
+Binnen `pre_kvk_filter` zijn streaming partitie en metadata-/artefactpublicatie
+afzonderlijke verantwoordelijkheden. De bestaande criteria zijn niet
+uitgebreid met een fuzzy naamfilter.
 
 `end_to_end` routeert dezelfde services in één expliciete CLI-opdracht.
 `kvk_scope` bindt een begrensde proef vóór de eerste GET aan de volledige

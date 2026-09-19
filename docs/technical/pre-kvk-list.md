@@ -50,6 +50,11 @@ geen onbeperkte substringzoekactie. Bronconflicten blijven aparte reviewrijen.
 De count-closure is master = geschikt + uitgesloten. Een regelwijziging of
 bestandsafwijking vereist een nieuw filter; een reeds gebruikte KVK-journal
 blokkeert stil herfilteren.
+De streaming partitie en de latere metadata-/artefactpublicatie zijn intern
+gescheiden (ADR-011), zonder wijziging van dit contract. Bijna-gelijke
+bedrijfsnamen zijn geen uitsluitingsgrond; de verkennende
+[naamvariantenmeting](../measurements/20260919-pre-kvk-name-variants.md) heeft
+geen fuzzy filter geactiveerd.
 
 `kvk pre-kvk-batch --run-dir RUN_DIR --limit 10` leest uitsluitend de
 gefilterde, geregistreerde en aan de actuele master gebonden lijst. Ontbreekt

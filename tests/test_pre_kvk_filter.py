@@ -5,10 +5,11 @@ import json
 import pytest
 from test_pre_kvk import _full_sources
 
-from company_harvest.core import HarvestError, Run, read_tsv, sha256
-from company_harvest.pre_kvk import build_pre_kvk_list
+from company_harvest.core import HarvestError, Run, normalize_name, read_tsv, sha256, write_tsv
+from company_harvest.pre_kvk import MASTER_HEADERS, build_pre_kvk_list
 from company_harvest.pre_kvk_filter import (
     RULE_VERSION,
+    _partition_master,
     _reasons,
     build_pre_kvk_filter,
     validated_filter,
@@ -78,6 +79,27 @@ def test_bad_source_relations_fail_closed(relations: str) -> None:
 def test_bad_queue_status_fails_closed() -> None:
     with pytest.raises(HarvestError, match="wachtrijstatus"):
         _reasons(_row("Acme B.V.", queue="BLOCKED_SOURCE_INCOMPLETE"))
+
+
+def test_partition_keeps_near_names_with_different_kvk_hints(tmp_path) -> None:
+    master = tmp_path / "master.tsv"
+    records = []
+    for candidate_id, name, hint in (("one", "Aero B.V.", "12345678"),
+                                     ("two", "Aero BV", "23456789")):
+        record = dict.fromkeys(MASTER_HEADERS, "")
+        record.update(candidate_id=candidate_id, original_name=name,
+                      normalized_name=normalize_name(name), source_kvk_hint=hint,
+                      source_relations=json.dumps([{"source_id": "ind_arbeid"}]),
+                      kvk_queue_status="READY_FOR_KVK_VERIFICATION")
+        records.append(record)
+    write_tsv(master, MASTER_HEADERS, records)
+    eligible, excluded = tmp_path / "eligible.tsv", tmp_path / "excluded.tsv"
+
+    stats = _partition_master(master, eligible, excluded)
+
+    assert [row["original_name"] for row in read_tsv(eligible)] == ["Aero B.V.", "Aero BV"]
+    assert read_tsv(excluded) == []
+    assert stats.counts == {"master_rows": 2, "eligible_rows": 2}
 
 
 def test_filter_vertical_slice_retains_master_and_exclusion_ledger(run: Run) -> None:
