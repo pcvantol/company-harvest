@@ -4,8 +4,8 @@ De Hatchling-wheel bevat de `src`-package en console-entrypoint. Versie
 2.0.0 ondersteunt uitsluitend Python 3.14.x:
 `Requires-Python: >=3.14,<3.15` blokkeert normale installatie met andere
 minorversies en een package-guard blokkeert ook geforceerde installaties bij
-het starten. De gepubliceerde v1.0.0-wheel houdt haar historische bredere
-compatibiliteit. De online route installeert dependencies vanaf hun index.
+het starten. De inmiddels ingetrokken v1.0.0-wheel had een breder
+compatibiliteitscontract. De online route installeert dependencies vanaf hun index.
 Playwright Chromium wordt bewust apart geïnstalleerd. Offline installatie
 vereist een platformspecifieke wheelhouse en `--no-index`; die wheelhouse
 bevat niet automatisch een browser.

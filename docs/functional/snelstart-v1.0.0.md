@@ -1,5 +1,9 @@
 # Snelstart: van bronnen tot levering (v1.0.0)
 
+> Archief, niet meer uitvoerbaar vanaf een schone pc: de v1.0.0-release,
+> assets en tag zijn verwijderd. Het onderstaande downloadcommando werkt
+> niet meer. Gebruik de [actuele v2.0.0-E2E-handleiding](e2e-command.md).
+
 **Voor wie:** iemand die de gepubliceerde tool op macOS met Python 3.14 wil
 gebruiken, zonder checkout of GitHub-login. Voer de opdrachten in volgorde uit in
 Terminal. De tool verwerkt IND, GLEIF, ANBI en DUO; **Wikidata blijft buiten

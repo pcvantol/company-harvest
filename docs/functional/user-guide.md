@@ -2,10 +2,13 @@
 
 Voor de geïntegreerde opdracht in versie 2.0.0: zie
 [één commando van bronnen tot eindlijst](e2e-command.md). Deze versie vereist
-Python 3.14.x; de onderstaande v1.0.0-commando's beschrijven de oudere wheel.
+Python 3.14.x; de onderstaande v1.0.0-commando's zijn historische
+documentatie. De v1.0.0-release, assets en tag zijn verwijderd; gebruik de
+actuele 2.0.0-handleiding voor een nieuwe installatie.
 
-Begin met de [korte functionele snelstart (maximaal ongeveer twee A4)](snelstart-v1.0.0.md)
-voor installatie, volledige workflow en hervatten.
+De [korte historische snelstart](snelstart-v1.0.0.md) beschrijft de vroegere
+installatie, volledige workflow en hervatten, maar de downloadstap werkt niet
+meer.
 
 Zie [alle v1.0.0-commando's van installatie tot export](v1-end-to-end-commands.md)
 voor één uitvoertabel met de verwachte lokale bestanden en de poorten voor

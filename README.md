@@ -7,12 +7,12 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-Versie 2.0.0 vereist uitsluitend Python 3.14.x. De oudere v1.0.0-wheel
-behoudt haar eigen historische compatibiliteitscontract.
+Versie 2.0.0 vereist uitsluitend Python 3.14.x. De ingetrokken v1.0.0-wheel
+had een breder historisch compatibiliteitscontract.
 
 Nieuwe runs en bestanden vanaf 2.0.0 krijgen
 een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
-Bestaande runmappen worden niet hernoemd; de gepubliceerde 1.0.0-wheel houdt
+Bestaande runmappen worden niet hernoemd; de historische 1.0.0-wheel had
 zijn oorspronkelijke naamformaat.
 
 De actuele voorbereidingsopdracht verwerkt IND, GLEIF, ANBI en DUO tot één
@@ -45,7 +45,7 @@ RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
 ```
 
 Zie de [geïntegreerde 2.0.0-gebruikshandleiding](docs/functional/e2e-command.md),
-[de historische 1.0.0-snelstart](docs/functional/snelstart-v1.0.0.md),
+[de gearchiveerde 1.0.0-snelstart](docs/functional/snelstart-v1.0.0.md),
 [de uitgebreide gebruikershandleiding](docs/functional/user-guide.md),
 [technische documentatie](docs/README.md) en
 [releaseverificatie](docs/technical/release-and-download-verification.md).
@@ -56,11 +56,10 @@ De [publieke release v2.0.0](https://github.com/pcvantol/company-harvest/release
 bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v2.0.0/company_harvest-2.0.0-py3-none-any.whl),
 checksums en het [publicatiebewijs](docs/releases/20260919-v2.0.0-evidence.md).
 Zie de [releasenotities voor 2.0.0](docs/releases/v2.0.0.md) voor de actuele
-compatibiliteit en grenzen. De oudere [publieke release v1.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0)
-bevat haar eigen gekwalificeerde wheel en checksums; zie ook de [historische releasenotities](docs/releases/v1.0.0.md)
-en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md). Het historische
-release-object `v0.1.0` en zijn assets zijn verwijderd; de historische Git-tag
-`v0.1.0` is op 19 september 2026 eveneens lokaal en op `origin` verwijderd.
+compatibiliteit en grenzen. Alle oudere GitHub Releases en tags onder 2.0,
+waaronder `v1.0.0`, zijn verwijderd. De [historische releasenotities](docs/releases/v1.0.0.md)
+en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md) blijven
+alleen als archief; de daarin genoemde 1.0.0-downloadlinks werken niet meer.
 
 ## Status van externe toegang
 

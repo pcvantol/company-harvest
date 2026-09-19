@@ -1,6 +1,16 @@
 # Proces van begin tot eind — toolversie 1.0.0
 
-Voorbeeld voor macOS/zsh met de [publieke wheel](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0). Voer de tabel van boven naar beneden uit. `$RUN_DIR` is één door de tool gemaakte runmap; bij hervatten moet dit **dezelfde** map blijven. Bestandsnamen onder `artifacts/` beginnen met een wisselende tijdstempel. Alle runtimegegevens blijven buiten de repository. Een nieuwe bronmomentopname kan andere aantallen dan de historische 289.916 → 119.801 opleveren.
+> Archief, niet meer uitvoerbaar vanaf een schone pc: de v1.0.0-release,
+> assets en tag zijn verwijderd. Het downloadcommando in de tabel werkt niet
+> meer. Gebruik de [actuele v2.0.0-E2E-handleiding](e2e-command.md).
+
+Historisch voorbeeld voor macOS/zsh met de destijds publieke wheel. De tabel
+beschrijft de oude volgorde, maar is door het ingetrokken downloadbestand niet
+meer vanaf een schone pc uitvoerbaar. `$RUN_DIR` is één door de tool gemaakte
+runmap; bij hervatten moet dit **dezelfde** map blijven. Bestandsnamen onder
+`artifacts/` beginnen met een wisselende tijdstempel. Alle runtimegegevens
+blijven buiten de repository. Een nieuwe bronmomentopname kan andere
+aantallen dan de historische 289.916 → 119.801 opleveren.
 
 | Stap | Commando | Verwachte output: bestand en betekenis |
 |---|---|---|

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Distributiebeheer zonder code- of pakketversiewijziging: op expliciet
+  eigenaarsverzoek zijn alle tags en GitHub Releases onder 2.0 verwijderd.
+  Concreet is `v1.0.0` met vijf publieke assets en lokale/remote tag
+  ingetrokken; `v0.1.0` was al verwijderd. `v2.0.0`, de bronhistorie en
+  historische bewijsdocumenten blijven behouden (CH-2026-09-19-029).
+
 ## 2.0.0 - 2026-09-19
 
 - Incompatibele Python-supportwijziging: na v1.0.0 (Python 3.11–3.14)

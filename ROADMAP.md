@@ -686,3 +686,9 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
   toolrelease, geen vrijgave of bewijs van volledige live KVK-bulkverwerking;
   R7/R9-productgates blijven open. Zie het
   [releasebewijs](docs/releases/20260919-v2.0.0-evidence.md).
+- **2026-09-19 — oude releases/tags onder 2.0 ingetrokken:** op expliciet
+  eigenaarsverzoek zijn uitsluitend de `v1.0.0`-GitHub Release met vijf
+  assets en de remote/lokale tag verwijderd. `v0.1.0` was al weg;
+  `v2.0.0`, broncommits en historische bewijsdocumenten blijven behouden.
+  Nieuwe installaties gebruiken alleen de publieke v2.0.0-wheel. R7/R9
+  blijven ongewijzigd; zie CH-2026-09-19-029.
