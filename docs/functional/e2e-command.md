@@ -47,6 +47,11 @@ onderdeel van het commando en controleert ook PARTIAL-manifests met alle vijf
 bijbehorende bestanden. `pre_kvk_kvk_progress.json` en het SQLite-journal
 tonen onderweg verzoeken, matches en resterende **cohort**kandidaten.
 
+De automatische CI-proef gebruikt hetzelfde `run e2e`-commando vanaf een lege
+run met synthetische brondata en gemockte KVK-zoekresultaten. Zij controleert
+de eindlijst en audit zonder live aanvragen; een geslaagde CI-proef bewijst
+geen actuele bereikbaarheid van publieke bronnen of KVK.
+
 Een HTTP-blokkade of rate limit stopt vóór export; een nieuwe run in dezelfde
 datamap wordt niet automatisch als uitweg gebruikt. Bekijk de lokale evidence
 en beoordeel de toegang afzonderlijk. De interval is minstens twee seconden

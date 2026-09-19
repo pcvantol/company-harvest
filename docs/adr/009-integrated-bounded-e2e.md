@@ -33,6 +33,12 @@ overeenkomen met de runstatus en vijf bestanden uit dezelfde outputset met
 dezelfde registratiestatus, grootte en hash aanwijzen. Alleen de melding
 `MISSING_REQUIRED` onderdrukken is geen integriteitsbewijs.
 
+Aanvulling CH-2026-09-19-023: elke CI-platformjob doorloopt een expliciete
+offline E2E-integratiepoort met echte CLI-orkestratie en downstreamverwerking,
+maar synthetische broncollectors en een gemockte KVK-zoekfunctie. De poort
+verbiedt netwerkverbindingen en toetst output, audit en hervatten. Live
+bron-/KVK-capability blijft bewust buiten CI en krijgt geen impliciete PASS.
+
 Een eerder lokaal gejournalde toegangs-/rateblokkade verhindert een nieuwe
 geïntegreerde run in dezelfde datamap. De blokkadecheck wordt onder de
 providerlock vóór elke GET herhaald, zodat een blokkade die tijdens de

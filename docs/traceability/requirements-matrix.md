@@ -4,7 +4,7 @@
 |---|---|---|---|
 | CH-FUN-001 | HARVEST-stappen 1–8 via gedeelde services | `cli.py`, `sources.py`, `workflow.py` | CLI/E2E-tests |
 | CH-FUN-002 | Exacte minimale export en stabiele selectie | `workflow.export` | exporttests |
-| CH-E2E-001 | Geïnstalleerde CLI verbindt vier bronfamilies t/m audit zonder checkout | ADR-009, `end_to_end.py`, `cli.py` | synthetische CLI-E2E en geïsoleerde wheel-smoke |
+| CH-E2E-001 | Geïnstalleerde CLI verbindt vier bronfamilies t/m audit zonder checkout | ADR-009, `end_to_end.py`, `cli.py` | synthetische CLI-E2E, afzonderlijke offline CI-integratiepoort en geïsoleerde wheel-smoke |
 | CH-E2E-002 | `--limit-kvk-check N` is runbreed, hervatbaar, hashgebonden en eindoutput ≤N | ADR-009, `kvk_scope.py`, `pre_kvk_kvk.py` | 50-kandidaattest, hervat-/wijzigings-/blokkadetests |
 | CH-E2E-003 | Export met overgeslagen cohortkandidaten is expliciet PARTIAL; unresolved binnen de cohort eist opt-in; audit valideert nieuwste PARTIAL-manifest, status en vijf bijbehorende bestanden | ADR-009, `workflow.py`, `audit.py` | scope-/hash-/count-closure-tests plus gerichte PARTIAL-manifest-/bestandsmanipulaties |
 | CH-PY-001 | Normale installatie van de actuele tool accepteert uitsluitend Python 3.14.x; na geforceerde installatie onder een andere minorversie faalt de start direct | `pyproject.toml`, packageguard, hostpreflight en installers | metadata-/runtime-/wrappertests, onafhankelijke review |
@@ -67,7 +67,7 @@
 | CH-R8-003 | Meerdere KVK-kandidaten en bronconflicten worden niet gemerged; rechtsvorm/status blijven bronobservaties | terminale outcomecontract en verificatiestatus | ambigu-/conflicttests + 6 lokale ambigu-uitkomsten |
 | CH-R8-004 | Review is gestratificeerd, exact aan de actuele queue gebonden en bepaalt thresholds pas na succesvolle kwaliteitscontrole | `kvk pilot-review`, reviewrapport schema 1 | 20/20 `CONFIRMED`; nul false/uncertain; R9-metriekgrenzen vastgelegd |
 | CH-R8-005 | R8 publiceert atomisch, hervat alleen exact gebonden outcomes en stopt veilig op providerblokkades | requestjournal, providerlock, publication helpers | resume-, rollback-, live-limit- en blokkadetests |
-| CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs |
+| CH-GOV-001 | Doorlopende CI draait alleen op Python 3.14 voor macOS en Windows, met aparte offline E2E-poort; overige combinaties zijn voor nieuwe wijzigingen `NOT_TESTED` | `.github/workflows/ci.yml`, `ROADMAP.md` RD-005 | workflowvalidatie + twee CI-jobs inclusief gemockte-KVK-E2E |
 | CH-PREKVK-001 | Historisch vijfbronnencontract CH-2026-09-19-009, later vervangen door vierbronnenselectie | ADR-005, ADR-006 | historische geblokkeerde preview; geen vijfbronnenmaster |
 | CH-PREKVK-002 | Conservatieve dedup bewaart iedere bronpayload precies één keer, conflicten zichtbaar en input→lijst sluit | `pre_kvk._write_group`, SQLite-spool | 292.666→289.916 preview; onafhankelijke volledige payload-/relatiecontrole |
 | CH-PREKVK-003 | Een deelresultaat is apart gemarkeerd en voor KVK geblokkeerd; providerblokkade stopt live requests | `build_blocked_pre_kvk_preview`, lokale runner, ADR-005 | alle 289.916 previewregels `BLOCKED_SOURCE_INCOMPLETE`, nul KVK-requests; [meting](../measurements/20260919-pre-kvk-source-snapshot.md) |

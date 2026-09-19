@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Beide Python-3.14-CI-platformjobs hebben nu een apart zichtbare offline
+  E2E-integratieproef: CLI vanaf lege run, gesimuleerde broncollectors en
+  KVK-check, echte filtering/export/audit en hervatten; netwerkverkeer is in
+  deze proef verboden.
 - Broncodeversie 1.1.1: de audit van het nieuwste PARTIAL-outputmanifest eist
   een expliciete, met de run overeenkomende status en vijf bestanden met
   dezelfde registratiestatus. Gerichte regressies bewijzen een geldige
