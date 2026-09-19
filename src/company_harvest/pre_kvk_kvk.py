@@ -1,4 +1,4 @@
-"""Begrensde, expliciete KVK-Web-API-controle van de vierbronnenmaster."""
+"""Begrensde, expliciete KVK-Web-API-controle van de gebonden bronmaster."""
 
 from __future__ import annotations
 
@@ -14,7 +14,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from company_harvest.console import emit
-from company_harvest.core import HarvestError, Run, atomic_write, normalize_name, sha256, write_tsv
+from company_harvest.core import (
+    HarvestError,
+    Run,
+    atomic_write,
+    normalize_name,
+    sha256,
+    validate_kvk,
+    write_tsv,
+)
 from company_harvest.kvk import (
     UNRESOLVED_HEADERS,
     KvkError,
@@ -35,6 +43,14 @@ MATCH_HEADERS = [
 ]
 OUTCOME_HEADERS = ["candidate_id", "original_name", "reason", "detail", "checked_at"]
 PROGRESS_NAME = "pre_kvk_kvk_progress.json"
+
+
+def _search_query(candidate: dict[str, str]) -> str:
+    """Een pre-KVK-verzoek mag uitsluitend op een geldig bron-KVK-nummer zoeken."""
+    try:
+        return validate_kvk(candidate["source_kvk_hint"])
+    except (KeyError, ValueError) as exc:
+        raise HarvestError("KVK-check vereist een geldig direct bron-KVK-nummer") from exc
 
 
 def check_access_blocks(run: Run) -> None:
@@ -166,16 +182,17 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
                 check_access_blocks(run)
                 _check_cooldown(run)
                 _pace_request(run, interval)
-                fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{candidate['original_name']}".encode()).hexdigest()
+                query = _search_query(candidate)
+                fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{query}".encode()).hexdigest()
                 with run.connect() as connection:
                     connection.execute(
                         "INSERT INTO kvk_requests(candidate_id,query,state,attempt,request_fingerprint,provider) "
                         "VALUES(?,?,'IN_FLIGHT',1,?,'public-http')",
-                        (candidate_id, candidate["original_name"], fingerprint),
+                        (candidate_id, query, fingerprint),
                     )
                 attempted += 1
                 try:
-                    result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search(candidate["original_name"])
+                    result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search(query)
                     evidence = run.path / result.evidence
                     if evidence.is_file():
                         run.register_artifact(evidence, "04", "evidence_public-http")
@@ -399,19 +416,20 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
                     check_access_blocks(run)
                     _check_cooldown(run)
                     _pace_request(run, interval)
-                    fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{candidate['original_name']}".encode()).hexdigest()
+                    query = _search_query(candidate)
+                    fingerprint = hashlib.sha256(f"{digest}\0{candidate_id}\0{query}".encode()).hexdigest()
                     with run.connect() as connection:
                         connection.execute(
                             "INSERT INTO kvk_requests(candidate_id,query,state,attempt,request_fingerprint,provider) "
                             "VALUES(?,?,'IN_FLIGHT',1,?,'public-http')",
-                            (candidate_id, candidate["original_name"], fingerprint),
+                            (candidate_id, query, fingerprint),
                         )
                     states["IN_FLIGHT"] += 1
                     attempted += 1
                     _progress(run, digest, total, states, candidate_id, "IN_FLIGHT")
                     try:
                         match = None
-                        result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search(candidate["original_name"])
+                        result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search(query)
                         evidence = run.path / result.evidence
                         if evidence.is_file():
                             run.register_artifact(evidence, "04", "evidence_public-http")

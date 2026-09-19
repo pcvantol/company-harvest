@@ -594,6 +594,7 @@ def run_matching_pilot(
                         "features": [sorted(features[0]), sorted(features[1])],
                         "pilot_sha256": pilot_hash,
                         "provider": provider.name,
+                        "query_policy": "DIRECT_KVK_ONLY_V1",
                         "source_artifacts_fingerprint": source_artifacts_fingerprint,
                     },
                     ensure_ascii=False,
@@ -628,6 +629,11 @@ def run_matching_pilot(
                     results.append(previous)
                     continue
                 outcome = _offline_match(candidate, features, indexed)
+            if outcome is None and not candidate.get("source_kvk_hint"):
+                outcome = _technical_result(
+                    candidate, "NO_DIRECT_KVK_HINT",
+                    "geen direct bron-KVK-nummer; publieke naamzoeking uitgeschakeld",
+                )
             if outcome is None and max_live is not None and live_calls >= max_live:
                 outcome = _technical_result(
                     candidate,
@@ -641,11 +647,11 @@ def run_matching_pilot(
                         "VALUES(?,?,'IN_FLIGHT',1,?,?) ON CONFLICT(candidate_id) DO UPDATE SET "
                         "state='IN_FLIGHT',attempt=attempt+1,request_fingerprint=excluded.request_fingerprint,"
                         "provider=excluded.provider,result_json=NULL,error=NULL",
-                        (journal_id, candidate["original_name"], fingerprint, provider.name),
+                        (journal_id, validate_kvk(candidate["source_kvk_hint"]), fingerprint, provider.name),
                     )
                 try:
                     _check_cooldown(run)
-                    provider_result = provider.search(candidate["original_name"])
+                    provider_result = provider.search(validate_kvk(candidate["source_kvk_hint"]))
                     live_calls += 1
                     evidence_path = run.path / provider_result.evidence
                     if evidence_path.is_file():
@@ -679,7 +685,9 @@ def run_matching_pilot(
                 evidence_paths.add(current_evidence_path)
             results.append(outcome)
             terminal_outcome = outcome["terminal_outcome"]
-            if terminal_outcome == "TECHNICAL_ERROR":
+            if outcome["reason"] == "NO_DIRECT_KVK_HINT":
+                journal_state = "SUCCEEDED"  # afgeronde offline beslissing, geen GET
+            elif terminal_outcome == "TECHNICAL_ERROR":
                 journal_state = (
                     "DEFERRED"
                     if outcome["reason"]
@@ -697,7 +705,7 @@ def run_matching_pilot(
                     "request_fingerprint=excluded.request_fingerprint,provider=excluded.provider",
                     (
                         journal_id,
-                        candidate["original_name"],
+                        candidate.get("source_kvk_hint", ""),
                         journal_state,
                         fingerprint,
                         outcome["provider"] or provider.name,

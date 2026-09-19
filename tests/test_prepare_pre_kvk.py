@@ -16,17 +16,18 @@ from company_harvest.pre_kvk_filter import build_pre_kvk_filter
 from company_harvest.workflow import export, outcome_metrics
 
 
-def test_prepare_collects_four_sources_without_wikidata(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_prepare_collects_five_sources_without_wikidata(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[object] = []
     monkeypatch.setattr(prepare, "discover", lambda _run: calls.append("discover"))
     monkeypatch.setattr(prepare, "collect", lambda _run, **kw: calls.append(kw))
     monkeypatch.setattr(prepare, "collect_gleif", lambda _run, **kw: calls.append("gleif"))
     monkeypatch.setattr(prepare, "collect_public_register", lambda _run, sid, **kw: calls.append(sid))
+    monkeypatch.setattr(prepare, "collect_tenderned", lambda _run, **kw: calls.append("tenderned_awards"))
     monkeypatch.setattr(prepare, "build_pre_kvk_list", lambda _run: (Path("master"), Path("report")))
     monkeypatch.setattr(prepare, "build_pre_kvk_filter", lambda _run: (Path("eligible"), Path("excluded"), Path("metadata")))
     assert prepare.prepare_pre_kvk(run) == (Path("master"), Path("report"), Path("eligible"), Path("excluded"), Path("metadata"))
     assert calls == ["discover", {"only": ("ind_arbeid",), "limit": None, "refresh": False},
-                     "gleif", "anbi_register", "duo_education_organisations"]
+                     "gleif", "anbi_register", "duo_education_organisations", "tenderned_awards"]
 
 
 def test_prepare_stops_before_later_sources_on_error(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -42,6 +43,13 @@ def _ready_master(run: Run) -> None:
     build_pre_kvk_filter(run)
 
 
+def test_pre_kvk_query_requires_valid_source_number() -> None:
+    assert pre_kvk_kvk._search_query({"source_kvk_hint": "09111930", "original_name": "'n eurootje"}) == "09111930"
+    for hint in ("", "1234567", "Acme B.V."):
+        with pytest.raises(HarvestError, match="bron-KVK-nummer"):
+            pre_kvk_kvk._search_query({"source_kvk_hint": hint, "original_name": "Acme B.V."})
+
+
 def test_kvk_batch_is_explicit_bounded_and_resumable(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
     _ready_master(run)
     calls: list[str] = []
@@ -54,8 +62,8 @@ def test_kvk_batch_is_explicit_bounded_and_resumable(run: Run, monkeypatch: pyte
         assert (run.path.parent.parent / ".local" / "kvk-last-request.json").is_file()
         evidence = run.path / "evidence" / f"synthetic-{len(calls)}.json"
         evidence.write_text("{}")
-        hint = "34567890" if query == "Delta B.V." else "23456789"
-        return ProviderResult(query, [{"naam": query, "kvkNummer": hint, "plaats": "Utrecht",
+        assert query in {"23456789", "34567890"}
+        return ProviderResult(query, [{"naam": "Andere handelsnaam", "kvkNummer": query, "plaats": "Utrecht",
                                        "land": "Nederland", "rechtsvorm": "Stichting", "status": "Actief"}],
                               True, "public-http", str(evidence.relative_to(run.path)))
 
@@ -69,6 +77,9 @@ def test_kvk_batch_is_explicit_bounded_and_resumable(run: Run, monkeypatch: pyte
     monkeypatch.setattr(pre_kvk_kvk.time, "time", lambda: clock[0])
     monkeypatch.setattr(pre_kvk_kvk.time, "sleep", sleep)
     first = pre_kvk_kvk.resolve_pre_kvk(run, 1)
+    with run.connect() as connection:
+        assert connection.execute("SELECT query FROM kvk_requests ORDER BY id LIMIT 1").fetchone()[0] == calls[0]
+    assert all(query.isdecimal() and len(query) == 8 for query in calls)
     assert len(read_tsv(first[0])) == 1 and len(read_tsv(first[1])) == 1
     assert json.loads(first[2].read_text())["complete"] is False
     second = pre_kvk_kvk.resolve_pre_kvk(run, 1)
@@ -203,8 +214,8 @@ def test_long_kvk_run_resumes_and_publishes_only_after_closure(
         calls.append(query)
         evidence = run.path / "evidence" / f"long-{len(calls)}.json"
         evidence.write_text("{}")
-        hint = {"Gamma B.V.": "23456789", "Delta B.V.": "34567890"}[query]
-        return ProviderResult(query, [{"naam": query, "kvkNummer": hint, "plaats": "Utrecht",
+        assert query in {"23456789", "34567890"}
+        return ProviderResult(query, [{"naam": "Andere handelsnaam", "kvkNummer": query, "plaats": "Utrecht",
                                        "land": "Nederland", "rechtsvorm": "Besloten vennootschap",
                                        "status": "Actief"}], True, "public-http", str(evidence.relative_to(run.path)))
 
@@ -258,7 +269,7 @@ def test_long_kvk_run_keeps_uncertain_request_without_resending(
     write_tsv(active, ["Bedrijfsnaam", "KVK-nummer"], [])
     run.register_artifact(active, "07", "active")
     with pytest.raises(HarvestError, match="allow-partial"):
-        export(run, 1)
+        export(run)
 
 
 def test_long_kvk_run_does_not_claim_complete_before_artifact_commit(

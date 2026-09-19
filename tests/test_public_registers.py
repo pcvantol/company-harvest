@@ -443,6 +443,6 @@ def test_public_register_cli_and_catalog_contract(
     assert dispatch(args) == 0
     assert "ingest_report" in capsys.readouterr().out
     catalog = {row["source_id"]: row for row in list_sources(run)}
-    assert len(catalog) == 5
+    assert len(catalog) == 6
     assert catalog[source_id]["access_mode"] == "bulk"
     assert catalog[source_id]["candidate_layer"] == "raw"

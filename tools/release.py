@@ -35,6 +35,7 @@ def git(root: Path, *args: str) -> str:
 
 def scan_asset(path: Path) -> None:
     forbidden = {".env", "state.sqlite3", "storage-state.json"}
+    max_member_size = 5 * 1024 * 1024
     secret_patterns = (
         re.compile(rb"gh[pousr]_[A-Za-z0-9_]{20,}"),
         re.compile(rb"AKIA[0-9A-Z]{16}"),
@@ -43,10 +44,22 @@ def scan_asset(path: Path) -> None:
     members: list[tuple[str, bytes]] = []
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
-            members = [(info.filename, archive.read(info)) for info in archive.infolist() if not info.is_dir() and info.file_size <= 5 * 1024 * 1024]
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                if info.file_size > max_member_size:
+                    raise RuntimeError(f"te groot archieflid in distributieasset: {path.name}")
+                members.append((info.filename, archive.read(info)))
     elif path.suffix == ".gz":
         with tarfile.open(path) as archive:
-            members = [(member.name, extracted.read()) for member in archive.getmembers() if member.isfile() and member.size <= 5 * 1024 * 1024 and (extracted := archive.extractfile(member))]
+            for member in archive.getmembers():
+                if not member.isfile():
+                    continue
+                if member.size > max_member_size:
+                    raise RuntimeError(f"te groot archieflid in distributieasset: {path.name}")
+                extracted = archive.extractfile(member)
+                if extracted is not None:
+                    members.append((member.name, extracted.read()))
     names = [name for name, _content in members]
     if any(Path(name).name in forbidden or "runs/" in name or name.endswith((".har", ".log", ".jsonl", ".sqlite3")) for name in names):
         raise RuntimeError(f"verboden inhoud in distributieasset: {path.name}")

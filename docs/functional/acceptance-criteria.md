@@ -30,14 +30,29 @@ score alleen wordt gekoppeld; ieder gekoppeld nummer een exact onafhankelijk bro
 voorlopige verificatiestatus draagt; blokkades en hervatting gesloten zijn; de
 transactionele output/reviewlifecycle is getest; en een hashgebonden gestratificeerde
 review nul false matches en nul uncertain oplevert bij maximaal 5% technische fouten.
+Dit beschrijft de historische R8-pilotkwalificatie. Onder ADR-016 doet een
+nieuwe no-hint-pilot geen live naamzoeking meer en kan zij zonder voldoende
+offline matches deze oude acceptatiedrempels niet halen; dat is een bewuste
+fail-closed uitkomst, geen geverifieerde KVK-verrijking.
 
 De historische vijfbronnenacceptatie faalde op 2026-09-19 wegens Wikidata
 HTTP 429; alleen een apart geblokkeerde vierbronnenpreview was toen mogelijk.
-Onder het latere RD-008-besluit vereist de actuele master vier complete,
-byte- en scopegebonden bronnen (IND, GLEIF, ANBI, DUO), unieke bronrij-
-identiteit en input→master-closure zonder KVK-requests.
+Onder het latere RD-008-besluit vereiste de toenmalige master vier complete,
+byte- en scopegebonden bronnen (IND, GLEIF, ANBI, DUO). Nieuwe 3.0.0-runs
+vereisen daarnaast TenderNed als vijfde bron; oudere gebonden vierbronnenruns
+blijven op hun oorspronkelijke scope. Beide varianten vereisen unieke
+bronrij-identiteit en input→master-closure zonder KVK-requests.
 
 De huidige KVK-batchacceptatie vereist vervolgens een offline filter met
 bekende regelversie, volledige criteria, een itemniveau-uitsluitingsledger,
 gesloten master = geschikt + uitgesloten, bytebindingen en nul onbedoelde
 KVK-requests. Een ontbrekende of stale filterset stopt vóór de provider.
+
+De lichte-exportacceptatie voor de 3.0.0-broncode vereist een afzonderlijke
+CSV/XLSX met de daadwerkelijk aanwezige zakelijke KVK-hitvelden en de als
+bron gemarkeerde website/sector, zonder ruwe JSON of technische metadata.
+Exacte kandidaat-ID/nummerjoin, schema-2-manifest (zeven bestanden),
+PARTIAL-audit en schema-1-legacycontrole moeten offline aantoonbaar slagen.
+Dat is met gemockte KVK-resultaten getest; een nieuwe live nummerzoekactie
+of volledige productie-export is **niet getest** en wordt hier niet als
+externe acceptatie of releasegoedkeuring gepresenteerd.

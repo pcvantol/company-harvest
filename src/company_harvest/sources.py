@@ -155,6 +155,24 @@ CATALOG = (
         "PRIMARY_OWNER_SOURCE",
         "Onderwijsinstellingen en organisatorische eenheden; geen sectorbrede bedrijvenpopulatie.",
     ),
+    Source(
+        "tenderned_awards",
+        "TenderNed gegunde ondernemingen",
+        "TenderNed/RVO",
+        "aanbestedingsgunningen",
+        "https://www.tenderned.nl/cms/nl/aanbesteden-in-cijfers/datasets-aanbestedingen",
+        "tenderned_xlsx_json_awards_v1",
+        "bulk",
+        "https://www.tenderned.nl/cms/nl/over-deze-site/gebruiksvoorwaarden",
+        "Sinds 2026 per kwartaal aangekondigd; snapshot en brondatum bepalen de versie.",
+        True,
+        "KVK-bronhint bij Nederlandse gegunde onderneming; niet onafhankelijk geverifieerd",
+        False,
+        False,
+        "Officiële gunningen met direct als KVK aangeduid leveranciersnummer.",
+        "PRIMARY_OWNER_SOURCE_NOT_KVK_VERIFIED",
+        "Alleen gepubliceerde aanbestedingswinnaars; meervoudige gunningen en historische herhaling.",
+    ),
 )
 
 SOURCE_HEADERS = [

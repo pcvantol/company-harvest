@@ -1,13 +1,17 @@
 # Pre-KVK-bronlijst en foutgrenzen
 
 `company-harvest run prepare-pre-kvk --run-dir RUN_DIR` downloadt of hergebruikt
-IND, GLEIF, ANBI en DUO in deze volgorde en bouwt daarna één master. Wikidata
+IND, GLEIF, ANBI, DUO en TenderNed in deze volgorde en bouwt daarna één master. Wikidata
 is uitgesloten. `company-harvest companies pre-kvk-list --run-dir RUN_DIR` is de
 afzonderlijke offline lijstbouwopdracht. Zij doet geen bron- of KVK-verzoeken.
-De master eist de vier geselecteerde bronartefacten met
+De master eist voor nieuwe runs vijf geselecteerde bronartefacten met
 COMPLETE-registratie, exacte SHA-256/grootte, onbeperkte full-scope-inname,
 count-closure en intacte response-/archivevidence. Ontbreekt één bewijs,
 dan faalt de opdracht vóór publicatie van een master.
+Bestaande runs met een gebonden vierbronnenscope blijven bewust op dat
+historische contract; bronartefacten worden niet stil gemengd. Nieuwe runs
+krijgen `source_portfolio_version=2` in `run.json`. Runs zonder die marker
+blijven ook na onderbreking vóór de eerste of laatste brondownload vierbrons.
 
 De builder spooled de ruwe kandidaatregels naar lokale SQLite met unieke
 `(source_id,source_row)`-sleutel. Zij groepeert op genormaliseerde naam en
@@ -18,6 +22,11 @@ verschillende namen of verschillende nummers bij dezelfde naam wordt als
 originele payloads en afzonderlijke bronrelaties. De som van
 `source_count` moet gelijk zijn aan alle opgenomen bronregels; de inputs
 worden onder run-lock nogmaals gevalideerd vóór atomische publicatie.
+Bij samengevoegde kandidaten projecteert de master voor `website` en
+`sector` afzonderlijk de eerste niet-lege bronwaarde in vaste bronvolgorde.
+De volledige payloads blijven behouden; deze projectie is broninformatie,
+geen KVK-verificatie. De [lichte eindlijst](../functional/output-files.md)
+gebruikt deze waarden alleen bij exact kandidaat-ID én KVK-nummer.
 
 De historische run CH-2026-09-19-009 kreeg een HTTP 429 bij Wikidata en had
 onder het toenmalige vijfbronnencontract geen volledige master. Voor de vier
@@ -35,18 +44,24 @@ staat nu `PRE_KVK_COMPLETE` met een apart nieuw masterartefact. Deze actuele
 status verandert de historische previewstatus niet.
 
 `companies pre-kvk-filter --run-dir RUN_DIR` maakt zonder netwerk uit de
-volledige vierbronnenmaster drie nieuwe lokale artefacten: een KVK-geschikte
-TSV met volledige masterrijen, een uitsluitingsledger en JSON-metadata.
+volledige gebonden bronmaster vier nieuwe lokale artefacten: een KVK-geschikte
+TSV met volledige masterrijen, een uitsluitingsledger, een reviewlabel-TSV
+en JSON-metadata.
 `prepare-pre-kvk` voert deze stap voortaan automatisch na de masterbouw uit.
 De filter heeft een expliciete regelversie. De metadata bevat alle criteria
 en letterlijk uitgevoerde naamregexen met hoofdlettervlag,
 primaire én overlappende redenaantallen, kandidaat-/bestandsaantallen en
-SHA-256-bindingen. Elke uitgesloten kandidaat blijft via zijn ID, naam,
+SHA-256-bindingen, ook voor de label-TSV. Elke uitgesloten kandidaat blijft via zijn ID, naam,
 bron-IDs en alle redenen in de ledger zichtbaar; de volledige bronpayload
 blijft in de ongewijzigde master. `NO_DIRECT_KVK_HINT` is geen bewijs van
 feitelijk ontbreken van een KVK-inschrijving. ANBI en DUO worden op bronrelatie
 uitgesloten; de overige categorieën gebruiken zelfstandige naamtermen,
 geen onbeperkte substringzoekactie. Bronconflicten blijven aparte reviewrijen.
+Vanaf regelversie 8 is `HOLDING_OR_MANAGEMENT` uitsluitend een reviewlabel,
+geen uitsluitreden. De lokale `pre_kvk_review_labels.tsv` bevat kandidaat-ID,
+naam, KVK-hint en label; het volledige exportbestand bevat `candidate_id`
+waarmee een label later kan worden gekoppeld. Een andere uitsluitreden blijft
+ook voor holdings van kracht.
 De count-closure is master = geschikt + uitgesloten. Een regelwijziging of
 bestandsafwijking vereist een nieuw filter; een reeds gebruikte KVK-journal
 blokkeert stil herfilteren.
@@ -60,10 +75,14 @@ geen fuzzy filter geactiveerd.
 gefilterde, geregistreerde en aan de actuele master gebonden lijst. Ontbreekt
 die of wijkt de regelversie/hash af, dan stopt de opdracht vóór de provider.
 De publieke HTTP-provider volgt de waargenomen route van de
-KVK-frontend. De opdracht gebruikt de lokale providerlock, requestjournal en
-cooldown, slaat conflictrijen over en bewaart responsevidence. De historische
-naam-zonder-hint-matchvoorwaarde blijft in code maar wordt door deze nieuwe
-filter niet meer bereikt.
+KVK-frontend. De opdracht verstuurt uitsluitend de geldige achtcijferige
+bron-KVK-hint als zoekterm en accepteert alleen een exact gelijk teruggegeven
+KVK-nummer; de naam is geen matchvoorwaarde. Zonder geldige hint wordt geen
+naamzoekopdracht verstuurd. De opdracht gebruikt de lokale providerlock,
+requestjournal en cooldown, slaat conflictrijen over en bewaart responsevidence.
+De nummerzoeking is offline gemockt; de aangeleverde frontendscreenshot toont
+dat zoeken op nummer via de website mogelijk is, maar de directe Web-API-route
+is met een nummer nog niet live geverifieerd.
 Maximaal tien nieuwe requests per aanroep, minimaal twee seconden tussentijd;
 een gedeeld lokaal pacingjournal overleeft een CLI-herstart en begrenst ook
 opeenvolgende batches. Per kandidaat wordt maximaal één eerste-pagina-GET

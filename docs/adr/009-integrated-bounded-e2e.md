@@ -33,12 +33,26 @@ overeenkomen met de runstatus en vijf bestanden uit dezelfde outputset met
 dezelfde registratiestatus, grootte en hash aanwijzen. Alleen de melding
 `MISSING_REQUIRED` onderdrukken is geen integriteitsbewijs.
 
+Vervolg CH-2026-09-19-035: de vijf bestanden hierboven beschrijven
+historisch manifest schema 1. De 3.0.0-export gebruikt
+schema 2 met zeven bestanden, waaronder de aparte lichte CSV/XLSX;
+[ADR-017](017-light-business-export.md) bepaalt dat nieuwe contract.
+
 Aanvulling CH-2026-09-19-023: elke CI-platformjob doorloopt een expliciete
 offline E2E-integratiepoort met echte CLI-orkestratie en downstreamverwerking,
 maar synthetische broncollectors en een gemockte KVK-zoekfunctie. De poort
 verbiedt niet-lokale netwerkverbindingen, maar laat lokale Playwright-IPC toe,
 en toetst output, audit en hervatten. Live
 bron-/KVK-capability blijft bewust buiten CI en krijgt geen impliciete PASS.
+
+Verduidelijking CH-2026-09-19-033: `--run-dir` opent exact dezelfde run;
+de E2E-keten controleert haar tussenstappen opnieuw in plaats van blind naar
+een stapnummer te springen. Intacte voltooide bronoutputs en dezelfde
+pre-KVK-master/filter worden hergebruikt. De KVK-journal is leidend:
+afgehandelde én onzekere verzoeken worden niet stil opnieuw verzonden.
+Een onafgeronde bronoverdracht heeft geen gegarandeerde byte-resume.
+Een voltooide outputset wordt alleen opnieuw gerapporteerd/geaudit.
+Dit is met een offline CLI-onderbrekingsproef bevestigd; geen live claim.
 
 Een eerder lokaal gejournalde toegangs-/rateblokkade verhindert een nieuwe
 geïntegreerde run in dezelfde datamap. De blokkadecheck wordt onder de

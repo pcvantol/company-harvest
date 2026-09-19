@@ -6,8 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from company_harvest.core import HarvestError, Run, read_tsv, sha256, write_tsv
-from company_harvest.pre_kvk import SOURCE_IDS, build_blocked_pre_kvk_preview, build_pre_kvk_list
+from company_harvest.core import HarvestError, Run, atomic_write, read_tsv, sha256, write_tsv
+from company_harvest.pre_kvk import (
+    CURRENT_SOURCE_IDS,
+    SOURCE_IDS,
+    build_blocked_pre_kvk_preview,
+    build_pre_kvk_list,
+    source_scope,
+)
 from company_harvest.sources import RAW_HEADERS
 
 
@@ -26,7 +32,9 @@ def _raw(source_id: str, row: int, name: str, hint: str = "") -> dict[str, str]:
     return value
 
 
-def _full_sources(run: Run) -> dict[str, Path]:
+def _full_sources(run: Run, legacy_scope: bool = True) -> dict[str, Path]:
+    if legacy_scope:
+        run.record_config("pre_kvk_sources", list(SOURCE_IDS))
     rows = {
         "ind_arbeid": [_raw("ind_arbeid", 1, "Alpha B.V.", "12345678"),
                        _raw("ind_arbeid", 2, "Gamma B.V.", "23456789"),
@@ -72,6 +80,21 @@ def _full_sources(run: Run) -> dict[str, Path]:
     return paths
 
 
+def test_source_scope_defaults_to_five_but_preserves_legacy_partial_run(run: Run) -> None:
+    assert source_scope(run) == CURRENT_SOURCE_IDS
+    metadata = run.metadata()
+    metadata.pop("source_portfolio_version")
+    atomic_write(run.path / "run.json", json.dumps(metadata))
+    assert source_scope(run) == SOURCE_IDS  # ook een oude run zonder bronartefact
+    ind = run.artifact_path("02", "old_ind", "csv")
+    write_tsv(ind, RAW_HEADERS, [_raw("ind_arbeid", 1, "Oude Run B.V.", "12345678")])
+    run.register_artifact(ind, "02", "source_ind_arbeid")
+    assert source_scope(run) == SOURCE_IDS
+    run.record_config("pre_kvk_sources", ["unknown"])
+    with pytest.raises(HarvestError, match="bronscope"):
+        source_scope(run)
+
+
 def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     _full_sources(run)
     path, report_path = build_pre_kvk_list(run)
@@ -92,6 +115,30 @@ def test_full_pre_kvk_list_preserves_conflicts_and_closes(run: Run) -> None:
     assert all(len(json.loads(row["source_payloads_json"])) == 1 for row in alpha)
     assert run.latest_artifact("03", "pre_kvk_master") == path
     assert build_pre_kvk_list(run) == (path, report_path)
+
+
+def test_merged_master_uses_first_available_website_and_sector(run: Run) -> None:
+    paths = _full_sources(run)
+    rows = read_tsv(paths["ind_arbeid"])
+    rows[0]["website"] = "   "
+    rows[0]["sector"] = "   "
+    extra = _raw("ind_arbeid", 4, "Alpha B.V.", "12345678")
+    extra["website"] = "https://alpha.example"
+    extra["sector"] = "Bouw"
+    replacement = run.artifact_path("02", "ind_with_enrichment", "csv")
+    write_tsv(replacement, RAW_HEADERS, rows + [extra])
+    run.register_artifact(replacement, "02", "source_ind_arbeid")
+    observations = run.metadata()["runtime_config"]["source_observations"]
+    observations["ind_arbeid"]["source_artifact"] = {
+        "path": str(replacement.relative_to(run.path)),
+        "sha256": sha256(replacement), "size": replacement.stat().st_size,
+    }
+    run.record_config("source_observations", observations)
+    master, _ = build_pre_kvk_list(run)
+    alpha = next(row for row in read_tsv(master) if row["source_kvk_hint"] == "12345678")
+    assert alpha["source_count"] == "2"
+    assert alpha["website"] == "https://alpha.example"
+    assert alpha["sector"] == "Bouw"
 
 
 def test_pre_kvk_closes_sqlite_spool_before_cleanup(

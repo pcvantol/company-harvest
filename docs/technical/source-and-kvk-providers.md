@@ -1,6 +1,6 @@
 # Bron- en KVK-providers
 
-De actuele `run prepare-pre-kvk`-workflow leest IND, GLEIF, ANBI en DUO en
+De actuele `run prepare-pre-kvk`-workflow leest op nieuwe runs IND, GLEIF, ANBI, DUO en TenderNed en
 laat Wikidata geheel buiten de download en master. De oudere, alleen expliciet
 op te roepen Wikidata-adapter gebruikt
 Wikidata-property `P3220` (KvK company ID) met deterministische, begrensde
@@ -13,6 +13,20 @@ registreert nieuwe evidence.
 De broninventaris gebruikt catalogusschema 2. Legacy inventarissen worden bij lezen naar dit schema genormaliseerd zonder bestaande waarden te verliezen. Live aantallen en overlap blijven leeg of `NOT_MEASURED` totdat een werkelijke meting ze onderbouwt. `sources measure` meet IND volledig en Wikidata begrensd, legt request-/byte-/duur- en rate-limitobservaties vast en schrijft ook bij een blokkade een terminaal capabilityrapport. Een ontbrekende rate-limitheader bewijst niet dat er geen limiet geldt.
 
 KVK gebruikt uitsluitend de functionaliteit achter `https://www.kvk.nl/zoeken/`. Op 2026-09-18 is tijdens een gewone naamzoekactie de publieke GET-route `https://web-api.kvk.nl/zoeken/v3/search` waargenomen, inclusief de door de frontend meegegeven publieke profiel-ID en parameters. Rechtstreekse reproductie en browserflow zijn elk met één kandidaat bewezen. `public-browser` blijft technische fallback. 401/403/429, CAPTCHA, actieve cooldown en toegangseisen veroorzaken stop/pauze, geen transportpendelen. De implementatie vraagt geen KVK-key en bevat geen geldbudget. Response-evidence wordt als gehasht audit-artefact geregistreerd.
+
+De huidige KVK-check geeft voor nieuwe runs uitsluitend een geldig direct
+bron-KVK-nummer als zoekterm door. De publieke frontend accepteert volgens de
+door de eigenaar aangeleverde screenshot een nummer, maar de directe
+Web-API-route met nummerinvoer is **niet live getest**. De offline tests bewijzen
+wel dat een andere handelsnaam bij hetzelfde teruggegeven nummer een match
+oplevert en een afwijkend nummer nooit. Status en rechtsvorm moeten uit de
+response blijken; onbekende waarden gaan niet automatisch in de eindlijst.
+De bewaarde publieke zoekhit heeft naast naam/nummer/rechtsvorm/actief-vlag
+mogelijk inschrijving, activiteit, handelsnamen, vestiging en adresdelen.
+De 3.0.0-export projecteert alleen vooraf gekwalificeerde
+zakelijke velden naar [de lichte lijst](../functional/output-files.md);
+onbekende nieuwe responsvelden met inhoud blokkeren die export tot review. Website
+en sector komen niet uit deze KVK-provider maar uit brondata.
 
 Zowel de directe bron-/KVK-clients als de Playwright-browsercontext gebruiken `company-lookup/0.1`. De browsertest controleert de contextoptie expliciet; er wordt geen persoonlijke URL of gebruikersnaam meegestuurd.
 
@@ -77,4 +91,28 @@ van labelverrijking, bewaart per request hashgebonden lokale evidence en
 stopt bij 401/403/429. Op de derde 500-recordprojectiepagina kwam HTTP
 429; vier andere bronnen waren toen volledig ingenomen. Het exacte
 [pre-KVK-publicatiecontract](pre-kvk-list.md) beschrijft nu de geselecteerde
-vierbronnenmaster. De historische vijfbronnenblokkade blijft apart bewijs.
+vierbronnenmaster in oude runs. De historische vijfbronnenblokkade met
+Wikidata blijft apart bewijs. Nieuwe runs vereisen vijf bronnen, nu met
+TenderNed in plaats van Wikidata.
+
+`sources tenderned --run-dir RUN_DIR` haalt sequentieel de officiële publieke
+datasetpagina, de actuele volledige XLSX vanaf 2021 en de bijpassende JSON van
+het laatste jaar op. `--xlsx PAD --json PAD` gebruikt twee reeds gedownloade
+bestanden en doet geen netwerkverzoek. Herstart met identieke inputs hergebruikt
+de hashgebonden bronartefacten; `--refresh` maakt bewust nieuwe evidence.
+Lokale input krijgt `MEASURED_LOCAL_EVIDENCE` en
+`USER_SUPPLIED_OFFICIAL_FORMAT_UNVERIFIED`: een bestandshash bewijst geen
+herkomst van de officiële host. Alleen de directe download krijgt
+`MEASURED_LIVE_EVIDENCE`. De lokale invoer is een parser-/analysepad met scope
+`LOCAL_UNVERIFIED` en opent de full-archive-master of KVK-check niet.
+De adapter verifieert daarnaast dat de XLSX elk kalenderjaar van 2021 tot
+het nieuwste JSON-jaar bevat; een ontbrekend jaar stopt de inname.
+Alleen historische XLSX-jaren vóór het JSON-jaar en leveranciers met een
+daadwerkelijke gunningsrelatie uit het JSON-jaar tellen als kandidaat.
+Expliciete Nederlandse land-evidence is vereist. Achtcijferige IDs zijn
+`source_kvk_hint`, geen KVK-verificatie; ontbrekende of ongeldige nummers
+blijven kandidaat én reviewrecord. Buitenlandse leveranciers staan alleen in
+de lokale rejected-ledger. Downloads zijn tot de officiële HTTPS-host,
+drie redirects, 160 MiB per bestand, 15 minuten en begrensde ZIP-decompressie
+beperkt. Het innamerapport registreert counts, sluiting, bron- en evidencehashes.
+Ruwe bestanden en records worden niet in Git of wheel opgenomen.

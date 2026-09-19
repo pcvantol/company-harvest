@@ -48,6 +48,8 @@ _AUDIT_EVENTS = {
     "anbi_register_collect_reused": ("Bestaande ANBI-bron hergebruikt", None),
     "duo_education_organisations_collect_completed": ("DUO-inname afgerond", "candidates"),
     "duo_education_organisations_collect_reused": ("Bestaande DUO-bron hergebruikt", None),
+    "tenderned_collect_completed": ("TenderNed-inname afgerond", "candidates"),
+    "tenderned_collect_reused": ("Bestaande TenderNed-bron hergebruikt", None),
     "audit_verify": ("Audit uitgevoerd", "checked_artifacts"),
 }
 

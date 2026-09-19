@@ -25,6 +25,7 @@ from company_harvest.core import (
     read_tsv,
     redact,
     timestamp,
+    validate_kvk,
     write_tsv,
 )
 
@@ -32,6 +33,13 @@ KVK_HOSTS = {"www.kvk.nl", "kvk.nl", "web-api.kvk.nl"}
 PUBLIC_SEARCH_ENDPOINT = "https://web-api.kvk.nl/zoeken/v3/search"
 PUBLIC_PROFILE_ID = "5C10A89D-635E-49CC-94B8-042DD533B64A"
 UNRESOLVED_HEADERS = ["candidate_id", "original_name", "reason", "detail", "resumable", "checked_at"]
+
+
+def _require_number_query(query: str) -> str:
+    try:
+        return validate_kvk(query)
+    except ValueError as exc:
+        raise KvkError("INVALID_KVK_QUERY", "publieke KVK-zoekopdracht vereist een achtcijferig bronnummer", 3) from exc
 
 
 @dataclass(frozen=True)
@@ -107,6 +115,7 @@ class PublicHttpProvider:
         }
 
     def search(self, query: str, headed: bool = False) -> ProviderResult:
+        query = _require_number_query(query)
         del headed
         self.last_error_evidence = None
         if not self.endpoint or not self.query_parameter:
@@ -223,6 +232,7 @@ class PublicBrowserProvider:
         return {"provider": self.name, "available": available, "status": "BROWSER_AVAILABLE_NOT_LIVE_PROVEN" if available else "BROWSER_UNAVAILABLE", "executable": executable}
 
     def search(self, query: str, headed: bool = False) -> ProviderResult:
+        query = _require_number_query(query)
         from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
 
@@ -392,6 +402,7 @@ class AutoProvider:
         return {"provider": "auto", "http": self.http.preflight(), "browser": self.browser.preflight()}
 
     def search(self, query: str, headed: bool = False) -> ProviderResult:
+        query = _require_number_query(query)
         if self.http.preflight()["available"]:
             try:
                 return self.http.search(query)
@@ -470,16 +481,23 @@ def resolve(run: Run, provider_name: str, limit: int | None, resume: bool, refre
             if limit is not None and processed >= limit:
                 unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"], "reason": "NOT_PROCESSED_LIMIT", "detail": "kandidaatlimiet bereikt", "resumable": "true", "checked_at": ""})
                 continue
+            try:
+                query = validate_kvk(candidate.get("source_kvk_hint", ""))
+            except ValueError:
+                unresolved.append({"candidate_id": candidate_id, "original_name": candidate["original_name"],
+                                   "reason": "NO_DIRECT_KVK_HINT", "detail": "geen geldig direct bron-KVK-nummer",
+                                   "resumable": "false", "checked_at": ""})
+                continue
             _check_cooldown(run)
-            fingerprint = hashlib.sha256(f"{candidate_id}\0{candidate['original_name']}".encode()).hexdigest()
+            fingerprint = hashlib.sha256(f"{candidate_id}\0{query}".encode()).hexdigest()
             with run.connect() as connection:
                 connection.execute(
                     "INSERT INTO kvk_requests(candidate_id,query,state,attempt,request_fingerprint,provider) VALUES(?,?,'IN_FLIGHT',1,?,?) "
                     "ON CONFLICT(candidate_id) DO UPDATE SET state='IN_FLIGHT',attempt=attempt+1,request_fingerprint=excluded.request_fingerprint,provider=excluded.provider",
-                    (candidate_id, candidate["original_name"], fingerprint, provider.name),
+                    (candidate_id, query, fingerprint, provider.name),
                 )
             try:
-                result = provider.search(candidate["original_name"], headed=headed)
+                result = provider.search(query, headed=headed)
                 evidence_path = run.path / result.evidence
                 if evidence_path.is_file():
                     run.register_artifact(evidence_path, "04", f"evidence_{result.transport}")
@@ -537,20 +555,17 @@ def _match(candidate: dict[str, str], result: ProviderResult) -> dict[str, Any] 
     from company_harvest.core import normalize_name, validate_kvk
 
     source_hint = candidate.get("source_kvk_hint", "")
+    if not source_hint:
+        return None
     matches: list[tuple[dict[str, Any], str]] = []
     for hit in result.hits:
         number_raw = next((hit.get(key) for key in ("kvkNummer", "kvk_number", "kvk", "nummer") if hit.get(key)), None)
-        name_raw = next((hit.get(key) for key in ("naam", "name", "handelsnaam") if hit.get(key)), None)
         try:
             number = validate_kvk(number_raw)
         except ValueError:
             continue
-        name_matches = bool(name_raw) and normalize_name(str(name_raw)) == normalize_name(candidate["original_name"])
-        if not name_matches:
-            continue
-        if source_hint and number != source_hint:
-            continue
-        matches.append((hit, "SOURCE_KVK_AND_NAME_CONFIRMED" if source_hint else "EXACT_NORMALIZED_NAME"))
+        if number == source_hint:
+            matches.append((hit, "SOURCE_KVK_NUMBER_CONFIRMED"))
     unique: dict[str, list[tuple[dict[str, Any], str]]] = {}
     for hit, method in matches:
         number = validate_kvk(
@@ -562,10 +577,19 @@ def _match(candidate: dict[str, str], result: ProviderResult) -> dict[str, Any] 
     number, variants = next(iter(unique.items()))
     hit, method = variants[0]
     location_variant = next((item for item, _ in variants if item.get("city") or item.get("plaats")), hit)
-    status_variant = next((item for item, _ in variants if item.get("status") or item.get("ondernemingsstatus")), hit)
+
+    def consistent_field(keys: tuple[str, ...]) -> str | None:
+        values = [str(next((item.get(key) for key in keys if item.get(key)), "")) for item, _ in variants]
+        populated = [value for value in values if value]
+        if len({normalize_name(value) for value in populated}) > 1:
+            return None
+        return populated[0] if populated else ""
+
+    legal_form = consistent_field(("rechtsvorm", "legalForm"))
+    status = consistent_field(("status", "ondernemingsstatus"))
+    if legal_form is None or status is None:
+        return None
     name = str(next((hit.get(key) for key in ("naam", "name", "handelsnaam") if hit.get(key)), candidate["original_name"]))
-    legal_form = str(next((hit.get(key) for key in ("rechtsvorm", "legalForm") if hit.get(key) is not None), ""))
-    status = str(next((status_variant.get(key) for key in ("status", "ondernemingsstatus") if status_variant.get(key) is not None), ""))
     city = str(next((location_variant.get(key) for key in ("plaats", "city") if location_variant.get(key) is not None), ""))
     country = str(next((location_variant.get(key) for key in ("land", "country") if location_variant.get(key) is not None), ""))
     if normalize_name(country) not in {"nederland", "netherlands"} or not city:

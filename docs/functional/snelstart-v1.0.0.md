@@ -2,7 +2,9 @@
 
 > Archief, niet meer uitvoerbaar vanaf een schone pc: de v1.0.0-release,
 > assets en tag zijn verwijderd. Het onderstaande downloadcommando werkt
-> niet meer. Gebruik de [actuele v2.0.0-E2E-handleiding](e2e-command.md).
+> niet meer. De [E2E-handleiding voor release 3.0.0](e2e-command.md)
+> beschrijft de nieuwe lichte export en een beschikbare wheel. De oudere
+> 2.0.0-wheel heeft die functie niet.
 
 **Voor wie:** iemand die de gepubliceerde tool op macOS met Python 3.14 wil
 gebruiken, zonder checkout of GitHub-login. Voer de opdrachten in volgorde uit in

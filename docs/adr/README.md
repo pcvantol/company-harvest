@@ -13,3 +13,7 @@
 - [ADR-011 Commandoroutering en pre-KVK-partitie scheiden](011-cli-and-pre-kvk-refactor.md)
 - [ADR-012 Veilige CLI-voortgang op stderr](012-safe-cli-console-progress.md)
 - [ADR-013 Actuele Node-runtime voor officiële CI-acties](013-current-node-runtime-in-ci.md)
+- [ADR-014 TenderNed als directe KVK-bronhint](014-tenderned-kvk-source.md)
+- [ADR-015 Geen arbitraire exportafkap](015-no-arbitrary-export-cap.md)
+- [ADR-016 Nummer-only KVK-check en holding als reviewlabel](016-number-only-kvk-and-holding-review-label.md)
+- [ADR-017 Lichte, zakelijk verrijkte export naast auditexport](017-light-business-export.md)

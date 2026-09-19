@@ -65,7 +65,7 @@ def test_release_helpers(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     file.write_bytes(b"bad")
     with pytest.raises(RuntimeError):
         module.verify(manifest_path)
-    assert module._version(ROOT) == "2.0.0"
+    assert module._version(ROOT) == "3.0.0"
     monkeypatch.setattr(module, "verify", lambda _: {"source_commit": "x", "tag": "v1", "assets": [], "version": "1"})
     monkeypatch.setattr(module, "git", lambda *_: "dirty")
     with pytest.raises(RuntimeError):
@@ -132,6 +132,11 @@ def test_release_scan_asset(tmp_path: Path) -> None:
         archive.writestr("config.txt", "ghp_" + "A" * 30)
     with pytest.raises(RuntimeError):
         module.scan_asset(secret)
+    oversized = tmp_path / "oversized.zip"
+    with zipfile.ZipFile(oversized, "w") as archive:
+        archive.writestr("large.bin", b"X" * (5 * 1024 * 1024 + 1))
+    with pytest.raises(RuntimeError, match="te groot archieflid"):
+        module.scan_asset(oversized)
 
 
 def test_package_main(monkeypatch: pytest.MonkeyPatch) -> None:

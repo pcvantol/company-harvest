@@ -3,6 +3,9 @@
 Status: Accepted (2026-09-19). Requirements: CH-PREKVK-007/008,
 CH-DATA-004, CH-RES-002, RD-006/007/009.
 
+Historische beslissing voor filterversie 7. De holding-/beheeruitsluiting is
+voor nieuwe runs vervangen door een reviewlabel in [ADR-016](016-number-only-kvk-and-holding-review-label.md).
+
 De vierbronnenmaster blijft een verliesvrije, niet-gefilterde verzameling.
 Een aparte offline overgang maakt daaruit een KVK-geschikte lijst en een
 uitsluitingsledger. De filter kiest op directe KVK-hint, volledige ANBI- en
@@ -38,6 +41,8 @@ De KVK-batch leest uitsluitend een COMPLETE-geregistreerde filterset die
 byte-identiek en regelversiegebonden is aan de actuele master. Bij een
 ontbrekende/gewijzigde set faalt zij vóór het netwerk. Een bestaande
 requestjournal verhindert herfilteren zonder expliciet migratiebesluit.
-Dit is een toelatingsregel voor de huidige kleine vierbronnen-KVK-route,
-geen terugwerkende wijziging van de R8-pilot of een algemeen verbod op
-latere no-hint-matching. RD-001/R7 blijven bulk-KVK blokkeren.
+Dit was een toelatingsregel voor de toenmalige kleine vierbronnen-KVK-route.
+Voor nieuwe vijfbronnenruns geldt inmiddels filterversie 8 en
+[ADR-016](016-number-only-kvk-and-holding-review-label.md): publieke
+naamzoeking zonder directe KVK-hint is niet toegestaan; historische
+R8-resultaten blijven ongewijzigd. RD-001/R7 blijven bulk-KVK blokkeren.

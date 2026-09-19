@@ -12,15 +12,19 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 from company_harvest.core import HarvestError, Run, atomic_write, sha256
-from company_harvest.pre_kvk import MASTER_HEADERS, SOURCE_IDS, _registered, validated_master
+from company_harvest.pre_kvk import (
+    CURRENT_SOURCE_IDS,
+    MASTER_HEADERS,
+    _registered,
+    validated_master,
+)
 
-RULE_VERSION = "pre-kvk-eligibility-7"
+RULE_VERSION = "pre-kvk-eligibility-8"
 RULES = {
     "ANBI_SOURCE": "Bronrelatie met ANBI-register: algemeen nut beogende instelling.",
     "EDUCATION_SOURCE": "Bronrelatie met DUO Basisgegevens instellingen: onderwijsinstelling.",
     "NO_DIRECT_KVK_HINT": "Geen geldig direct KVK-nummer in de verzamelde brondata; geen bewijs dat inschrijving ontbreekt.",
     "SOURCE_CONFLICT_REVIEW": "Bronidentiteit heeft een conflict en vereist afzonderlijke review.",
-    "HOLDING_OR_MANAGEMENT": "Naam bevat holding, beheer(s)maatschappij of Beheer B.V./N.V.; generiek beheer telt niet.",
     "FOUNDATION_OR_ASSOCIATION": "Naam noemt stichting of vereniging, ook als Nederlands samengesteld eindwoord.",
     "SCHOOL_OR_UNIVERSITY": "Naam noemt school (ook als samengesteld eindwoord), onderwijs, universiteit of lyceum.",
     "BANK": "Naam noemt zelfstandig bank/banken/bankiers/banking of een specifiek banktype zoals spaarbank/hypotheekbank; geen willekeurig -bank-eindwoord.",
@@ -33,8 +37,14 @@ EXCLUDED_HEADERS = [
     "candidate_id", "original_name", "source_kvk_hint", "source_ids_json",
     "kvk_queue_status", "primary_reason", "all_reasons_json",
 ]
-PATTERNS = {
+REVIEW_LABELS = {
+    "HOLDING_OR_MANAGEMENT": "Naam bevat holding, beheer(s)maatschappij of Beheer B.V./N.V.; alleen reviewlabel, geen uitsluiting.",
+}
+LABEL_HEADERS = ["candidate_id", "original_name", "source_kvk_hint", "review_label"]
+REVIEW_PATTERNS = {
     "HOLDING_OR_MANAGEMENT": re.compile(r"\b(?:holding|holdings|holdingmaatschappij|beheers?maatschappij)\b|\bbeheer\s+(?:b\.?v\.?|n\.?v\.?)\b", re.I),
+}
+PATTERNS = {
     "FOUNDATION_OR_ASSOCIATION": re.compile(r"\b[\w-]*(?:stichting|vereniging)\b", re.I),
     "SCHOOL_OR_UNIVERSITY": re.compile(r"\b[\w-]*school(?:en)?\b|\b(?:universiteit|onderwijs|lyceum)\b", re.I),
     "BANK": re.compile(r"\b(?:bank|banken|bankiers|banking|spaarbank|hypotheekbank|kredietbank|investeringsbank|beleggingsbank|handelsbank|zakenbank|depositobank|volksbank|rabobank|regiobank)\b", re.I),
@@ -47,6 +57,14 @@ PATTERN_METADATA = {
     reason: {"regex": pattern.pattern, "case_insensitive": bool(pattern.flags & re.IGNORECASE)}
     for reason, pattern in PATTERNS.items()
 }
+REVIEW_PATTERN_METADATA = {
+    label: {"regex": pattern.pattern, "case_insensitive": bool(pattern.flags & re.IGNORECASE)}
+    for label, pattern in REVIEW_PATTERNS.items()
+}
+
+
+def _review_labels(row: dict[str, str]) -> list[str]:
+    return [label for label, pattern in REVIEW_PATTERNS.items() if pattern.search(row["original_name"])]
 
 
 def _reasons(row: dict[str, str]) -> tuple[list[str], list[str]]:
@@ -55,7 +73,7 @@ def _reasons(row: dict[str, str]) -> tuple[list[str], list[str]]:
         sources = sorted({relation["source_id"] for relation in relations})
     except (ValueError, TypeError, KeyError) as exc:
         raise HarvestError("pre-KVK-master bevat ongeldige bronrelaties") from exc
-    if not sources or any(source not in SOURCE_IDS for source in sources):
+    if not sources or any(source not in CURRENT_SOURCE_IDS for source in sources):
         raise HarvestError("pre-KVK-master bevat onbekende bronrelaties")
     reasons = []
     if "anbi_register" in sources or row["sector"].casefold() == "algemeen nut beogende instelling":
@@ -80,33 +98,45 @@ class _PartitionStats(NamedTuple):
     all_reasons: Counter[str]
     source_eligible: Counter[str]
     source_excluded: Counter[str]
+    review_labels: Counter[str]
 
 
-def _partition_master(master: Path, eligible_tmp: Path, excluded_tmp: Path) -> _PartitionStats:
+def _partition_master(master: Path, eligible_tmp: Path, excluded_tmp: Path,
+                      labels_tmp: Path) -> _PartitionStats:
     """Stream de volledige master eenmaal naar behoud en uitsluitingsledger."""
     counts: Counter[str] = Counter()
     primary: Counter[str] = Counter()
     all_reasons: Counter[str] = Counter()
     source_eligible: Counter[str] = Counter()
     source_excluded: Counter[str] = Counter()
+    review_labels: Counter[str] = Counter()
     seen_ids: set[str] = set()
     with (master.open(encoding="utf-8-sig", newline="") as source,
           eligible_tmp.open("w", encoding="utf-8", newline="") as keep,
-          excluded_tmp.open("w", encoding="utf-8", newline="") as drop):
+          excluded_tmp.open("w", encoding="utf-8", newline="") as drop,
+          labels_tmp.open("w", encoding="utf-8", newline="") as labels_file):
         reader = csv.DictReader(source, delimiter="\t")
         if reader.fieldnames != MASTER_HEADERS:
             raise HarvestError("pre-KVK-master mist het verwachte kolomcontract")
         keep_writer = csv.DictWriter(keep, fieldnames=MASTER_HEADERS, delimiter="\t")
         drop_writer = csv.DictWriter(drop, fieldnames=EXCLUDED_HEADERS, delimiter="\t")
+        label_writer = csv.DictWriter(labels_file, fieldnames=LABEL_HEADERS, delimiter="\t")
         keep_writer.writeheader()
         drop_writer.writeheader()
+        label_writer.writeheader()
         for row in reader:
             candidate_id = row["candidate_id"]
             if not candidate_id or candidate_id in seen_ids:
                 raise HarvestError("pre-KVK-master bevat ontbrekende of dubbele kandidaat-ID")
             seen_ids.add(candidate_id)
             reasons, sources = _reasons(row)
+            labels = _review_labels(row)
             counts["master_rows"] += 1
+            for label in labels:
+                label_writer.writerow({"candidate_id": candidate_id, "original_name": row["original_name"],
+                                       "source_kvk_hint": row["source_kvk_hint"], "review_label": label})
+                review_labels[label] += 1
+                counts["review_label_rows"] += 1
             if reasons:
                 drop_writer.writerow({
                     "candidate_id": candidate_id,
@@ -125,20 +155,23 @@ def _partition_master(master: Path, eligible_tmp: Path, excluded_tmp: Path) -> _
                 keep_writer.writerow(row)
                 counts["eligible_rows"] += 1
                 source_eligible.update(sources)
-        for handle in (keep, drop):
+        for handle in (keep, drop, labels_file):
             handle.flush()
             os.fsync(handle.fileno())
-    return _PartitionStats(counts, primary, all_reasons, source_eligible, source_excluded)
+    return _PartitionStats(counts, primary, all_reasons, source_eligible, source_excluded, review_labels)
 
 
 def _filter_metadata(run: Run, master: Path, master_hash: str,
-                     eligible: Path, excluded: Path, stats: _PartitionStats) -> dict[str, Any]:
+                     eligible: Path, excluded: Path, labels: Path,
+                     stats: _PartitionStats) -> dict[str, Any]:
     """Bind de gepubliceerde partitie aan bron, regels en gesloten aantallen."""
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "rule_version": RULE_VERSION,
         "rules": RULES,
         "patterns": PATTERN_METADATA,
+        "review_labels": REVIEW_LABELS,
+        "review_patterns": REVIEW_PATTERN_METADATA,
         "master_path": str(master.relative_to(run.path)),
         "master_sha256": master_hash,
         "eligible_path": str(eligible.relative_to(run.path)),
@@ -147,9 +180,13 @@ def _filter_metadata(run: Run, master: Path, master_hash: str,
         "excluded_path": str(excluded.relative_to(run.path)),
         "excluded_sha256": sha256(excluded),
         "excluded_bytes": excluded.stat().st_size,
+        "review_labels_path": str(labels.relative_to(run.path)),
+        "review_labels_sha256": sha256(labels),
+        "review_labels_bytes": labels.stat().st_size,
         "counts": dict(stats.counts),
         "primary_reason_counts": dict(stats.primary),
         "all_reason_counts": dict(stats.all_reasons),
+        "review_label_counts": dict(stats.review_labels),
         "eligible_source_relations": dict(stats.source_eligible),
         "excluded_source_relations": dict(stats.source_excluded),
         "count_closure": "CLOSED",
@@ -161,6 +198,7 @@ def validated_filter(run: Run, master_sha256: str) -> tuple[Path, str, Path, str
     """Fail-closed: alleen de actuele, byte- en regelgebonden filterset is KVK-input."""
     eligible, eligible_hash = _registered(run, "03", "pre_kvk_eligible")
     excluded, excluded_hash = _registered(run, "03", "pre_kvk_excluded")
+    labels, labels_hash = _registered(run, "03", "pre_kvk_review_labels")
     metadata_path, _ = _registered(run, "03", "pre_kvk_filter_metadata")
     try:
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -168,25 +206,34 @@ def validated_filter(run: Run, master_sha256: str) -> tuple[Path, str, Path, str
         raise HarvestError("pre-KVK-filtermetadata is ongeldig") from exc
     counts = metadata.get("counts")
     primary = metadata.get("primary_reason_counts")
+    review_counts = metadata.get("review_label_counts")
     master = run.latest_artifact("03", "pre_kvk_master")
-    if (not isinstance(counts, dict) or not isinstance(primary, dict)
+    if (not isinstance(counts, dict) or not isinstance(primary, dict) or not isinstance(review_counts, dict)
             or not {"master_rows", "eligible_rows", "excluded_rows"}.issubset(counts)
             or any(type(value) is not int or value < 0 for value in counts.values())
             or any(type(value) is not int or value < 0 for value in primary.values())
+            or any(type(value) is not int or value < 0 for value in review_counts.values())
             or counts["master_rows"] != counts["eligible_rows"] + counts["excluded_rows"]
-            or sum(primary.values()) != counts["excluded_rows"]):
+            or sum(primary.values()) != counts["excluded_rows"]
+            or sum(review_counts.values()) != counts.get("review_label_rows", 0)):
         raise HarvestError("pre-KVK-filter heeft geen gesloten aantallen")
-    if (master is None or metadata.get("rule_version") != RULE_VERSION
+    if (master is None or metadata.get("schema_version") != 2
+            or metadata.get("rule_version") != RULE_VERSION
             or metadata.get("rules") != RULES
             or metadata.get("patterns") != PATTERN_METADATA
+            or metadata.get("review_labels") != REVIEW_LABELS
+            or metadata.get("review_patterns") != REVIEW_PATTERN_METADATA
             or metadata.get("master_sha256") != master_sha256
             or metadata.get("master_path") != str(master.relative_to(run.path))
             or metadata.get("eligible_path") != str(eligible.relative_to(run.path))
             or metadata.get("excluded_path") != str(excluded.relative_to(run.path))
+            or metadata.get("review_labels_path") != str(labels.relative_to(run.path))
             or metadata.get("eligible_sha256") != eligible_hash
             or metadata.get("excluded_sha256") != excluded_hash
+            or metadata.get("review_labels_sha256") != labels_hash
             or metadata.get("eligible_bytes") != eligible.stat().st_size
             or metadata.get("excluded_bytes") != excluded.stat().st_size
+            or metadata.get("review_labels_bytes") != labels.stat().st_size
             or metadata.get("count_closure") != "CLOSED"):
         raise HarvestError("pre-KVK-filter is niet actueel of niet gesloten")
     return eligible, eligible_hash, excluded, excluded_hash, metadata_path
@@ -209,22 +256,26 @@ def build_pre_kvk_filter(run: Run) -> tuple[Path, Path, Path]:
             raise HarvestError("onvoldoende vrije ruimte voor pre-KVK-filter")
         eligible = run.artifact_path("03", "pre_kvk_eligible", "tsv")
         excluded = run.artifact_path("03", "pre_kvk_excluded", "tsv")
+        labels = run.artifact_path("03", "pre_kvk_review_labels", "tsv")
         metadata_path = run.artifact_path("03", "pre_kvk_filter_metadata", "json")
         eligible_tmp = eligible.with_name(f".{eligible.name}.tmp")
         excluded_tmp = excluded.with_name(f".{excluded.name}.tmp")
+        labels_tmp = labels.with_name(f".{labels.name}.tmp")
         try:
-            stats = _partition_master(master, eligible_tmp, excluded_tmp)
+            stats = _partition_master(master, eligible_tmp, excluded_tmp, labels_tmp)
             if stats.counts["master_rows"] != stats.counts["eligible_rows"] + stats.counts["excluded_rows"]:
                 raise HarvestError("pre-KVK-filter sluit niet op masterlijst")
             if validated_master(run) != (master, master_hash) or sha256(master) != master_hash:
                 raise HarvestError("pre-KVK-master veranderde tijdens filtering")
             os.replace(eligible_tmp, eligible)
             os.replace(excluded_tmp, excluded)
-            metadata = _filter_metadata(run, master, master_hash, eligible, excluded, stats)
+            os.replace(labels_tmp, labels)
+            metadata = _filter_metadata(run, master, master_hash, eligible, excluded, labels, stats)
             atomic_write(metadata_path, json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
             run.register_artifact_set([
                 (eligible, "03", "pre_kvk_eligible", "COMPLETE"),
                 (excluded, "03", "pre_kvk_excluded", "COMPLETE"),
+                (labels, "03", "pre_kvk_review_labels", "COMPLETE"),
                 (metadata_path, "03", "pre_kvk_filter_metadata", "COMPLETE"),
             ])
             run.record_config("pre_kvk_filter", {
@@ -235,3 +286,4 @@ def build_pre_kvk_filter(run: Run) -> tuple[Path, Path, Path]:
         finally:
             eligible_tmp.unlink(missing_ok=True)
             excluded_tmp.unlink(missing_ok=True)
+            labels_tmp.unlink(missing_ok=True)

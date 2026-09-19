@@ -7,7 +7,7 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-Versie 2.0.0 vereist uitsluitend Python 3.14.x. De ingetrokken v1.0.0-wheel
+De actuele publieke release en broncode zijn versie 3.0.0 en vereisen uitsluitend Python 3.14.x. De ingetrokken v1.0.0-wheel
 had een breder historisch compatibiliteitscontract.
 
 Nieuwe runs en bestanden vanaf 2.0.0 krijgen
@@ -15,36 +15,47 @@ een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
 Bestaande runmappen worden niet hernoemd; de historische 1.0.0-wheel had
 zijn oorspronkelijke naamformaat.
 
-De actuele voorbereidingsopdracht verwerkt IND, GLEIF, ANBI en DUO tot één
+De actuele voorbereidingsopdracht verwerkt IND, GLEIF, ANBI, DUO en TenderNed tot één
 volledige gededupliceerde master en een afzonderlijk gefilterde KVK-wachtrij
-met een herleidbare uitsluitingsledger; Wikidata valt buiten deze workflow. De
+met een herleidbare uitsluitingsledger; Wikidata valt buiten deze workflow. Bestaande vierbronnenruns blijven hervatbaar met hun oorspronkelijke scope. De
 publieke KVK-frontend-Web-API kan via een expliciete kleine batch of een
 hervatbare langlopende opdracht worden geraadpleegd. Die opdracht doet niets
 automatisch bij installatie of starten. Een gesloten kandidatenlijst is nog
 geen bewijs voor 10.000 actieve, geverifieerde bedrijven.
 
-Versie 2.0.0 bevat `run e2e` voor een
+Versie 3.0.0 behoudt `run e2e` voor een
 expliciete verwerking van downloads tot geaudite eindlijst. Met
 `--limit-kvk-check 50` wordt vóór de eerste KVK-aanroep een vaste cohort
 gebonden: ook na hervatten maximaal 50 KVK-kandidaten en maximaal 50
-eindrecords. Deze proeflevering is PARTIAL ten opzichte van de volledige
-bronlijst. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
+eindrecords. Als er kandidaten buiten de gekozen cohort overblijven, is de
+proeflevering `PARTIAL` ten opzichte van de volledige bronlijst. Een tweede
+exportlimiet bestaat niet: alle actieve bedrijven uit
+de gekozen KVK-cohort worden geleverd. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
+De outputset bevat daarnaast `companies_delivery_light.xlsx`: zakelijke
+KVK-zoekvelden plus als bronvelden gemarkeerde website en sector, zonder de
+technische JSON-kolommen van de volledige auditexport.
+Zie [alle eindbestanden en hun veldherkomst](docs/functional/output-files.md).
 
 De 2.0.0-CLI toont bij ieder commando gekleurde,
 recordvrije voortgang op stderr; de bestaande stdout-uitvoer blijft geschikt
 voor scripts. Zie [consolevoortgang](docs/functional/console-logging.md).
 
-## Snel starten
+## Vanuit een broncheckout ontwikkelen
+
+Gebruik voor installatie van de publieke wheel zonder checkout de
+[E2E-handleiding](docs/functional/e2e-command.md). Het volgende voorbeeld
+is alleen voor lokale ontwikkeling vanuit deze repository:
 
 ```bash
 python3.14 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
-export COMPANY_HARVEST_DATA_DIR="$PWD"
+export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
 .venv/bin/company-harvest doctor
 RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
 ```
 
-Zie de [geïntegreerde 2.0.0-gebruikshandleiding](docs/functional/e2e-command.md),
+Zie de [geïntegreerde gebruikshandleiding](docs/functional/e2e-command.md),
+[het outputbestandcontract](docs/functional/output-files.md),
 [de gearchiveerde 1.0.0-snelstart](docs/functional/snelstart-v1.0.0.md),
 [de uitgebreide gebruikershandleiding](docs/functional/user-guide.md),
 [technische documentatie](docs/README.md) en
@@ -52,11 +63,12 @@ Zie de [geïntegreerde 2.0.0-gebruikshandleiding](docs/functional/e2e-command.md
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-De [publieke release v2.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v2.0.0)
-bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v2.0.0/company_harvest-2.0.0-py3-none-any.whl),
-checksums en het [publicatiebewijs](docs/releases/20260919-v2.0.0-evidence.md).
-Zie de [releasenotities voor 2.0.0](docs/releases/v2.0.0.md) voor de actuele
-compatibiliteit en grenzen. Alle oudere GitHub Releases en tags onder 2.0,
+De [publieke release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0)
+bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
+en checksums.
+Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de actuele
+compatibiliteit en grenzen. Versie 2.0.0 blijft beschikbaar als vorige release;
+alle oudere GitHub Releases en tags onder 2.0,
 waaronder `v1.0.0`, zijn verwijderd. De [historische releasenotities](docs/releases/v1.0.0.md)
 en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md) blijven
 alleen als archief; de daarin genoemde 1.0.0-downloadlinks werken niet meer.

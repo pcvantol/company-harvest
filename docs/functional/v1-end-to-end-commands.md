@@ -2,7 +2,9 @@
 
 > Archief, niet meer uitvoerbaar vanaf een schone pc: de v1.0.0-release,
 > assets en tag zijn verwijderd. Het downloadcommando in de tabel werkt niet
-> meer. Gebruik de [actuele v2.0.0-E2E-handleiding](e2e-command.md).
+> meer. De [E2E-handleiding voor release 3.0.0](e2e-command.md)
+> beschrijft de nieuwe lichte export en een beschikbare wheel. De oudere
+> 2.0.0-wheel heeft die functie niet.
 
 Historisch voorbeeld voor macOS/zsh met de destijds publieke wheel. De tabel
 beschrijft de oude volgorde, maar is door het ingetrokken downloadbestand niet

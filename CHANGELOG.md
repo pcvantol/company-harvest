@@ -2,6 +2,73 @@
 
 ## Unreleased
 
+Geen wijzigingen sinds 3.0.0.
+
+## 3.0.0 - 2026-09-19
+
+- v3.0.0-distributie kwalificeert de vijfbronnenketen en lichte export voor
+  een nieuwe wheel. De assetscan faalt gesloten bij archiefleden boven 5 MiB;
+  lokale test en macOS-/Windows-CI blijven verplichte publicatiepoorten
+  (CH-2026-09-19-037).
+
+- Documentatie voor de 3.0.0-release samengebracht:
+  actuele macOS-/PowerShell-E2E-instructies, een canoniek zevenbestands-
+  outputcontract, veldherkomst van de lichte Excel, schema-1-compatibiliteit,
+  veilige foutpaden en expliciet onderscheid met de oude 2.0.0-wheel.
+  Historische releasebewijzen blijven historisch (CH-2026-09-19-036).
+
+- De 3.0.0-code levert afzonderlijk
+  `companies_delivery_light.csv`/`.xlsx`: zakelijke velden uit de publieke
+  KVK-zoekhit plus herkenbare bronwebsite/-sector, zonder ruwe JSON of
+  technische metadata. Exacte kandidaat-ID/nummerjoin en schema-2-manifest
+  met zeven hashgebonden bestanden zijn auditbaar; oude vijfbestandssets
+  blijven leesbaar. Onbekende KVK-responsvelden stoppen veilig; samengevoegde
+  bronrijen leveren de eerste beschikbare website/sector. Offline E2E en
+  regressietests
+  (CH-2026-09-19-035, ADR-017).
+
+- Voor nieuwe runs is `HOLDING_OR_MANAGEMENT` een auditbaar reviewlabel in
+  een hashgebonden TSV, geen automatische pre-KVK-uitsluiting meer. Alle
+  KVK-checks vragen uitsluitend een geldige directe bron-KVK-hint op en
+  vergelijken het teruggegeven nummer exact, ook bij afwijkende naam. Zonder
+  hint wordt geen naamverzoek verstuurd: de oude R8-no-hint-pilot werkt daarom
+  voortaan offline-only. De publieke providers weigeren naamquery's aan de
+  transportgrens. Tegenspraak tussen status-/rechtsvormvarianten van hetzelfde
+  nummer wordt niet als match geaccepteerd. Offline tests PASS; live
+  nummerzoeking en nieuwe volledige run nog niet getest (CH-2026-09-19-034,
+  ADR-016). Geen bestaande release gewijzigd.
+
+- Hervatgedrag van `run e2e --run-dir` expliciet gedocumenteerd en offline
+  getoetst na een onderbreking tijdens de KVK-check: intacte bron- en
+  pre-KVK-artefacten worden hergebruikt, eerdere of onzekere KVK-verzoeken
+  worden niet dubbel verstuurd en de partiële export blijft auditbaar.
+  Geen runtimewijziging binnen die afzonderlijke uitvoering
+  (CH-2026-09-19-033).
+
+- Broncode 3.0.0: `run e2e --export-limit` en `export --limit` verwijderd.
+  Alle actieve, geverifieerde bedrijven uit de gekozen KVK-scope worden
+  geleverd; de schema-1-reserve blijft leeg. Oudere runs met een mogelijk
+  bindende exportlimiet worden niet stil gemigreerd. De publieke CLI-wijziging
+  is incompatibel, daarom MAJOR-versie
+  (CH-2026-09-19-032, ADR-015).
+
+- TenderNed toegevoegd als vijfde bron voor nieuwe volledige
+  voorbereidings- en E2E-runs. Historische XLSX en meest recente JSON worden
+  zonder jaaroverlap gecombineerd; alleen Nederlandse gegunde leveranciers
+  worden kandidaat. Ruwe nummers blijven KVK-bronhints. Lokale evidence,
+  rejected-/reviewledger, hashbinding, downloadgrenzen en offline CI-E2E zijn
+  toegevoegd. Bestaande vierbronnenruns blijven hervatbaar
+  (CH-2026-09-19-031, ADR-014).
+
+- TenderNed-bron verder gekwalificeerd zonder tool- of releasewijziging:
+  de officiële XLSX-leeswijzer bevestigt `ON kvknummer` als KVK-bronveld
+  en koppelt het aan JSON `awards/suppliers/id`. In 2021–2026 Q1/Q2 zijn
+  11.147 unieke achtcijferige nummers bij Nederlandse gegunde ondernemingen
+  gemeten, waarvan 9.380 niet als directe nummerhint in de huidige master
+  staan. GO voor een afzonderlijk begrensd lokaal adapterontwerp, met
+  JSON/XLSX-reconciliatie destijds als resterende poort; inmiddels uitgevoerd
+  (CH-2026-09-19-030, ADR-014).
+
 - Distributiebeheer zonder code- of pakketversiewijziging: op expliciet
   eigenaarsverzoek zijn alle tags en GitHub Releases onder 2.0 verwijderd.
   Concreet is `v1.0.0` met vijf publieke assets en lokale/remote tag

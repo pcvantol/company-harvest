@@ -11,6 +11,7 @@ from company_harvest.pre_kvk_filter import (
     RULE_VERSION,
     _partition_master,
     _reasons,
+    _review_labels,
     build_pre_kvk_filter,
     validated_filter,
 )
@@ -25,10 +26,6 @@ def _row(name: str, sources: list[str] | None = None, hint: str = "12345678",
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("Acme Holding B.V.", "HOLDING_OR_MANAGEMENT"),
-    ("Acme Beheermaatschappij B.V.", "HOLDING_OR_MANAGEMENT"),
-    ("Acme Beheersmaatschappij B.V.", "HOLDING_OR_MANAGEMENT"),
-    ("Acme Beheer B.V.", "HOLDING_OR_MANAGEMENT"),
     ("Stichting Acme", "FOUNDATION_OR_ASSOCIATION"),
     ("Acme Vereniging", "FOUNDATION_OR_ASSOCIATION"),
     ("Acme Buurtvereniging", "FOUNDATION_OR_ASSOCIATION"),
@@ -52,6 +49,13 @@ def _row(name: str, sources: list[str] | None = None, hint: str = "12345678",
 def test_named_exclusions(name: str, reason: str) -> None:
     reasons, sources = _reasons(_row(name))
     assert reason in reasons and sources == ["ind_arbeid"]
+
+
+@pytest.mark.parametrize("name", ["Acme Holding B.V.", "Acme Beheermaatschappij B.V.",
+                                     "Acme Beheersmaatschappij B.V.", "Acme Beheer B.V."])
+def test_holding_names_are_review_labels_not_exclusions(name: str) -> None:
+    assert _reasons(_row(name))[0] == []
+    assert _review_labels(_row(name)) == ["HOLDING_OR_MANAGEMENT"]
 
 
 def test_source_and_missing_hint_rules_and_false_positive_boundaries() -> None:
@@ -85,7 +89,8 @@ def test_partition_keeps_near_names_with_different_kvk_hints(tmp_path) -> None:
     master = tmp_path / "master.tsv"
     records = []
     for candidate_id, name, hint in (("one", "Aero B.V.", "12345678"),
-                                     ("two", "Aero BV", "23456789")):
+                                     ("two", "Aero BV", "23456789"),
+                                     ("three", "Aero Holding B.V.", "34567890")):
         record = dict.fromkeys(MASTER_HEADERS, "")
         record.update(candidate_id=candidate_id, original_name=name,
                       normalized_name=normalize_name(name), source_kvk_hint=hint,
@@ -94,12 +99,15 @@ def test_partition_keeps_near_names_with_different_kvk_hints(tmp_path) -> None:
         records.append(record)
     write_tsv(master, MASTER_HEADERS, records)
     eligible, excluded = tmp_path / "eligible.tsv", tmp_path / "excluded.tsv"
+    labels = tmp_path / "labels.tsv"
 
-    stats = _partition_master(master, eligible, excluded)
+    stats = _partition_master(master, eligible, excluded, labels)
 
-    assert [row["original_name"] for row in read_tsv(eligible)] == ["Aero B.V.", "Aero BV"]
+    assert [row["original_name"] for row in read_tsv(eligible)] == ["Aero B.V.", "Aero BV", "Aero Holding B.V."]
     assert read_tsv(excluded) == []
-    assert stats.counts == {"master_rows": 2, "eligible_rows": 2}
+    assert stats.counts == {"master_rows": 3, "eligible_rows": 3, "review_label_rows": 1}
+    assert read_tsv(labels) == [{"candidate_id": "three", "original_name": "Aero Holding B.V.",
+                                 "source_kvk_hint": "34567890", "review_label": "HOLDING_OR_MANAGEMENT"}]
 
 
 def test_filter_vertical_slice_retains_master_and_exclusion_ledger(run: Run) -> None:
@@ -123,6 +131,8 @@ def test_filter_vertical_slice_retains_master_and_exclusion_ledger(run: Run) -> 
     assert metadata["master_sha256"] == original_hash
     assert metadata["eligible_sha256"] == sha256(eligible)
     assert metadata["excluded_sha256"] == sha256(excluded)
+    labels = run.latest_artifact("03", "pre_kvk_review_labels")
+    assert labels is not None and metadata["review_labels_sha256"] == sha256(labels)
     assert build_pre_kvk_filter(run) == (eligible, excluded, metadata_path)
     assert validated_filter(run, original_hash)[:4] == (eligible, sha256(eligible), excluded, sha256(excluded))
 
@@ -165,3 +175,14 @@ def test_filter_rejects_registered_but_different_pattern(run: Run) -> None:
     run.register_artifact(changed, "03", "pre_kvk_filter_metadata")
     with pytest.raises(HarvestError, match="niet actueel"):
         resolve_pre_kvk(run, 1)
+
+
+def test_filter_rejects_tampered_review_labels(run: Run) -> None:
+    _full_sources(run)
+    _master, digest = build_pre_kvk_list(run)
+    build_pre_kvk_filter(run)
+    labels = run.latest_artifact("03", "pre_kvk_review_labels")
+    assert labels is not None
+    labels.write_text(labels.read_text() + "tampered\n")
+    with pytest.raises(HarvestError, match="COMPLETE-registratie"):
+        validated_filter(run, digest)

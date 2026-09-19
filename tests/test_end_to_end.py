@@ -25,7 +25,7 @@ from company_harvest.kvk_scope import bind_kvk_scope, scope_details
 from company_harvest.pre_kvk import build_pre_kvk_list
 from company_harvest.pre_kvk_filter import build_pre_kvk_filter
 from company_harvest.sources import RAW_HEADERS
-from company_harvest.workflow import export, outcome_metrics, report
+from company_harvest.workflow import export, outcome_metrics, report, write_xlsx
 
 
 def _prepare(run: Run) -> tuple[Path, Path, Path, Path, Path]:
@@ -39,10 +39,53 @@ def _prepare(run: Run) -> tuple[Path, Path, Path, Path, Path]:
 def _response(run: Run, query: str, number: str, sequence: int) -> ProviderResult:
     evidence = run.path / "evidence" / f"synthetic-e2e-{sequence}.json"
     evidence.write_text("{}", encoding="utf-8")
+    assert query == number and query.isdecimal() and len(query) == 8
+    name = {"34567890": "Delta B.V.", "23456789": "Gamma B.V."}.get(query, f"Synthetic {int(query) - 40000000:03d} B.V.")
     return ProviderResult(query, [{
-        "naam": query, "kvkNummer": number, "plaats": "Utrecht", "land": "Nederland",
+        "naam": name, "kvkNummer": number, "plaats": "Utrecht", "land": "Nederland",
         "rechtsvorm": "Besloten vennootschap", "status": "Actief",
     }], True, "public-http", str(evidence.relative_to(run.path)))
+
+
+def test_holding_label_survives_number_only_e2e_with_renamed_kvk_result(
+    run: Run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _full_sources(run)
+    original = run.latest_artifact("02", "source_ind_arbeid")
+    assert original is not None
+    rows = read_tsv(original)
+    next(row for row in rows if row["source_kvk_hint"] == "34567890")["original_name"] = "Delta Holding B.V."
+    updated = run.artifact_path("02", "source_ind_holding", "csv")
+    write_tsv(updated, RAW_HEADERS, rows)
+    run.register_artifact(updated, "02", "source_ind_arbeid")
+    observations = run.metadata()["runtime_config"]["source_observations"]
+    observations["ind_arbeid"]["source_artifact"] = {
+        "path": str(updated.relative_to(run.path)), "sha256": sha256(updated), "size": updated.stat().st_size,
+    }
+    run.record_config("source_observations", observations)
+    monkeypatch.setattr(end_to_end, "prepare_pre_kvk", _prepare)
+    calls: list[str] = []
+
+    def search(provider: object, query: str) -> ProviderResult:
+        calls.append(query)
+        assert query == "34567890"
+        evidence = provider.run.path / "evidence" / "holding-number-response.json"  # type: ignore[attr-defined]
+        evidence.write_text("{}")
+        return ProviderResult(query, [{"naam": "Delta Operations B.V.", "kvkNummer": query,
+                                       "plaats": "Utrecht", "land": "Nederland",
+                                       "rechtsvorm": "Besloten vennootschap", "status": "Actief"}],
+                              True, "public-http", str(evidence.relative_to(run.path)))
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
+    result = end_to_end.run_end_to_end(run, 1)
+    assert calls == ["34567890"] and result["audit_valid"] and result["delivery_rows"] == 1
+    labels = run.latest_artifact("03", "pre_kvk_review_labels")
+    assert labels is not None
+    label_rows = read_tsv(labels)
+    assert len(label_rows) == 1 and label_rows[0]["review_label"] == "HOLDING_OR_MANAGEMENT"
+    delivered = read_tsv(Path(result["outputset_manifest"]).parent / "companies_delivery_full.csv")
+    assert delivered[0]["candidate_id"] == label_rows[0]["candidate_id"]
+    assert delivered[0]["Bedrijfsnaam"] == "Delta Operations B.V."
 
 
 def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
@@ -58,11 +101,12 @@ def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
     monkeypatch.setattr(prepare, "collect", collect_sources)
     monkeypatch.setattr(prepare, "collect_gleif", lambda _run, **_kw: source_calls.append("gleif"))
     monkeypatch.setattr(prepare, "collect_public_register", lambda _run, source, **_kw: source_calls.append(source))
+    monkeypatch.setattr(prepare, "collect_tenderned", lambda _run, **_kw: source_calls.append("tenderned_awards"))
     calls: list[str] = []
 
     def search(provider: object, query: str) -> ProviderResult:
         calls.append(query)
-        number = "34567890" if query == "Delta B.V." else "23456789"
+        number = query
         return _response(provider.run, query, number, len(calls))  # type: ignore[attr-defined]
 
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
@@ -72,7 +116,8 @@ def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
     output = captured.out
     progress_log = captured.err
     for phase in ("Broncatalogus controleren", "IND-bron verzamelen", "GLEIF-bron verzamelen",
-                  "ANBI-bron verzamelen", "DUO-bron verzamelen", "Pre-KVK-filter toepassen",
+                  "ANBI-bron verzamelen", "DUO-bron verzamelen", "TenderNed-bron verzamelen",
+                  "Pre-KVK-filter toepassen",
                   "KVK-cohort binden", "KVK-kandidaten controleren", "Eenmanszaken uitsluiten",
                   "Definitieve eindlijst exporteren", "Rapport en eindaudit afronden"):
         assert phase in progress_log
@@ -84,7 +129,7 @@ def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
     assert scope is not None
     assert scope["limit_kvk_check"] == 1 and scope["selected_rows"] == 1
     assert scope["full_eligible_rows"] == 2 and scope["not_checked_rows"] == 1
-    assert source_calls == ["discover", "ind", "gleif", "anbi_register", "duo_education_organisations"]
+    assert source_calls == ["discover", "ind", "gleif", "anbi_register", "duo_education_organisations", "tenderned_awards"]
     assert len(calls) == 1
     assert run.metadata()["status"] == "PARTIAL_EXPORTED"
     assert verify(run)["valid"]
@@ -93,10 +138,15 @@ def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
     with run.connect() as connection:
         assert connection.execute("SELECT COUNT(*) FROM kvk_requests").fetchone()[0] == 1
     assert len(read_tsv(run_path / "pre_kvk_kvk_matches.tsv")) == 1
+    legacy_config = dict(run.metadata()["runtime_config"]["end_to_end"])
+    run.record_config("end_to_end", {**legacy_config, "export_limit": 1})
     assert cli.main(args[:-2] + ["--run-dir", str(run_path), "--limit-kvk-check", "1"]) == 0
     capsys.readouterr()
     assert len(calls) == 1
     assert cli.main(["run", "e2e", "--run-dir", str(run_path), "--limit-kvk-check", "2"]) == 3
+    assert "niet wijzigen" in capsys.readouterr().err
+    assert cli.main(["run", "e2e", "--run-dir", str(run_path),
+                     "--limit-kvk-check", "1", "--interval", "3"]) == 3
     assert "niet wijzigen" in capsys.readouterr().err
     pre_kvk_kvk.run_pre_kvk(run, max_requests=100)
     assert len(calls) == 1
@@ -112,7 +162,7 @@ def test_e2e_unresolved_requires_explicit_partial_and_does_not_invent_match(
         nonlocal calls
         calls += 1
         if calls == 1:
-            number = "34567890" if query == "Delta B.V." else "23456789"
+            number = query
             return _response(provider.run, query, number, calls)  # type: ignore[attr-defined]
         evidence = run.path / "evidence" / "synthetic-empty.json"
         evidence.write_text("{}")
@@ -130,7 +180,7 @@ def test_e2e_unresolved_requires_explicit_partial_and_does_not_invent_match(
 
 @pytest.mark.parametrize(
     "tamper",
-    ["missing_manifest_status", "changed_file", "wrong_file_status", "run_not_exported"],
+    ["missing_manifest_status", "missing_selection_policy", "changed_file", "changed_light_file", "wrong_file_status", "run_not_exported"],
 )
 def test_audit_checks_newest_partial_manifest_and_its_registered_files(
     run: Run, monkeypatch: pytest.MonkeyPatch, tamper: str
@@ -140,7 +190,7 @@ def test_audit_checks_newest_partial_manifest_and_its_registered_files(
         pre_kvk_kvk.PublicHttpProvider,
         "search",
         lambda provider, query: _response(
-            provider.run, query, "34567890" if query == "Delta B.V." else "23456789", 1
+            provider.run, query, query, 1
         ),
     )
     result = end_to_end.run_end_to_end(run, 1)
@@ -148,7 +198,7 @@ def test_audit_checks_newest_partial_manifest_and_its_registered_files(
     assert result["status"] == "PARTIAL_EXPORTED" and result["audit_valid"]
     assert run.latest_artifact("08", "outputset_manifest") is None
 
-    newest_manifest = export(run, 1, allow_partial=True)[-1]
+    newest_manifest = export(run, allow_partial=True)[-1]
     assert newest_manifest != first_manifest
     report(run)
     assert verify(run)["valid"]
@@ -166,10 +216,20 @@ def test_audit_checks_newest_partial_manifest_and_its_registered_files(
         newest_manifest.write_text(json.dumps(payload), encoding="utf-8")
         changed = newest_manifest
         expected = "OUTPUTSET:status_mismatch"
+    elif tamper == "missing_selection_policy":
+        payload = json.loads(newest_manifest.read_text(encoding="utf-8"))
+        del payload["selection_policy"]
+        newest_manifest.write_text(json.dumps(payload), encoding="utf-8")
+        changed = newest_manifest
+        expected = "OUTPUTSET:selection_policy_missing"
     elif tamper == "changed_file":
         changed = newest_manifest.parent / "companies_delivery.csv"
         changed.write_text("Bedrijfsnaam\tKVK-nummer\nAnders\t23456789\n", encoding="utf-8")
         expected = "OUTPUTSET:companies_delivery.csv"
+    elif tamper == "changed_light_file":
+        changed = newest_manifest.parent / "companies_delivery_light.csv"
+        changed.write_text("Bedrijfsnaam\tKVK-nummer\nAnders\t23456789\n", encoding="utf-8")
+        expected = "OUTPUTSET:companies_delivery_light.csv"
     elif tamper == "wrong_file_status":
         changed = None
         expected = "OUTPUTSET:companies_delivery.csv"
@@ -237,19 +297,101 @@ def test_scope_rejects_changes_and_existing_journal(run: Run) -> None:
 
 
 def test_e2e_rejects_invalid_scope_and_nonharvest(run: Run) -> None:
-    for limit, interval, output_limit in ((0, 2.0, 10), (1, 1.9, 10), (1, 2.0, 0)):
+    for limit, interval in ((0, 2.0), (1, 1.9)):
         with pytest.raises(HarvestError, match="positieve"):
-            end_to_end.run_end_to_end(run, limit, interval, output_limit)
+            end_to_end.run_end_to_end(run, limit, interval)
     other = initialize_run(run.path.parent, 1, "MERGE_LISTS")
     with pytest.raises(HarvestError, match="preflight"):
         end_to_end.run_end_to_end(other, 1)
+
+
+def test_old_export_cap_only_migrates_when_it_could_not_bind(
+    run: Run, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy = {
+        "limit_kvk_check": 2, "interval": 2.0,
+        "export_limit": 1, "provider": "public-http",
+    }
+    run.record_config("end_to_end", legacy)
+    with pytest.raises(HarvestError, match="oude E2E-run.*exportlimiet"):
+        end_to_end.run_end_to_end(run, 2)
+    assert run.metadata()["runtime_config"]["end_to_end"] == legacy
+
+    run.record_config("end_to_end", {**legacy, "export_limit": 2})
+    monkeypatch.setattr(
+        end_to_end, "prepare_pre_kvk",
+        lambda _run: (_ for _ in ()).throw(HarvestError("prepare reached")),
+    )
+    with pytest.raises(HarvestError, match="prepare reached"):
+        end_to_end.run_end_to_end(run, 2)
+    assert run.metadata()["runtime_config"]["end_to_end"] == {
+        "limit_kvk_check": 2, "interval": 2.0, "provider": "public-http",
+    }
+
+
+def test_all_kvk_exports_all_and_legacy_nonempty_reserve_remains_auditable(
+    run: Run, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(end_to_end, "prepare_pre_kvk", _prepare)
+    monkeypatch.setattr(pre_kvk_kvk, "_pace_request", lambda _run, _interval: None)
+    calls = 0
+
+    def search(provider: object, query: str) -> ProviderResult:
+        nonlocal calls
+        calls += 1
+        number = query
+        return _response(provider.run, query, number, calls)  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
+    result = end_to_end.run_end_to_end(run, None)
+    assert calls == 2 and result["delivery_rows"] == 2 and result["audit_valid"]
+    manifest = Path(result["outputset_manifest"])
+    payload = json.loads(manifest.read_text())
+    assert payload["selection_policy"] == "ALL_ACTIVE"
+    assert read_tsv(manifest.parent / "companies_reserve.csv") == []
+
+    # Simuleer een intacte oude v2-outputset: 1 levering, 1 reserve, geen policy.
+    full = read_tsv(manifest.parent / "companies_delivery_full.csv")
+    assert len(full) == 2
+    minimal = ["Bedrijfsnaam", "KVK-nummer"]
+    full_headers = list(full[0])
+    write_tsv(manifest.parent / "companies_delivery.csv", minimal, full[:1])
+    write_xlsx(manifest.parent / "companies_delivery.xlsx", minimal, full[:1])
+    write_tsv(manifest.parent / "companies_delivery_full.csv", full_headers, full[:1])
+    write_xlsx(manifest.parent / "companies_delivery_full.xlsx", full_headers, full[:1])
+    write_tsv(manifest.parent / "companies_reserve.csv", full_headers, full[1:])
+    del payload["selection_policy"]
+    del payload["active_rows"]
+    payload["schema"] = 1
+    payload["files"] = [entry for entry in payload["files"] if entry["kind"] not in {"delivery_light_csv", "delivery_light_xlsx"}]
+    payload.pop("light_source", None)
+    with run.connect() as connection:
+        for entry in payload["files"]:
+            path = manifest.parent / entry["path"]
+            entry["sha256"] = sha256(path)
+            entry["size"] = path.stat().st_size
+            connection.execute(
+                "UPDATE artifacts SET sha256=?,size=? WHERE path=?",
+                (entry["sha256"], entry["size"], str(path.relative_to(run.path))),
+            )
+        manifest.write_text(json.dumps(payload), encoding="utf-8")
+        connection.execute(
+            "UPDATE artifacts SET sha256=?,size=? WHERE path=?",
+            (sha256(manifest), manifest.stat().st_size, str(manifest.relative_to(run.path))),
+        )
+    run.record_config("export", {"limit": 1, "allow_partial": False})
+    old_e2e_config = dict(run.metadata()["runtime_config"]["end_to_end"])
+    run.record_config("end_to_end", {**old_e2e_config, "export_limit": 1})
+    assert verify(run)["valid"]
+    resumed = end_to_end.run_end_to_end(run, None)
+    assert resumed["delivery_rows"] == 1 and resumed["audit_valid"] and calls == 2
 
 
 def test_bounded_progress_records_only_selected_count(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
     _prepare(run)
     bind_kvk_scope(run, 1)
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", lambda provider, query: _response(
-        provider.run, query, "34567890" if query == "Delta B.V." else "23456789", 1))
+        provider.run, query, query, 1))
     _, _, progress = pre_kvk_kvk.run_pre_kvk(run, max_requests=100)
     state = json.loads(progress.read_text(encoding="utf-8"))
     assert state["status"] == "COMPLETE" and state["eligible_rows"] == 1
@@ -286,10 +428,7 @@ def test_limit_50_is_total_run_cap_and_output_cap(
     def search(provider: object, query: str) -> ProviderResult:
         nonlocal calls
         calls += 1
-        if query.startswith("Synthetic "):
-            number = f"{40000000 + int(query.split()[1]):08d}"
-        else:
-            number = "34567890" if query == "Delta B.V." else "23456789"
+        number = query
         return _response(provider.run, query, number, calls)  # type: ignore[attr-defined]
 
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
@@ -304,6 +443,8 @@ def test_limit_50_is_total_run_cap_and_output_cap(
     assert scope["full_eligible_rows"] == 62 and scope["not_checked_rows"] == 12
     manifest = json.loads(Path(result["outputset_manifest"]).read_text(encoding="utf-8"))
     assert manifest["status"] == "PARTIAL"
+    assert manifest["selection_policy"] == "ALL_ACTIVE" and manifest["active_rows"] == 50
+    assert read_tsv(Path(result["outputset_manifest"]).parent / "companies_reserve.csv") == []
     assert manifest["kvk_scope"]["limit_kvk_check"] == 50
     assert verify(run)["valid"]
     with run.connect() as connection:
@@ -361,7 +502,7 @@ def test_report_crash_after_export_is_repaired_on_resume(
     def search(provider: object, query: str) -> ProviderResult:
         nonlocal calls
         calls += 1
-        return _response(provider.run, query, "34567890" if query == "Delta B.V." else "23456789", calls)  # type: ignore[attr-defined]
+        return _response(provider.run, query, query, calls)  # type: ignore[attr-defined]
 
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
     original_report = end_to_end.report

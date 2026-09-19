@@ -30,6 +30,7 @@ SOURCE_IDS = (
     "anbi_register",
     "duo_education_organisations",
 )
+CURRENT_SOURCE_IDS = (*SOURCE_IDS, "tenderned_awards")
 MASTER_HEADERS = [
     "candidate_id", "original_name", "normalized_name", "source_kvk_hint",
     "country", "city", "website", "sector", "source_relations",
@@ -95,6 +96,32 @@ def _validate_scope(run: Run, source_id: str, path: Path, digest: str) -> dict[s
     if report.get("candidate_artifact") != {"path": str(path.relative_to(run.path)),
                                            "sha256": digest, "size": path.stat().st_size}:
         raise HarvestError(f"{source_id} heeft geen actuele full-archive-bronbinding")
+    if source_id == "tenderned_awards":
+        evidence_entries = report.get("evidence_artifacts")
+        if not isinstance(evidence_entries, list) or len(evidence_entries) < 2:
+            raise HarvestError("TenderNed mist gebonden XLSX/JSON-evidence")
+        observed_kinds: set[str] = set()
+        for item in evidence_entries:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                raise HarvestError("TenderNed-evidencebinding is ongeldig")
+            relative = item["path"]
+            with run.connect() as connection:
+                entry = connection.execute(
+                    "SELECT sha256,size,status,kind FROM artifacts WHERE path=? AND step='02' "
+                    "AND kind LIKE 'evidence_tenderned_awards_%' ORDER BY id DESC LIMIT 1",
+                    (relative,),
+                ).fetchone()
+            evidence = run.path / relative
+            if (not entry or entry["status"] != "COMPLETE" or not evidence.is_file()
+                    or item.get("sha256") != entry["sha256"] or item.get("size") != entry["size"]
+                    or sha256(evidence) != entry["sha256"]):
+                raise HarvestError("TenderNed heeft afwijkende evidence")
+            observed_kinds.add(entry["kind"])
+        if not {"evidence_tenderned_awards_xlsx", "evidence_tenderned_awards_json"}.issubset(observed_kinds):
+            raise HarvestError("TenderNed mist XLSX/JSON-evidence")
+        return {"scope": "FULL_ARCHIVE", "report_sha256": report_hash,
+                "evidence_sha256": [item["sha256"] for item in evidence_entries],
+                "candidate_records": report.get("counts", {}).get("candidate_records")}
     evidence_path, evidence_hash = _registered(run, "02", f"evidence_{source_id}")
     if evidence_path.name != report.get("evidence_file") or evidence_hash != report.get("evidence_sha256"):
         raise HarvestError(f"{source_id} heeft afwijkende archivevidence")
@@ -103,7 +130,24 @@ def _validate_scope(run: Run, source_id: str, path: Path, digest: str) -> dict[s
             "candidate_records": report.get("counts", {}).get("candidate_records")}
 
 
-def _source_inputs(run: Run, source_ids: tuple[str, ...] = SOURCE_IDS) -> list[tuple[str, Path, str, dict[str, Any]]]:
+def source_scope(run: Run) -> tuple[str, ...]:
+    """Bevries bestaande vierbronnenruns; nieuwe runs krijgen vijf bronnen."""
+    metadata = run.metadata()
+    configured = metadata.get("runtime_config", {}).get("pre_kvk_sources")
+    if configured is not None:
+        if configured not in (list(SOURCE_IDS), list(CURRENT_SOURCE_IDS)):
+            raise HarvestError("onbekende pre-KVK-bronscope")
+        return tuple(configured)
+    prior = run.latest_artifact("03", "pre_kvk_report")
+    if prior is not None:
+        report = json.loads(prior.read_text(encoding="utf-8"))
+        if report.get("scope") in (list(SOURCE_IDS), list(CURRENT_SOURCE_IDS)):
+            return tuple(report["scope"])
+        raise HarvestError("bestaande pre-KVK-bronscope is ongeldig")
+    return CURRENT_SOURCE_IDS if metadata.get("source_portfolio_version") == 2 else SOURCE_IDS
+
+
+def _source_inputs(run: Run, source_ids: tuple[str, ...]) -> list[tuple[str, Path, str, dict[str, Any]]]:
     inputs = []
     for source_id in source_ids:
         path, digest = _registered(run, "02", f"source_{source_id}")
@@ -150,8 +194,10 @@ def _write_group(
             "source_kvk_hint": hint,
             "country": chosen.get("country", ""),
             "city": city,
-            "website": chosen.get("website", ""),
-            "sector": chosen.get("sector", ""),
+            "website": next((str(item["website"]).strip() for item in payloads
+                             if str(item.get("website", "")).strip()), ""),
+            "sector": next((str(item["sector"]).strip() for item in payloads
+                            if str(item.get("sector", "")).strip()), ""),
             "source_relations": json.dumps(relations, ensure_ascii=False, separators=(",", ":")),
             "source_payloads_json": json.dumps(payloads, ensure_ascii=False, separators=(",", ":")),
             "source_count": len(group),
@@ -168,9 +214,11 @@ def _write_group(
         stats["merged_source_rows"] += len(group) - 1
 
 
-def _build_pre_kvk_list_unlocked(run: Run, preview: bool = False) -> tuple[Path, Path]:
-    """Fail-closed op vier volledige bronnen; geen netwerk en geen KVK-aanroep."""
-    source_ids = SOURCE_IDS
+def _build_pre_kvk_list_unlocked(
+    run: Run, preview: bool = False, source_ids: tuple[str, ...] | None = None,
+) -> tuple[Path, Path]:
+    """Fail-closed op de aan de run gebonden bronnen; geen KVK-aanroep."""
+    source_ids = source_ids or source_scope(run)
     inputs = _source_inputs(run, source_ids)
     required_space = max(512 * 1024 * 1024, 6 * sum(path.stat().st_size for _, path, _, _ in inputs))
     if shutil.disk_usage(run.path).free < required_space:
@@ -283,36 +331,38 @@ def _build_pre_kvk_list_unlocked(run: Run, preview: bool = False) -> tuple[Path,
 def build_pre_kvk_list(run: Run) -> tuple[Path, Path]:
     """Bouw offline onder run-lock; gewijzigde inputs stoppen publicatie."""
     with run.lock():
+        source_ids = source_scope(run)
         prior_master = run.latest_artifact("03", "pre_kvk_master")
         prior_report = run.latest_artifact("03", "pre_kvk_report")
         if prior_master and prior_report:
             master, digest = _registered(run, "03", "pre_kvk_master")
             report_path, _ = _registered(run, "03", "pre_kvk_report")
             report = json.loads(report_path.read_text(encoding="utf-8"))
-            inputs = _source_inputs(run)
-            if (report.get("scope") == list(SOURCE_IDS) and report.get("closure") == "CLOSED"
+            inputs = _source_inputs(run, source_ids)
+            if (report.get("scope") == list(source_ids) and report.get("closure") == "CLOSED"
                     and report.get("master_sha256") == digest
                     and report.get("master_bytes") == master.stat().st_size
                     and {sid: data.get("artifact_sha256") for sid, data in report.get("sources", {}).items()}
                     == {sid: source_hash for sid, _path, source_hash, _scope in inputs}):
                 return master, report_path
-        return _build_pre_kvk_list_unlocked(run)
+        return _build_pre_kvk_list_unlocked(run, source_ids=source_ids)
 
 
 def validated_master(run: Run) -> tuple[Path, str]:
-    """Controleer master, rapport en de actuele vier volledige bronartefacten."""
+    """Controleer master, rapport en de gebonden volledige bronartefacten."""
+    source_ids = source_scope(run)
     path, digest = _registered(run, "03", "pre_kvk_master")
     report_path, _ = _registered(run, "03", "pre_kvk_report")
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    if (report.get("scope") != list(SOURCE_IDS) or report.get("closure") != "CLOSED"
+    if (report.get("scope") != list(source_ids) or report.get("closure") != "CLOSED"
             or report.get("master_sha256") != digest
             or report.get("master_bytes") != path.stat().st_size):
-        raise HarvestError("pre-KVK-master mist een complete vierbronnenbinding")
-    inputs = _source_inputs(run)
+        raise HarvestError("pre-KVK-master mist een complete bronbinding")
+    inputs = _source_inputs(run, source_ids)
     if {sid: data.get("artifact_sha256") for sid, data in report.get("sources", {}).items()} != {
         sid: source_hash for sid, _source_path, source_hash, _scope in inputs
     }:
-        raise HarvestError("pre-KVK-master hoort niet bij de actuele vier bronartefacten")
+        raise HarvestError("pre-KVK-master hoort niet bij de actuele bronartefacten")
     return path, digest
 
 
@@ -323,4 +373,4 @@ def build_blocked_pre_kvk_preview(run: Run) -> tuple[Path, Path]:
             raise HarvestError("voorlopige vierbronnenlijst vereist een geblokkeerde run")
         if run.latest_artifact("02", "source_wikidata_nl_companies") is not None:
             raise HarvestError("Wikidata heeft al een bronartefact; bouw de vijfbronnenlijst")
-        return _build_pre_kvk_list_unlocked(run, preview=True)
+        return _build_pre_kvk_list_unlocked(run, preview=True, source_ids=SOURCE_IDS)

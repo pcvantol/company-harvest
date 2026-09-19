@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from collections import Counter
@@ -144,6 +145,20 @@ def verify(run: Run) -> dict[str, Any]:
                         or manifest_row["status"] != expected_status
                         or payload.get("status") != manifest_row["status"]):
                     errors.append("OUTPUTSET:status_mismatch")
+                selection_policy = payload.get("selection_policy")
+                export_config = metadata.get("runtime_config", {}).get("export")
+                if (isinstance(export_config, dict)
+                        and export_config.get("selection_policy") == "ALL_ACTIVE"
+                        and selection_policy != "ALL_ACTIVE"):
+                    errors.append("OUTPUTSET:selection_policy_missing")
+                if selection_policy == "ALL_ACTIVE":
+                    if (active is None or delivery is None or reserve is None
+                            or payload.get("active_rows") != len(read_tsv(active))
+                            or len(read_tsv(delivery)) != len(read_tsv(active))
+                            or read_tsv(reserve)):
+                        errors.append("OUTPUTSET:all_active_selection_mismatch")
+                elif selection_policy is not None:
+                    errors.append("OUTPUTSET:unknown_selection_policy")
                 if scope is not None:
                     expected_scope = {key: scope[key] for key in (
                         "limit_kvk_check", "full_eligible_rows", "selected_rows",
@@ -154,9 +169,15 @@ def verify(run: Run) -> dict[str, Any]:
                 entries = payload.get("files", [])
                 if not isinstance(entries, list):
                     entries = []
+                schema = payload.get("schema")
                 expected_kinds = {"delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve"}
+                if schema == 2:
+                    expected_kinds |= {"delivery_light_csv", "delivery_light_xlsx"}
+                elif schema != 1:
+                    errors.append("OUTPUTSET:unknown_schema")
                 entry_kinds = [entry.get("kind") for entry in entries if isinstance(entry, dict)]
-                if len(entries) != 5 or len(set(entry_kinds)) != 5 or set(entry_kinds) != expected_kinds:
+                if (len(entries) != len(expected_kinds) or len(set(entry_kinds)) != len(expected_kinds)
+                        or set(entry_kinds) != expected_kinds):
                     errors.append("OUTPUTSET:manifest_not_closed")
                 for entry in entries:
                     if not isinstance(entry, dict):
@@ -175,6 +196,22 @@ def verify(run: Run) -> dict[str, Any]:
                             or not output.is_file() or output.stat().st_size != entry.get("size")
                             or sha256(output) != entry.get("sha256")):
                         errors.append(f"OUTPUTSET:{name}")
+                if schema == 2:
+                    light = current_output("delivery_light_csv")
+                    if light and delivery and light.is_file() and delivery.is_file():
+                        from company_harvest.workflow import _light_rows
+
+                        try:
+                            expected_headers, expected_rows, expected_source = _light_rows(run, read_tsv(delivery))
+                        except HarvestError:
+                            errors.append("RELATION:light_delivery_mismatch")
+                        else:
+                            with light.open("r", encoding="utf-8", newline="") as handle:
+                                actual_headers = csv.DictReader(handle, delimiter="\t").fieldnames
+                            if actual_headers != expected_headers or read_tsv(light) != expected_rows:
+                                errors.append("RELATION:light_delivery_mismatch")
+                            if payload.get("light_source") != expected_source:
+                                errors.append("OUTPUTSET:light_source_mismatch")
             except (OSError, ValueError, TypeError, json.JSONDecodeError):
                 errors.append("OUTPUTSET:manifest_invalid")
     result = {"run": run.path.name, "checked_artifacts": checked, "errors": errors, "valid": not errors}

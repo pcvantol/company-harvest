@@ -55,15 +55,15 @@ def _register_sources(run) -> None:
 
 def test_r6_sample_is_stratified_deterministic_and_closed(run, tmp_path: Path) -> None:
     _register_sources(run)
-    paths = build_sample(run, size=20, review_size=10, pilot_size=5)
+    paths = build_sample(run, size=24, review_size=12, pilot_size=6)
     sample = read_tsv(paths[0])
     candidates = read_tsv(paths[1])
     review = read_tsv(paths[4])
     pilot = read_tsv(paths[5])
     report = json.loads(paths[6].read_text(encoding="utf-8"))
 
-    assert len(sample) == 20
-    assert len({row["sample_family"] for row in sample}) == 5
+    assert len(sample) == 24
+    assert len({row["sample_family"] for row in sample}) == 6
     assert {
         (row["sample_family"], row["identifier_stratum"]) for row in sample
     } == {
@@ -75,20 +75,20 @@ def test_r6_sample_is_stratified_deterministic_and_closed(run, tmp_path: Path) -
         sum(row["sample_family"] == source.source_family for row in sample) == 4
         for source in CATALOG
     )
-    assert report["counts"]["sample_records"] == 20
-    assert report["counts"]["valid_direct_registration_numbers"] == 10
-    assert report["counts"]["without_direct_registration_number"] == 10
+    assert report["counts"]["sample_records"] == 24
+    assert report["counts"]["valid_direct_registration_numbers"] == 12
+    assert report["counts"]["without_direct_registration_number"] == 12
     assert report["count_closure"] == {
         "status": "CLOSED",
-        "input": 20,
-        "decision_inputs": 20,
+        "input": 24,
+        "decision_inputs": 24,
         "conflict_inputs": 0,
-        "output": 20,
+        "output": 24,
         "delta": 0,
     }
     assert report["review"]["status"] == "PENDING"
-    assert len(review) == 10 and len(pilot) == 5
-    assert len({row["source_families"] for row in review}) == 5
+    assert len(review) == 12 and len(pilot) == 6
+    assert len({row["source_families"] for row in review}) == 6
     assert {row["identifier_stratum"] for row in review} == {
         "VALID_DIRECT",
         "WITHOUT_DIRECT",
@@ -97,7 +97,7 @@ def test_r6_sample_is_stratified_deterministic_and_closed(run, tmp_path: Path) -
     assert report["resources"]["evidence_growth_bytes"] == 0
     assert report["r8_metrics_contract"]["threshold_policy"].startswith("set only")
 
-    repeated = build_sample(run, size=20, review_size=10, pilot_size=5)
+    repeated = build_sample(run, size=24, review_size=12, pilot_size=6)
     assert read_tsv(repeated[0]) == sample
     assert read_tsv(repeated[1]) == candidates
     assert read_tsv(repeated[4]) == review
@@ -122,7 +122,7 @@ def test_r6_sample_is_stratified_deterministic_and_closed(run, tmp_path: Path) -
     review_report = json.loads(assessment_paths[1].read_text(encoding="utf-8"))
     assert review_report["status"] == "PASS"
     assert review_report["closure"] == "CLOSED"
-    assert review_report["reviewed_records"] == 10
+    assert review_report["reviewed_records"] == 12
 
     build_sample(run, size=20, review_size=10, pilot_size=5)
     assert run.latest_artifact("03", "r6_review_report") is None
@@ -184,7 +184,7 @@ def test_r6_validation_and_cli(run, tmp_path: Path, capsys) -> None:
     with pytest.raises(HarvestError, match="positief"):
         build_sample(run, 0)
     with pytest.raises(HarvestError, match="slechts"):
-        build_sample(run, 21)
+        build_sample(run, 25)
     with pytest.raises(HarvestError, match="R8-pilot"):
         build_sample(run, 20, review_size=5, pilot_size=11)
 

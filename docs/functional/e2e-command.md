@@ -1,31 +1,94 @@
-# Eén commando van bronnen tot eindlijst (versie 2.0.0)
+# Eén commando van bronnen tot eindlijst (release 3.0.0)
 
 `run e2e` verbindt de bestaande stappen 1–8: hostcheck, volledige downloads
-van IND/GLEIF/ANBI/DUO, samenvoegen/dedupliceren, pre-KVK-filter, publieke
+van IND/GLEIF/ANBI/DUO/TenderNed, samenvoegen/dedupliceren, pre-KVK-filter, publieke
 KVK-frontendcheck, canonisering, eenmanszaak-/statusfilters, export, rapport en
 audit. Er wordt geen Wikidata gelezen en geen officiële API-key gebruikt.
-Installeer de **2.0.0-wheel** in een venv op Python 3.14.x; andere
-Python-minorversies worden geweigerd. De oudere v1.0.0-wheel bevat dit
-commando niet. Een checkout,
-GitHub-login of Codex is tijdens gebruik niet nodig.
+De **publieke 3.0.0-wheel** bevat dit proces en werkt zonder broncheckout,
+GitHub-login of Codex. De oudere 2.0.0-wheel verwerkt nog vier bronnen en
+maakt geen `companies_delivery_light.xlsx`. Alleen Python 3.14.x wordt
+ondersteund. Controleer vóór installatie de wheelhash tegen de
+`SHA256SUMS.txt` van [release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0).
+
+Installeer de gedownloade wheel in een nieuwe virtuele omgeving:
+
+```bash
+# macOS
+python3.14 -m venv .venv
+.venv/bin/python -m pip install ./company_harvest-3.0.0-py3-none-any.whl
+.venv/bin/company-harvest --version
+source .venv/bin/activate
+```
+
+```powershell
+# Windows PowerShell
+py -3.14 -m venv .venv
+& .\.venv\Scripts\python.exe -m pip install .\company_harvest-3.0.0-py3-none-any.whl
+& .\.venv\Scripts\company-harvest.exe --version
+```
+
+Beide versiecontroles moeten `3.0.0` melden. Op macOS is de venv hierboven
+geactiveerd; gebruik hieronder dat `company-harvest`-commando. Op Windows
+blijft het volledige venv-pad staan. Afhankelijkheden worden bij installatie
+online opgehaald; er is geen lokale broncheckout nodig.
 
 Voor een bewust begrensde proef op een nieuwe datamap:
 
 ```bash
 export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
-company-harvest run e2e --limit-kvk-check 50 --interval 2 --export-limit 50
+company-harvest run e2e --limit-kvk-check 50 --interval 2
+```
+
+In Windows PowerShell is de overeenkomstige expliciete start bijvoorbeeld:
+
+```powershell
+$env:COMPANY_HARVEST_DATA_DIR = "$HOME\Documents\company-lookup-data"
+& .\.venv\Scripts\company-harvest.exe run e2e --limit-kvk-check 10 --interval 2
 ```
 
 De tool drukt de absolute `run_dir` meteen vóór de lange broninname af.
 Bewaar die map. Bij onderbreking of een herstelbare bronfout: herhaal met
-**dezelfde** map en dezelfde KVK-/exportlimiet en interval:
+**dezelfde** map en dezelfde KVK-limiet en interval:
 
 ```bash
 company-harvest run e2e --run-dir "/absoluut/pad/naar/de/run" \
-  --limit-kvk-check 50 --interval 2 --export-limit 50
+  --limit-kvk-check 50 --interval 2
 ```
 
-De 2.0.0-CLI toont daarnaast op stderr per fase een
+Windows PowerShell (als de eerste start limiet 10 gebruikte):
+
+```powershell
+& .\.venv\Scripts\company-harvest.exe run e2e --run-dir 'C:\pad\naar\de\run' --limit-kvk-check 10 --interval 2
+```
+
+`--run-dir` moet de **exacte runmap** zijn die de eerste start op stdout
+afdrukte, niet alleen de bovenliggende datamap. Zonder deze optie begint een
+nieuwe run. Hervatten vereist dezelfde `--limit-kvk-check 50` (of dezelfde
+keuze `--all-kvk`) en dezelfde `--interval 2`; de gekozen KVK-cohort kan in
+dezelfde run niet worden vergroot. Een afgeronde proef van 50 wordt dus niet
+door herhaling de volgende batch van 50. Voor een groter bereik is een
+afzonderlijk, bewust runbesluit nodig; gebruik een nieuwe run nooit als
+uitweg voor een toegangs- of rateblokkade.
+
+Bij hervatten **doorloopt de tool de fasen als controles**. Voltooide,
+geregistreerde bronbestanden met passende instellingen en intact bewijs
+worden hergebruikt, zonder tweede download. Dezelfde pre-KVK-master en
+filteruitvoer worden eveneens hergebruikt zolang hun bronbindingen kloppen.
+Een bronstap die vóór voltooiing is afgebroken heeft geen gegarandeerde
+byte-voor-byte-downloadhervatting en kan opnieuw moeten downloaden. Als
+een eerder bewijsbestand of instelling afwijkt, kan de collector opnieuw
+downloaden of de integriteitsgate de run stoppen; dit is geen stil hergebruik.
+
+De KVK-fase leest het duurzame SQLite-journal (`state.sqlite3`) en bevraagt
+reeds geregistreerde kandidaten niet opnieuw. Een op het moment van een
+crash lopend verzoek wordt als `SENT_OUTCOME_UNKNOWN` vastgelegd, niet
+automatisch opnieuw verstuurd. Het blijft in de unresolved-lijst; voor een
+export met zulke uitkomsten is bij de hervatte opdracht expliciet
+`--allow-partial` nodig. Controleer de voortgang in
+`pre_kvk_kvk_progress.json`. Een al geëxporteerde run controleert alleen
+rapport en audit en start geen bron- of KVK-verzoeken meer.
+
+De CLI toont daarnaast op stderr per fase een
 gekleurde, recordvrije voortgangsregel en tijdens de KVK-check alleen
 checkpointaantallen. stdout blijft de bestaande machineleesbare uitvoer;
 zie [consolevoortgang](console-logging.md).
@@ -43,14 +106,43 @@ gepresenteerd, ook als alle 50 gekozen kandidaten slagen. Is de volledige
 lijst hoogstens 50 en is iedere match gesloten, dan kan de export wel compleet
 zijn.
 
+Er bestaat geen afzonderlijke `--export-limit` meer: na de KVK-check komen
+**alle** actieve, geverifieerde bedrijven uit de gekozen cohort in de
+eindlijst, alfabetisch gepresenteerd. Er wordt geen willekeurige hashselectie
+of tweede afkap toegepast. Het verplichte `companies_reserve.csv` uit het
+bestaande outputsetschema blijft leeg voor compatibiliteit en audit.
+
 Na succes staan de bestanden in
 `$RUN_DIR/artifacts/*_08_delivery_outputset/`: `companies_delivery.csv`/`.xlsx`
-(naam en KVK), `companies_delivery_full.csv`/`.xlsx` (extra velden),
-`companies_reserve.csv` en `outputset_manifest.json`. Het manifest bevat
+(naam en KVK), `companies_delivery_light.csv`/`.xlsx` (zakelijke KVK-velden,
+plus duidelijk gemarkeerde website en sector uit de bron),
+`companies_delivery_full.csv`/`.xlsx` (inclusief technisch bewijs),
+`companies_reserve.csv` en `outputset_manifest.json`. De lichte export heeft
+geen `response_json`, `source_relations`, kandidaat-ID, provider of tijdstempel.
+Naast naam, nummer, rechtsvorm, status, plaats en land bevat hij aanwezige
+zakelijke velden uit de publieke KVK-zoekhit, zoals inschrijfdatum,
+handelsnamen, activiteit, vestiging en adres. Meerdere publieke waarden in
+één veld staan als leesbare tekst gescheiden door `; `; ontbrekende velden
+blijven leeg. Website en sector zijn **brondata, niet door KVK bevestigd**.
+Nieuwe, nog niet beoordeelde responsvelden met inhoud blokkeren de lichte export in
+plaats van mogelijk technische metadata te publiceren.
+Bij geregistreerde broncontext gebruikt de join uitsluitend kandidaat-ID
+plus hetzelfde achtcijferige KVK-nummer; zonder broncontext blijven de
+bronkolommen leeg. Er wordt geen naamkoppeling gebruikt. Het manifest bevat
 bestandschecksums, `status` en de KVK-cohortaantallen. `audit verify` is
-onderdeel van het commando en controleert ook PARTIAL-manifests met alle vijf
-bijbehorende bestanden. `pre_kvk_kvk_progress.json` en het SQLite-journal
+onderdeel van het commando en controleert ook PARTIAL-manifests met alle zeven
+bijbehorende bestanden; historische schema-1-outputsets met vijf bestanden
+blijven auditbaar. `pre_kvk_kvk_progress.json` en het SQLite-journal
 tonen onderweg verzoeken, matches en resterende **cohort**kandidaten.
+De volledige uitvoerlijst bevat `candidate_id`. Via die sleutel kan het
+reviewlabel uit de lokale `artifacts/*_03_pre_kvk_review_labels.tsv` worden
+teruggevonden; holdings worden op naam alleen niet vooraf uitgesloten.
+De KVK-check verstuurt alleen het achtcijferige bron-KVK-nummer, nooit een
+bedrijfsnaam als zoekterm. Bedrijven zonder geldige bronhint blijven wel in de
+master, maar gaan niet naar deze KVK-check.
+
+Zie [eindbestanden en veldherkomst](output-files.md) voor de exacte rollen
+van de drie Excel-varianten, de veldherkomst en de betekenis van lege cellen.
 
 De automatische CI-proef gebruikt hetzelfde `run e2e`-commando vanaf een lege
 run met synthetische brondata en gemockte KVK-zoekresultaten. Zij controleert

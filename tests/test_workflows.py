@@ -1,10 +1,11 @@
+import json
 from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
 
 from company_harvest.audit import _overlap, trace, verify
-from company_harvest.core import HarvestError, initialize_run, read_tsv, write_tsv
+from company_harvest.core import HarvestError, initialize_run, read_tsv, sha256, write_tsv
 from company_harvest.workflow import (
     _peak_memory,
     active_only,
@@ -27,7 +28,7 @@ def _register(run, step, kind, headers, rows):
 
 def test_harvest_offline_pipeline(run) -> None:
     headers = ["original_name", "country", "nl_evidence", "employees_raw", "employees_date", "employees_scope", "website", "sector", "source_kvk_hint", "source_id", "source_url", "fetched_at", "source_row", "evidence_reference"]
-    base = {"country": "Nederland", "nl_evidence": "register", "employees_raw": "", "employees_date": "", "employees_scope": "", "website": "", "sector": "", "source_url": "https://example.invalid", "fetched_at": "now", "evidence_reference": "local"}
+    base = {"country": "Nederland", "nl_evidence": "register", "employees_raw": "", "employees_date": "", "employees_scope": "", "website": "https://alpha.example", "sector": "Bouw", "source_url": "https://example.invalid", "fetched_at": "now", "evidence_reference": "local"}
     rows = [{**base, "original_name": "Alpha B.V.", "source_kvk_hint": "01234567", "source_id": "a", "source_row": "1"}, {**base, "original_name": " Alpha   B.V. ", "source_kvk_hint": "01234567", "source_id": "a", "source_row": "2"}]
     _register(run, "02", "source_a", headers, rows)
     candidates, decisions, conflicts = merge_candidates(run)
@@ -35,20 +36,60 @@ def test_harvest_offline_pipeline(run) -> None:
     assert read_tsv(conflicts) == []
     candidate_id = read_tsv(candidates)[0]["candidate_id"]
     match_headers = ["candidate_id", "Bedrijfsnaam", "KVK-nummer", "raw_legal_form", "raw_status", "city", "country", "match_method", "provider", "checked_at", "response_json", "source_relations"]
-    _register(run, "04", "kvk_matches", match_headers, [{"candidate_id": candidate_id, "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567", "raw_legal_form": "Besloten vennootschap", "raw_status": "Actief", "city": "Utrecht", "country": "Nederland", "match_method": "SOURCE_KVK_CONFIRMED", "provider": "mock", "checked_at": "now", "response_json": "{}", "source_relations": "[]"}])
+    public_hit = {"naam": "Alpha B.V.", "kvkNummer": "01234567", "rechtsvormCode": "BV",
+                  "actief": True, "inschrijvingsdatum": "20200101", "activiteitomschrijving": "Bouwen",
+                  "bezoeklocatie": {"straat": "Dorpsstraat", "huisnummer": 1, "postcode": "1234AB", "plaats": "Utrecht"},
+                  "huidigeHandelsNamen": ["Alpha", "Alpha Bouw"], "id": "technical", "bron": "technical", "set": "technical"}
+    _register(run, "04", "kvk_matches", match_headers, [{"candidate_id": candidate_id, "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567", "raw_legal_form": "Besloten vennootschap", "raw_status": "Actief", "city": "Utrecht", "country": "Nederland", "match_method": "SOURCE_KVK_CONFIRMED", "provider": "mock", "checked_at": "now", "response_json": json.dumps([public_hit]), "source_relations": "[]"}])
     _register(run, "05", "kvk_unresolved", ["candidate_id", "reason"], [])
     canonical = consolidate(run)
     assert read_tsv(canonical)[0]["KVK-nummer"] == "01234567"
     assert len(read_tsv(exclude_sole_proprietorships(run)[0])) == 1
     assert len(read_tsv(active_only(run)[0])) == 1
-    outputs = export(run, 100)
+    outputs = export(run)
     assert load_workbook(outputs[1])["Bedrijven"]["B2"].value == "01234567"
+    light = read_tsv(outputs[2])
+    assert len(light) == 1
+    assert {key: light[0][key] for key in (
+        "Bedrijfsnaam", "KVK-nummer", "Rechtsvorm (KVK)", "Status (KVK)",
+        "Plaats (KVK)", "Land (KVK)", "Website (bron)", "Sector (bron)",
+    )} == {
+        "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567",
+        "Rechtsvorm (KVK)": "Besloten vennootschap", "Status (KVK)": "Actief",
+        "Plaats (KVK)": "Utrecht", "Land (KVK)": "Nederland",
+        "Website (bron)": "https://alpha.example",
+        "Sector (bron)": "Bouw",
+    }
+    assert light[0]["Rechtsvormcode (KVK)"] == "BV"
+    assert light[0]["Actief-vlag (KVK)"] == "Ja"
+    assert light[0]["Inschrijfdatum (KVK)"] == "20200101"
+    assert light[0]["Activiteitomschrijving (KVK)"] == "Bouwen"
+    assert light[0]["Straat bezoekadres (KVK)"] == "Dorpsstraat"
+    assert light[0]["Handelsnamen (KVK)"] == "Alpha; Alpha Bouw"
+    assert not any(key in light[0] for key in ("response_json", "source_relations", "id", "bron", "set", "provider", "checked_at"))
+    light_sheet = load_workbook(outputs[3])["Bedrijven"]
+    assert light_sheet["B2"].value == "01234567"
+    assert "response_json" not in [cell.value for cell in light_sheet[1]]
+    assert "source_relations" not in [cell.value for cell in light_sheet[1]]
+    assert json.loads(outputs[-1].read_text())["schema"] == 2
     assert report(run).is_file()
     outcome = outcome_metrics(run)
     assert outcome["http_user_agent"] == "company-lookup/0.1"
     assert outcome["count_closure"]["status"] == "COMPLETE_CLOSED"
     assert run.latest_artifact("08", "outcome_report").is_file()
     assert verify(run)["valid"]
+    old_manifest = outputs[-1]
+    old_payload = json.loads(old_manifest.read_text())
+    del old_payload["selection_policy"]
+    del old_payload["active_rows"]
+    old_manifest.write_text(json.dumps(old_payload))
+    with run.connect() as connection:
+        connection.execute(
+            "UPDATE artifacts SET sha256=?,size=? WHERE path=?",
+            (sha256(old_manifest), old_manifest.stat().st_size, str(old_manifest.relative_to(run.path))),
+        )
+    run.record_config("export", {"limit": 100, "allow_partial": False})
+    assert verify(run)["valid"]  # oude v2-outputsets zonder selectiepolicy blijven auditbaar
     with run.connect() as connection:
         connection.execute(
             "INSERT INTO kvk_requests(candidate_id,query,state,attempt,request_fingerprint,provider) VALUES(?,?,'SUCCEEDED',1,?,?)",
@@ -72,8 +113,8 @@ def test_filters_partial_and_integrity(run) -> None:
     assert read_tsv(active) == [] and len(read_tsv(inactive)) == 1 and read_tsv(status_review) == []
     unresolved = _register(run, "05", "kvk_unresolved", ["candidate_id", "reason"], [{"candidate_id": "x", "reason": "NOT_FOUND"}])
     with pytest.raises(HarvestError):
-        export(run, 10)
-    assert export(run, 10, allow_partial=True)
+        export(run)
+    assert export(run, allow_partial=True)
     unresolved.write_text("changed")
     with pytest.raises(HarvestError) as error:
         verify(run)
@@ -89,6 +130,54 @@ def test_excel_safe_text(tmp_path: Path) -> None:
     assert sheet["A2"].value == "'=cmd" and sheet.freeze_panes == "A2"
 
 
+def test_export_delivers_every_active_company_without_ranking_or_cap(run) -> None:
+    _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer"], [
+        {"Bedrijfsnaam": "Zulu B.V.", "KVK-nummer": "33333333"},
+        {"Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "11111111"},
+        {"Bedrijfsnaam": "Midden B.V.", "KVK-nummer": "22222222"},
+    ])
+    paths = export(run)
+    assert [row["Bedrijfsnaam"] for row in read_tsv(paths[0])] == [
+        "Alpha B.V.", "Midden B.V.", "Zulu B.V.",
+    ]
+    assert read_tsv(paths[-2]) == []
+    manifest = json.loads(paths[-1].read_text())
+    assert manifest["selection_policy"] == "ALL_ACTIVE" and manifest["active_rows"] == 3
+
+
+def test_light_export_rejects_wrong_source_number(run) -> None:
+    _register(run, "03", "candidates", ["candidate_id", "source_kvk_hint", "website", "sector"], [
+        {"candidate_id": "one", "source_kvk_hint": "11111111", "website": "https://wrong.example", "sector": "Bouw"},
+    ])
+    _register(run, "07", "active", ["candidate_id", "Bedrijfsnaam", "KVK-nummer"], [
+        {"candidate_id": "one", "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "22222222"},
+    ])
+    with pytest.raises(HarvestError, match="broncontext wijkt af"):
+        export(run)
+
+
+def test_light_export_rejects_unreviewed_response_metadata(run) -> None:
+    _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer", "response_json"], [
+        {"Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567",
+         "response_json": json.dumps([{"naam": "Alpha B.V.", "metadata": {"internal": "secret"}}])},
+    ])
+    with pytest.raises(HarvestError, match="onbekend KVK-responsveld"):
+        export(run)
+
+
+def test_light_export_recovers_source_fields_from_merged_payloads(run) -> None:
+    _register(run, "03", "candidates", ["candidate_id", "source_kvk_hint", "website", "sector", "source_payloads_json"], [
+        {"candidate_id": "one", "source_kvk_hint": "01234567", "website": "", "sector": "",
+         "source_payloads_json": json.dumps([{}, {"website": "https://alpha.example", "sector": "Bouw"}])},
+    ])
+    _register(run, "07", "active", ["candidate_id", "Bedrijfsnaam", "KVK-nummer"], [
+        {"candidate_id": "one", "Bedrijfsnaam": "Alpha B.V.", "KVK-nummer": "01234567"},
+    ])
+    light = read_tsv(export(run)[2])[0]
+    assert light["Website (bron)"] == "https://alpha.example"
+    assert light["Sector (bron)"] == "Bouw"
+
+
 def test_peak_memory_has_explicit_windows_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("company_harvest.workflow.sys.platform", "win32")
     assert _peak_memory() == (None, "UNAVAILABLE_ON_PLATFORM")
@@ -99,7 +188,7 @@ def test_partition_overlap_and_atomic_export_failure(run, monkeypatch: pytest.Mo
     _register(run, "07", "active", ["Bedrijfsnaam", "KVK-nummer"], [{"Bedrijfsnaam": "Alpha", "KVK-nummer": "01234567"}])
     monkeypatch.setattr("company_harvest.workflow.write_xlsx", lambda *args: (_ for _ in ()).throw(OSError("fault")))
     with pytest.raises(OSError):
-        export(run, 1)
+        export(run)
     assert not list((run.path / "artifacts").glob("*_08_delivery_outputset"))
     assert not list((run.path / "artifacts").glob(".*_08_delivery_outputset.tmp"))
 

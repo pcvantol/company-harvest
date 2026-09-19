@@ -14,7 +14,10 @@ Broncatalogusschema 2 is het capabilitycontract voor iedere bron. Ruwe bronrecor
 
 `core.HTTP_USER_AGENT` is de enige runtimebron voor `company-lookup/0.1`. Nieuwe runs leggen deze waarde vast in `run.json`; bron- en KVK-clients en outcome-rapportage gebruiken dezelfde waarde.
 
-`pre_kvk` bouwt de volledige vierbronnenmaster. `pre_kvk_filter` maakt daaruit
+`pre_kvk` bouwt voor nieuwe runs de volledige vijfbronnenmaster; oude
+vierbronnenruns behouden hun gebonden scope. `tenderned` combineert historische
+XLSX-rijen met gunningsleveranciers uit de nieuwste JSON en publiceert
+hashgebonden lokale evidence. `pre_kvk_filter` maakt uit de master
 een byte- en regelversiegebonden KVK-toelatingslijst plus uitsluitingsledger;
 `pre_kvk_kvk` weigert iedere andere invoer vóór netwerkverkeer. Deze splitsing
 houdt brede brondekking gescheiden van een herzienbare, expliciete
@@ -28,7 +31,15 @@ uitgebreid met een fuzzy naamfilter.
 filterhash en een vaste prefixcohort. De KVK-journal en downstream-closure
 betreffen dan alleen die cohort; de niet-bevraagde rest blijft afzonderlijk
 zichtbaar en de outputstatus is PARTIAL. Audit controleert de cohortbinding,
-request-/eindlijstgrens en ook PARTIAL-outputsets. Een nieuwe E2E-run in
+request-/eindlijstgrens en ook PARTIAL-outputsets. Export levert alle actieve
+rijen uit de gekozen scope in een minimale, lichte zakelijke en volledige
+auditvariant. De lichte variant projecteert uitsluitend bekende zakelijke
+publieke KVK-velden en bronwebsite/-sector, met exacte kandidaat-ID/
+KVK-nummerjoin. Outputsetmanifest schema 2 bindt zeven bestanden; het
+reservebestand blijft leeg als compatibiliteitsartefact. Audit accepteert
+ook oudere schema-1-manifests met vijf bestanden. Zie
+[het outputcontract](../functional/output-files.md) en
+[ADR-017](../adr/017-light-business-export.md). Een nieuwe E2E-run in
 dezelfde datamap negeert een eerder gejournalde toegangsblokkade niet.
 
 `gleif` is de eerste bulkadapter op de brede-innamebasis. Zij levert hetzelfde `RAW_HEADERS`-

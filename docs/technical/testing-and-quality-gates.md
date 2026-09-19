@@ -21,9 +21,21 @@ IPC blijft mogelijk) en controleert de pre-KVK-
 cohort, het KVK-journal, de eenmanszaakfilter, eindlijst, manifest, audit en
 idempotent hervatten. De test wordt ook door de algemene pytest-/coveragegate
 uitgevoerd; de aparte stap maakt haar CI-uitkomst expliciet zichtbaar.
+Voor versie 3.0.0 toetst zij bovendien de afzonderlijke
+lichte CSV/XLSX, zakelijke KVK-waarden en afwezigheid van ruwe JSON/metadata.
+Gerichte exporttests bewaken de exacte bronnummerjoin, eerste niet-lege
+website/sector, schema-2-manifest, PARTIAL-audit en historische schema 1.
+Een tweede offline CLI-E2E-regressie onderbreekt na volledige bronvoorbereiding
+het tweede KVK-verzoek en hervat met exact dezelfde runmap. Zij controleert
+dat TenderNed geen tweede download doet, pre-KVK-bestanden behouden blijven,
+eerder afgeronde of onzekere KVK-verzoeken niet nogmaals worden verstuurd en
+de partiële eindlijst auditbaar is. De bronspecifieke tests toetsen daarnaast
+cachehergebruik en herinname bij gewijzigd bewijs. Dit blijft synthetisch
+bewijs; het bewijst geen live bron- of KVK-bereikbaarheid.
 Linux wordt niet door de doorlopende CI gevalideerd en is voor nieuwe
 wijzigingen daarom `NOT_TESTED`. Python 3.11–3.13 en 3.15+ zijn voor de
-actuele 2.0.0-broncode expliciet `UNSUPPORTED`, niet alleen ongetest. De
+actuele 3.0.0-wheel en de oudere 2.0.0-wheel expliciet
+`UNSUPPORTED`, niet alleen ongetest. De
 historische releasekwalificatie van `v0.1.0` bevat bewijs voor een bredere
 matrix; de destijds gepubliceerde, inmiddels ingetrokken v1.0.0-wheel is
 niet met terugwerkende kracht gewijzigd. De lokale Apple-Siliconcontrole

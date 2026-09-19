@@ -79,7 +79,7 @@ def test_command_family_routes_to_same_service_and_output_style(
      "resolve_pre_kvk", (7, 3.0)),
     (["kvk", "pre-kvk-run", "--max-requests", "6", "--interval", "3"],
      "run_pre_kvk", (3.0, 6)),
-    (["export", "--limit", "11", "--allow-partial"], "export", (11, True)),
+    (["export", "--allow-partial"], "export", (True,)),
     (["audit", "trace", "--kvk-number", "12345678"], "trace", ("12345678",)),
 ])
 def test_nontrivial_options_reach_services_unchanged(
@@ -97,6 +97,13 @@ def test_nontrivial_options_reach_services_unchanged(
     assert len(calls) == 1 and isinstance(calls[0][0], Run)
     assert calls[0][0].path == run.path
     assert calls[0][1:] == forwarded
+
+
+def test_export_caps_are_not_public_cli_options() -> None:
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["run", "e2e", "--limit-kvk-check", "10", "--export-limit", "5"])
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["export", "--run-dir", "/unused", "--limit", "5"])
 
 
 def test_execute_route_keeps_preparation_batch_and_provider_gate(

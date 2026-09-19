@@ -3,7 +3,7 @@
 | Veld | Betekenis |
 |---|---|
 | Bedrijfsnaam | Canonieke of expliciet gekozen weergavenaam; tekst. |
-| KVK-nummer | Exact acht ASCII-cijfers; tekst. Mag bewijsbaar worden gematcht/verrijkt en wordt pas na verificatie de definitieve ondernemingssleutel. |
+| KVK-nummer | Exact acht ASCII-cijfers; tekst. De actuele publieke KVK-check vereist een directe bronhint en accepteert alleen een exact gelijk teruggegeven nummer. Pas daarna is het de definitieve ondernemingssleutel. |
 | candidate_id | Stabiele hash van bronidentiteit voor requestjournalering. |
 | source_registration_raw | Ongewijzigde identifiertekst uit de bron, ook wanneer die ongeldig is. |
 | registration_validation_status | `VALID`, `MISSING` of `INVALID`; ontbrekend/ongeldig verwijdert de kandidaat niet. |
@@ -26,10 +26,23 @@
 | NO_DIRECT_KVK_HINT | Er is geen geldig direct KVK-nummer in de verzamelde brondata; dit bewijst niet dat de organisatie geen KVK-inschrijving heeft. |
 | response_json | Verliesvrije lokaal bewaarde relevante providerresponse. |
 | raw_legal_form/raw_status | Ongewijzigde publieke providerwaarden. |
+| Website (bron) / Sector (bron) | Bronwaarde voor dezelfde kandidaat-ID en hetzelfde KVK-nummer; in de geïntegreerde pre-KVK-route de eerste niet-lege waarde uit samengevoegde bronrijen. Niet door KVK bevestigd of geraden. |
+| Rechtsvorm (KVK) / Status (KVK) | Leesbare rechtsvorm/status uit de publieke KVK-hit; bij HTTP wordt status van `actief` afgeleid. Alleen bekende niet-eenmanszaakvormen en expliciet actieve statussen komen in de levering. |
+| Plaats (KVK) / Land (KVK) | Locatie uit of afgeleid van de publieke zoekhit; land kan als Nederland uit een Nederlandse bezoeklocatie zijn afgeleid. |
 | checked_at | Werkelijk verificatiemoment; cachegebruik verandert dit niet. |
 | verification_status | Bij merge altijd `UNCONFIRMED_IMPORTED`, tenzij bestaand bewijs apart herleidbaar is. |
 
-CSV-uitvoer is UTF-8, tabgescheiden en correct gequote. Leeg betekent onbekend. Logbestanden bevatten IDs, geen volledige responses. De minimale spreadsheet heeft exact de kolommen `Bedrijfsnaam`, `KVK-nummer`.
+CSV-uitvoer is UTF-8, tabgescheiden en correct gequote. Leeg betekent
+onbekend, niet een negatieve KVK-bevestiging. Logbestanden bevatten IDs,
+geen volledige responses. De minimale spreadsheet heeft exact de kolommen
+`Bedrijfsnaam`, `KVK-nummer`. De aparte lichte 3.0.0-spreadsheet heeft vaste
+KVK-naam/nummer/rechtsvorm/status/plaats/land- en bronwebsite/-sectorkolommen;
+aanwezige overige zakelijke publieke velden (o.a. inschrijving, activiteiten,
+handelsnamen en adres) verschijnen als platte tekstkolommen. `response_json`,
+`source_relations` en technische metadata staan daar niet in. Zie
+[eindbestanden en veldherkomst](output-files.md) voor de complete bestandsrollen
+en het variabele kolomcontract. De oudere 2.0.0-wheel heeft deze lichte
+spreadsheet niet; versie 3.0.0 wel.
 
 Broncatalogusschema 2 legt per bron onder meer registratie-ID-profiel, bronfamilie, toegangsvorm, voorwaarden, refreshinformatie, meetstatus, gemeten aantal, werkelijk gemeten overlap, inclusiereden, herkomstkwaliteit en kandidaatlaag vast. Ontbrekende optionele velden uit oudere catalogi worden expliciet als leeg/unknown genormaliseerd; bestaande waarden blijven behouden.
 

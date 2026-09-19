@@ -16,13 +16,16 @@ semantiek-, toegang-, licentie- of privacyvragen zijn opgelost.
 |---|---|---|---|---:|
 | ANBI Open Data | fiscale erkenningen | `GO_IMPLEMENTED` | nee | 54.922 kandidaten |
 | DUO Basisgegevens instellingen | onderwijs | `GO_IMPLEMENTED` | soms | 27.601 huidige kandidaten |
-| TenderNed H1 2026 | aanbestedingen | `GO_NEXT` | KVK-achtig veld; semantiek nog bevestigen | 8.373 leverancierregels |
+| TenderNed H1 2026 | aanbestedingen | `GO_NEXT` | ja, als bronhint; [vervolgkwalificatie](20260919-tenderned-qualification.md) | 8.373 leverancierregels in de toenmalige JSON-meting |
 | TED Search API | EU-aanbestedingen | `PARKED` | soms | 100 notices gesampled |
 | DNB Openbaar Register | financieel toezicht | `PARKED` | nog niet vastgesteld | bulkmeting terminaal `BLOCKED` (HTTP 403) |
 | AFM financieel dienstverleners | financieel toezicht | `PARKED` | nee in CSV | 17.698 regels |
 
 Dit is technische en datakwaliteitsfeasibility, geen juridisch advies. Ruwe snapshots en
 records staan uitsluitend in `.local/` en zijn niet gepubliceerd.
+De tabel geeft het oorspronkelijke R5-besluit weer. De latere implementatie
+van TenderNed als vijfde nieuwe-run-bron is CH-2026-09-19-031; een volledige
+live vijfbronnenrun is nog niet gemeten.
 
 ## Feasibilitykaart 1 — ANBI Open Data
 
@@ -59,15 +62,15 @@ ZIP 5.055.585 bytes; organisatie-CSV 49.810.704 bytes.
 ## Feasibilitykaart 3 — TenderNed
 
 - **Eigenaar en primaire URL:** TenderNed/RVO; [datasets aanbesteden](https://www.tenderned.nl/cms/nl/aanbesteden-in-cijfers/datasets-aanbestedingen).
-- **Toegang en actualiteit:** openbare JSON/XLSX-datasets, halfjaarlijks aangevuld. De actuele XML-API vereist credentials en nieuwe aanvragen staan volgens de bronpagina op een wachtlijst; de datasetroute niet.
-- **Voorwaarden/licentie/attributie:** aankondigingen en datasets zijn openbaar; de [gebruiksvoorwaarden](https://www.tenderned.nl/cms/nl/over-deze-site/gebruiksvoorwaarden) houden databank-/auteursrechten bij de Staat. Een specifieke datasetlicentie is niet aangetroffen, dus adaptergebruik blijft lokaal totdat hergebruik/attributie expliciet is vastgelegd. De datasetroute is niet door `robots.txt` geblokkeerd.
-- **Registratienummer:** `parties[].id` bevat bij leveranciers vaak exact acht cijfers. De voorwaarden melden KVK-gebruik, maar het gedownloade JSON-schema labelt dit veld niet expliciet als KVK; de adapter moet die semantiek eerst aantoonbaar bevestigen.
+- **Toegang en actualiteit:** openbare JSON/XLSX-datasets; vanaf 2026 noemt TenderNed kwartaalpublicatie, hoewel de datasetpagina nog halfjaarlijks zegt. De actuele XML-API vereist credentials en nieuwe aanvragen staan volgens de bronpagina op een wachtlijst; de datasetroute niet.
+- **Voorwaarden/licentie/attributie:** aankondigingen en datasets zijn openbaar; de [gebruiksvoorwaarden](https://www.tenderned.nl/cms/nl/over-deze-site/gebruiksvoorwaarden) plaatsen intellectuele-eigendomsrechten op onder meer databestanden bij de Staat. Een specifieke datasetlicentie is niet aangetroffen, dus adaptergebruik blijft lokaal totdat hergebruik/attributie expliciet is vastgelegd. De datasetroute is niet door `robots.txt` geblokkeerd.
+- **Registratienummer:** `parties[].id` bevat bij leveranciers vaak exact acht cijfers. De semantiek was in deze R5-meting nog niet bewezen; de [vervolgkwalificatie op 19 september](20260919-tenderned-qualification.md) bevestigde met de officiële XLSX-leeswijzer en OCDS-mapping `awards/suppliers/id` als KVK-bronhint, met land- en validatievoorbehoud.
 - **Bias:** alleen organisaties die als leverancier of aanbestedende dienst in aanbestedingen voorkomen; meerdere publicaties per partij.
 - **Gemeten opbrengst:** volledige H1-2026 JSON: 14.387 releases, 22.760 partijregels en 8.373 leverancierregels. Daarvan hadden 7.913 leverancierregels een exact achtcijferig ID, 4.262 uniek; 4.947 unieke genormaliseerde leveranciersnamen.
 - **Overlap:** op exact achtcijferig ID: 7 met IND, 5 met de GLEIF-sample, 30 met DUO en 0 met de Wikidata-sample. Exacte naamoverlap: 6/5/23/0 en 104 met ANBI.
 - **Parser/onderhoud:** Open Contracting-achtige geneste JSON; middelmatige complexiteit, met rolfiltering en expliciete veldsemantiek vereist.
 - **Persoons-/gebruiksrisico:** handelsnamen kunnen persoonsnamen bevatten; alleen organisatie-/leveranciersrollen opnemen en ruwe data lokaal houden.
-- **Besluit:** `GO_NEXT`, na expliciete veldsemantiek en hergebruiknotitie; geen onderdeel van automatische `sources collect`.
+- **Besluit:** `GO_NEXT` was het R5-besluit. Na [vervolgkwalificatie](20260919-tenderned-qualification.md) en JSON/XLSX-rijreconciliatie is de lokale adapter in CH-2026-09-19-031 gebouwd. Geen onderdeel van automatische `sources collect`; een expliciete nieuwe `prepare-pre-kvk`/`run e2e` gebruikt de vijfde bron.
 
 Snapshot SHA-256: `a48792f1e662e961dcf0afe2d06bcd1295045250517286fca51e04c13caa8827`.
 

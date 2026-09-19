@@ -1,7 +1,8 @@
 # Packaging en installatie
 
-De Hatchling-wheel bevat de `src`-package en console-entrypoint. Versie
-2.0.0 ondersteunt uitsluitend Python 3.14.x:
+De Hatchling-wheel bevat de `src`-package en console-entrypoint. De
+gepubliceerde 2.0.0- en 3.0.0-wheels ondersteunen
+uitsluitend Python 3.14.x:
 `Requires-Python: >=3.14,<3.15` blokkeert normale installatie met andere
 minorversies en een package-guard blokkeert ook geforceerde installaties bij
 het starten. De inmiddels ingetrokken v1.0.0-wheel had een breder
@@ -20,3 +21,9 @@ Geen script gebruikt sudo, globale pip, Git of GitHub-login.
 `run prepare-pre-kvk`, `kvk pre-kvk-batch` en `kvk pre-kvk-run` zijn consolecommando's van dezelfde
 wheel; zij verwijzen niet naar een repositorycheckout of een losse `.local`-
 runner. De datafolder blijft een externe, door de gebruiker gekozen locatie.
+
+Voor het nieuwe `companies_delivery_light.xlsx` en de vijfbronnen-E2E-keten
+is de publieke 3.0.0-wheel nodig; de oudere 2.0.0-wheel heeft die functies
+niet. De exacte macOS-/PowerShell-commando's staan in de
+[E2E-handleiding](../functional/e2e-command.md). De 3.0.0-wheel kan na
+download en hashcontrole zonder broncheckout worden geïnstalleerd.

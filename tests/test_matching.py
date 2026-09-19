@@ -264,13 +264,15 @@ def test_matching_pilot_resume_review_and_cli(run, capsys) -> None:
     assert len(results) == len(pilot) == 5
     assert report["metrics"]["terminal_outcome_closure"] is True
     assert report["metrics"]["terminal_counts"] == {
-        "AMBIGUOUS": 2,
-        "MATCHED": 2,
-        "NO_MATCH": 1,
+        "AMBIGUOUS": 0,
+        "MATCHED": 0,
+        "NO_MATCH": 0,
         "SOURCE_CONFLICT": 0,
-        "TECHNICAL_ERROR": 0,
+        "TECHNICAL_ERROR": 5,
     }
-    assert report["resources"]["evidence_bytes"] > 0
+    assert report["resources"]["evidence_bytes"] == 0
+    assert report["live_calls"] == 0 and provider.calls == []
+    assert {row["reason"] for row in results} == {"NO_DIRECT_KVK_HINT"}
     assert all(not row["provisional_kvk"] for row in results if row["terminal_outcome"] != "MATCHED")
 
     resumed = run_matching_pilot(
@@ -286,9 +288,9 @@ def test_matching_pilot_resume_review_and_cli(run, capsys) -> None:
 
     review_paths = record_matching_review(run, _r8_assessment(run))
     review_report = json.loads(review_paths[1].read_text(encoding="utf-8"))
-    assert review_report["status"] == "PASS"
-    assert review_report["pilot_decision"] == "GO_R9_METRICS"
-    assert review_report["r9_thresholds"]["false_match_count"] == 0
+    assert review_report["status"] == "CHANGES_REQUIRED"
+    assert review_report["pilot_decision"] != "GO_R9_METRICS"
+    assert review_report["r9_thresholds"]["status"] == "NOT_SET_UNSUCCESSFUL_PILOT"
     assert review_report["review_seconds_total"] == 7.5
     assert REVIEW_VERDICTS == {"CONFIRMED", "FALSE_MATCH", "UNCERTAIN"}
 
@@ -328,12 +330,9 @@ def test_matching_pilot_stops_after_block_and_rejects_bad_review(run, tmp_path: 
         provider_override=provider,
     )
     report = json.loads(paths[2].read_text(encoding="utf-8"))
-    assert len(provider.calls) == 1
+    assert len(provider.calls) == 0
     assert report["metrics"]["terminal_counts"]["TECHNICAL_ERROR"] == 5
-    assert {row["reason"] for row in read_tsv(paths[0])} == {
-        "PUBLIC_ACCESS_BLOCKED",
-        "NOT_PROCESSED_INTERRUPTED",
-    }
+    assert {row["reason"] for row in read_tsv(paths[0])} == {"NO_DIRECT_KVK_HINT"}
     review_report = json.loads(record_matching_review(run, _r8_assessment(run))[1].read_text())
     assert review_report["status"] == "CHANGES_REQUIRED"
     assert review_report["r9_thresholds"]["status"] == "NOT_SET_UNSUCCESSFUL_PILOT"
@@ -346,10 +345,10 @@ def test_matching_pilot_stops_after_block_and_rejects_bad_review(run, tmp_path: 
         review_size=5,
         provider_override=resumed_provider,
     )
-    assert len(resumed_provider.calls) == 5
+    assert len(resumed_provider.calls) == 0
     assert {
         row["terminal_outcome"] for row in read_tsv(resumed_paths[0])
-    } == {"NO_MATCH"}
+    } == {"TECHNICAL_ERROR"}
     assert run.latest_artifact("04", "r8_review_report") is None
 
     queue_path = run.latest_artifact("04", "r8_review_queue")
@@ -403,7 +402,7 @@ def test_source_fingerprint_invalidates_journal_and_binds_offline_evidence(run) 
         provider_override=second_provider,
     )
     second_report = json.loads(second_paths[2].read_text(encoding="utf-8"))
-    assert len(second_provider.calls) == 4
+    assert len(second_provider.calls) == 0
     assert second_report["source_artifacts_fingerprint"] != first_report[
         "source_artifacts_fingerprint"
     ]
@@ -439,7 +438,7 @@ def test_live_limit_queue_allocation_and_prerequisite_checks(run) -> None:
     )
     rows = read_tsv(paths[0])
     assert len(rows) == 5
-    assert {row["reason"] for row in rows} == {"PILOT_LIVE_LIMIT_NOT_ATTEMPTED"}
+    assert {row["reason"] for row in rows} == {"NO_DIRECT_KVK_HINT"}
     assert len(read_tsv(paths[1])) == 3
     assert len(_review_queue(rows, 2)) == 2
 
@@ -537,10 +536,7 @@ def test_active_cooldown_makes_no_provider_calls_and_closes(run) -> None:
     rows = read_tsv(paths[0])
     assert len(rows) == 5
     assert {row["terminal_outcome"] for row in rows} == {"TECHNICAL_ERROR"}
-    assert {row["reason"] for row in rows} == {
-        "RATE_LIMITED",
-        "NOT_PROCESSED_INTERRUPTED",
-    }
+    assert {row["reason"] for row in rows} == {"NO_DIRECT_KVK_HINT"}
 
 
 @pytest.mark.parametrize("invalid_seconds", ["nan", "inf", "-inf"])

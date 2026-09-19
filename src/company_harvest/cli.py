@@ -31,6 +31,7 @@ from company_harvest.prepare import prepare_pre_kvk
 from company_harvest.public_registers import collect_public_register
 from company_harvest.sampling import build_sample, record_sample_review
 from company_harvest.sources import collect, discover, import_source, list_sources, measure_sources
+from company_harvest.tenderned import collect_tenderned
 from company_harvest.workflow import (
     active_only,
     consolidate,
@@ -77,7 +78,6 @@ def build_parser() -> argparse.ArgumentParser:
     e2e_mode.add_argument("--limit-kvk-check", type=int)
     e2e_mode.add_argument("--all-kvk", action="store_true")
     e2e.add_argument("--interval", type=float, default=2.0)
-    e2e.add_argument("--export-limit", type=int, default=10000)
     e2e.add_argument("--allow-partial", action="store_true")
     prepare = run.add_parser("prepare-pre-kvk"); _run_arg(prepare); prepare.add_argument("--refresh", action="store_true")
     sources = commands.add_parser("sources").add_subparsers(dest="sources_command", required=True)
@@ -93,6 +93,11 @@ def build_parser() -> argparse.ArgumentParser:
         source_register.add_argument("--limit", type=int)
         source_register.add_argument("--refresh", action="store_true")
         source_register.set_defaults(public_register_source_id=source_id)
+    tenderned = sources.add_parser("tenderned")
+    _run_arg(tenderned)
+    tenderned.add_argument("--xlsx", type=Path)
+    tenderned.add_argument("--json", type=Path)
+    tenderned.add_argument("--refresh", action="store_true")
     source_import = sources.add_parser("import"); _run_arg(source_import); source_import.add_argument("--input", type=Path, required=True); source_import.add_argument("--source-id", required=True); source_import.add_argument("--name-column", required=True); source_import.add_argument("--kvk-column"); source_import.add_argument("--sheet")
     companies = commands.add_parser("companies").add_subparsers(dest="companies_command", required=True)
     for name in ("merge", "exclude-sole-proprietorships", "active-only"):
@@ -115,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     pilot = kvk.add_parser("pilot"); _run_arg(pilot); _provider_arg(pilot); pilot.add_argument("--refresh", action="store_true"); pilot.add_argument("--interval", type=float, default=2.0); pilot.add_argument("--review-size", type=int, default=20); pilot.add_argument("--max-live", type=int)
     pilot_review = kvk.add_parser("pilot-review"); _run_arg(pilot_review); pilot_review.add_argument("--input", type=Path, required=True)
     kc = kvk.add_parser("consolidate"); _run_arg(kc)
-    exp = commands.add_parser("export"); _run_arg(exp); exp.add_argument("--limit", type=int, default=10000); exp.add_argument("--allow-partial", action="store_true")
+    exp = commands.add_parser("export"); _run_arg(exp); exp.add_argument("--allow-partial", action="store_true")
     rep = commands.add_parser("report"); _run_arg(rep)
     audit = commands.add_parser("audit").add_subparsers(dest="audit_command", required=True)
     av = audit.add_parser("verify"); _run_arg(av)
@@ -144,15 +149,15 @@ def _dispatch_new_run(args: argparse.Namespace, root: Path) -> int:
         _print([str(path) for path in paths if (path / "run.json").is_file()])
         return 0
     if args.run_command == "e2e":
-        if (args.export_limit < 1 or (args.limit_kvk_check is not None and args.limit_kvk_check < 1)
+        if ((args.limit_kvk_check is not None and args.limit_kvk_check < 1)
                 or not math.isfinite(args.interval) or args.interval < 2.0):
-            raise HarvestError("E2E vereist positieve limieten en minimaal 2 seconden KVK-interval")
+            raise HarvestError("E2E vereist een positieve KVK-limiet en minimaal 2 seconden KVK-interval")
         run = open_run(args.run_dir) if args.run_dir else initialize_run(
-            root, min(args.export_limit, args.limit_kvk_check) if args.limit_kvk_check is not None else args.export_limit
+            root, args.limit_kvk_check if args.limit_kvk_check is not None else 10000
         )
         print(json.dumps({"run_dir": str(run.path), "phase": "STARTING"}), flush=True)
         emit("INFO", "Runmap aangemaakt of hervat")
-        _print(run_end_to_end(run, args.limit_kvk_check, args.interval, args.export_limit, args.allow_partial))
+        _print(run_end_to_end(run, args.limit_kvk_check, args.interval, args.allow_partial))
         return 0
     raise HarvestError("onbekend run-commando")
 
@@ -189,6 +194,8 @@ def _dispatch_sources(args: argparse.Namespace, run: Run) -> int:
         _print(collect_gleif(run, args.archive, args.limit, args.refresh))
     elif args.sources_command in {"anbi", "duo"}:
         _print(collect_public_register(run, args.public_register_source_id, args.archive, args.limit, args.refresh))
+    elif args.sources_command == "tenderned":
+        _print(collect_tenderned(run, args.xlsx, args.json, args.refresh))
     elif args.sources_command == "import":
         path = import_source(run, args.input, args.source_id, args.name_column, args.kvk_column, args.sheet)
         print(path)
@@ -277,7 +284,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "kvk":
         return _dispatch_kvk(args, run)
     if args.command == "export":
-        _print(export(run, args.limit, args.allow_partial))
+        _print(export(run, args.allow_partial))
         return 0
     if args.command == "report":
         value = report(run)

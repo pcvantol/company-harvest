@@ -151,7 +151,7 @@ def test_sources_discovery_and_parsers(run) -> None:
     inventory, report = discover(run)
     assert inventory.is_file() and report.is_file()
     catalog = list_sources(run)
-    assert len(catalog) == 5
+    assert len(catalog) == 6
     assert all(row["catalog_schema_version"] == "2" for row in catalog)
     assert {row["access_mode"] for row in catalog} == {"api", "bulk", "html"}
     assert {row["registration_number_type"] for row in catalog} == {
@@ -159,6 +159,7 @@ def test_sources_discovery_and_parsers(run) -> None:
         "KVK",
         "KVK indien door de bron geleverd; ontbrekende waarden blijven kandidaten",
         "KVK via registratieautoriteit RA000463",
+        "KVK-bronhint bij Nederlandse gegunde onderneming; niet onafhankelijk geverifieerd",
     }
     assert catalog[0]["terms_url"] == "https://ind.nl/nl/proclaimer"
     assert catalog[1]["terms_url"] == "https://www.wikidata.org/wiki/Wikidata:Data_access"

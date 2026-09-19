@@ -278,6 +278,7 @@ def initialize_run(root: Path, target: int, workflow: str = "HARVEST") -> Run:
         "workflow": workflow,
         "target": target,
         "schema_version": RUN_SCHEMA_VERSION,
+        "source_portfolio_version": 2,
         "created_at": utc_now().isoformat(),
         "status": "INITIALIZED",
         "python": sys.version.split()[0],

@@ -25,25 +25,38 @@ from company_harvest.workflow import (
 
 
 def run_end_to_end(run: Run, limit_kvk_check: int | None, interval: float = 2.0,
-                   export_limit: int = 10000, allow_partial: bool = False) -> dict[str, Any]:
+                   allow_partial: bool = False) -> dict[str, Any]:
     """Voer één expliciet gekozen KVK-scope uit; hervat zonder scopeverruiming."""
     if ((limit_kvk_check is not None and (type(limit_kvk_check) is not int or limit_kvk_check < 1))
-            or type(export_limit) is not int or export_limit < 1
             or not math.isfinite(interval) or interval < 2.0):
-        raise HarvestError("E2E vereist positieve limieten en minimaal 2 seconden KVK-interval")
+        raise HarvestError("E2E vereist een positieve KVK-limiet en minimaal 2 seconden KVK-interval")
     requested = {
         "limit_kvk_check": limit_kvk_check,
         "interval": interval,
-        "export_limit": export_limit,
         "provider": "public-http",
     }
     with run.lock():
         with phase("Host, run en hervatinstellingen controleren"):
             if run.metadata().get("workflow") != "HARVEST" or not host_preflight(run.path)["ready"]:
                 raise HarvestError("host/run-preflight is niet gereed; controleer run en opslag")
-            config = run.metadata().get("runtime_config", {}).get("end_to_end")
+            metadata = run.metadata()
+            config = metadata.get("runtime_config", {}).get("end_to_end")
             if config is not None and config != requested:
-                raise HarvestError("E2E-instellingen van deze run mogen bij hervatten niet wijzigen")
+                legacy_limit = config.get("export_limit") if isinstance(config, dict) else None
+                legacy_matches = (
+                    type(legacy_limit) is int and legacy_limit > 0
+                    and {key: value for key, value in config.items() if key != "export_limit"} == requested
+                ) if isinstance(config, dict) else False
+                if not legacy_matches:
+                    raise HarvestError("E2E-instellingen van deze run mogen bij hervatten niet wijzigen")
+                if metadata["status"] not in {"EXPORT_COMPLETE", "PARTIAL_EXPORTED"}:
+                    if (limit_kvk_check is None or not isinstance(legacy_limit, int)
+                            or legacy_limit < limit_kvk_check):
+                        raise HarvestError(
+                            "oude E2E-run heeft een mogelijk bindende exportlimiet; "
+                            "rond die af met de oorspronkelijke toolversie of start bewust een nieuwe run"
+                        )
+                    run.record_config("end_to_end", requested)
             if config is None:
                 with run.connect() as connection:
                     if connection.execute("SELECT 1 FROM kvk_requests LIMIT 1").fetchone():
@@ -96,9 +109,8 @@ def run_end_to_end(run: Run, limit_kvk_check: int | None, interval: float = 2.0,
         if unresolved_count and not allow_partial:
             raise HarvestError("onopgeloste KVK-kandidaten vereisen expliciet --allow-partial voor export")
         partial = allow_partial or skipped > 0
-        limit = min(export_limit, limit_kvk_check) if limit_kvk_check is not None else export_limit
         with phase("Definitieve eindlijst exporteren"):
-            export(run, limit, allow_partial=partial)
+            export(run, allow_partial=partial)
         with phase("Rapport en eindaudit afronden"):
             _ensure_report(run)
             audit = verify(run)

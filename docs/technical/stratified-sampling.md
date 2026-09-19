@@ -41,6 +41,8 @@ gevormd, gelijk verdeeld over hun bronfamilies en opnieuw met een stabiele kandi
 R6 doet geen KVK-frontendcall. Het R6-rapport legt vóór R8 de terminale uitkomsten en
 vereiste opbrengst-, review-, fout-, tijd- en opslagmetrics vast; thresholds volgen pas
 na de gemeten pilot.
+Omdat deze historische pilotpool juist geen directe KVK-hint heeft, mag de
+huidige nummer-only-policy geen live KVK-zoekopdracht vanuit R8 versturen.
 
 Alle rijen, beoordelingen en pilotkandidaten blijven lokale runartefacten. Alleen
 geaggregeerde meetresultaten en schema-/contractdocumentatie mogen worden gepubliceerd.

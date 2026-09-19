@@ -101,6 +101,9 @@ vijfbronnenmeting en R5-portfoliobesluiten blijven als toenmalig bewijs
 ongewijzigd; de nieuwe master claimt uitsluitend sluiting over de vier
 geselecteerde bronnen. De tool downloadt/hergebruikt deze vier bronnen,
 controleert full-scope evidence en dedupliceert ze vóór KVK.
+Vervolg CH-2026-09-19-031: TenderNed is voor **nieuwe** runs als vijfde
+bron toegevoegd, zonder Wikidata terug te brengen. Historische gebonden
+vierbronnenruns blijven vierbrons; zie [ADR-014](docs/adr/014-tenderned-kvk-source.md).
 
 De eigenaar vroeg koppeling aan de door de frontend gebruikte publieke
 Web-API. Naast de oorspronkelijke batch van maximaal tien is na expliciet
@@ -123,6 +126,25 @@ RD-006's brede bronverzameling niet; het beperkt alleen deze KVK-wachtrij.
 RD-007's toegestane matching zonder initieel nummer blijft voor andere,
 afzonderlijk gekozen trajecten bestaan, maar wordt in deze route niet gestart.
 De filter is heuristisch en kan na expliciet besluit herzien worden.
+Vervolg CH-2026-09-19-034: holding/beheer is voor nieuwe runs alleen een
+reviewlabel, geen zelfstandige uitsluitreden. De actuele publieke KVK-check
+vereist altijd een geldige directe bron-KVK-hint en verstuurt geen fuzzy
+naamquery; zie [ADR-016](docs/adr/016-number-only-kvk-and-holding-review-label.md).
+
+### RD-010 — Geen tweede afkap van geverifieerde resultaten
+
+Op 2026-09-19 heeft de eigenaar de arbitraire `--export-limit` verworpen:
+de oude implementatie selecteerde de eerste N bedrijven op een hash van het
+KVK-nummer, zonder inhoudelijke rangorde. Vanaf versie 3.0.0 levert export
+alle actieve, geverifieerde bedrijven uit de
+gekozen KVK-scope. Alleen `--limit-kvk-check N` mag een expliciete,
+hashgebonden proefcohort vóór de publieke KVK-aanroepen begrenzen; overgeslagen
+kandidaten blijven zichtbaar en veroorzaken PARTIAL-status. Zie ADR-015.
+Vervolg CH-2026-09-19-035: de export heeft ook een aparte lichte zakelijke
+CSV/XLSX zonder technische JSON-velden; het zevenbestandsmanifest is schema
+2. Dit hoort bij de publieke v3.0.0-wheel, niet bij v2.0.0. Zie
+[ADR-017](docs/adr/017-light-business-export.md) en
+[de eindbestandenhandleiding](docs/functional/output-files.md).
 
 ## 3. Statuslegenda
 
@@ -376,12 +398,25 @@ bevat vijf bronnen uit vijf bronfamilies. TenderNed is `GO_NEXT`; TED, DNB en AF
 gemotiveerd `PARKED`. Bewijs:
 [`docs/measurements/20260918-r5-source-portfolio.md`](docs/measurements/20260918-r5-source-portfolio.md).
 
+Vervolgkwalificatie CH-2026-09-19-030 bevestigt het TenderNed-veld
+`ON kvknummer` via de officiële XLSX-leeswijzer en OCDS-mapping als
+`awards/suppliers/id`. De XLSX 2021–2026 Q1/Q2 telt 11.147 unieke
+achtcijferige nummers bij Nederlandse gegunde ondernemingen; 9.380 daarvan
+ontbreken als directe nummerhint in de toenmalige vierbronnenmaster. De
+JSON/XLSX-reconciliatie is uitgevoerd. CH-2026-09-19-031 voegt de adapter als
+vijfde bron voor nieuwe runs toe; oude vierbronnenruns behouden hun scope.
+Dit geeft geen vrijgave van bulk-/KVK-harvest of externe datapublicatie. Zie
+[`vervolgmeting`](docs/measurements/20260919-tenderned-qualification.md) en
+[`ADR-014`](docs/adr/014-tenderned-kvk-source.md).
+
 Latere uitvoer CH-2026-09-19-009 probeerde deze vijf actieve bronnen
 eenmalig volledig naar één pre-KVK-lijst te brengen. Vier bronnen zijn
 full-scope ingenomen; Wikidata stopte op HTTP 429. De afzonderlijke
 [vierbronnenpreview](docs/measurements/20260919-pre-kvk-source-snapshot.md)
 is voor KVK geblokkeerd. Dit verandert R5's portfolioacceptatie niet en
 activeert R7 niet; een vijfbronnenmaster is nog niet bewezen.
+Ook met TenderNed is een volledige **nieuwe** vijfbronnenmaster nog niet live
+gemeten; de offline integratieproef gebruikt synthetische brondata.
 
 ### Doel
 
@@ -645,6 +680,12 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-19 — documentatie en lichte export voor v3.0.0:**
+  CH-2026-09-19-035 voegde een aparte zakelijke CSV/XLSX en schema-2-manifest
+  toe; CH-2026-09-19-036 synchroniseerde de actuele handleidingen en
+  versiegrenzen. De functies zijn offline gekwalificeerd en later in v3.0.0
+  opgenomen; de oudere 2.0.0-wheel bevat dit niet en R7/R9 blijven
+  ongewijzigd.
 - **2026-09-19 — publieke frontendroute hervatbaar:** de eigenaar activeerde
   expliciet een beheerste doorloop via de bestaande frontend-Web-API op
   minimaal twee seconden per verzoekstart. ADR-008 en CH-2026-09-19-012

@@ -1,7 +1,7 @@
 # Begrensde identiteitsmatching naar KVK-nummer
 
-R8 koppelt de reproduceerbare R6-pilotpool aan een KVK-nummer zonder het geparkeerde
-R7-besluit over routemigratie, providerbulk of volledige verificatie te activeren. De
+R8 koppelt de reproduceerbare R6-pilotpool aan een KVK-nummer zonder een
+besluit over routemigratie, providerbulk of volledige verificatie te activeren. De
 opdracht is expliciet en wordt niet gestart door `run execute`.
 
 ## Beslisvolgorde
@@ -11,8 +11,9 @@ opdracht is expliciet en wordt niet gestart door `run execute`.
 3. Zoek eerst offline in de geregistreerde bronartefacten. Bind pad, kind, SHA-256 en
    grootte van de volledige actuele bronset aan journal, rapport en runtimeconfiguratie;
    een offline beslissing verwijst daarnaast naar exact artefact en bronrij.
-4. Gebruik alleen wanneer nodig de huidige publieke frontendroute, klein en sequentieel;
-   de echte provider accepteert geen interval onder twee seconden.
+4. De historische no-hint-pilot doet vanaf ADR-016 geen publieke naamzoeking
+   meer. Zonder offline bronmatch wordt `NO_DIRECT_KVK_HINT` vastgelegd,
+   zonder GET; de oude live-limiet is in dit pad niet operationeel.
 5. Ken iedere kandidaat exact één terminale uitkomst toe.
 6. Publiceer resultaten, queue en rapport als één transactionele outputset en maak een
    eerdere R8-review en latere stappen stale.
@@ -20,8 +21,10 @@ opdracht is expliciet en wordt niet gestart door `run execute`.
 Een automatische match vereist een exact genormaliseerde naam én een onafhankelijk exact
 bronveld: plaats of websitehost. Naam-only, domein-only en scores zijn nooit zelfstandig
 matchbewijs. Meerdere sterke KVK-kandidaten worden `AMBIGUOUS`; conflicterende offline
-bronnen worden `SOURCE_CONFLICT`. Een volledige response zonder exactenaamhit wordt
-`NO_MATCH`. Een onvolledige of technisch mislukte zoekactie wordt `TECHNICAL_ERROR`.
+bronnen worden `SOURCE_CONFLICT`. De hieronder beschreven publieke
+naamzoekuitkomsten zijn historische pilotsemantiek; nieuwe no-hint-pilots
+produceren geen dergelijke responses meer. Zonder direct bronnummer en zonder
+offline match volgt een afgeronde technische uitkomst `NO_DIRECT_KVK_HINT`.
 
 ## Betekenis van velden
 
@@ -33,13 +36,13 @@ verwijdert de kandidaat niet.
 ## Hervatten en blokkades
 
 Het requestjournal bindt ieder resultaat aan kandidaatinhoud, bronfeatures, pilothash,
-provider en de byte-exacte actuele bronartefactset. Alleen een exact passende
+provider, nummer-only-querybeleid en de byte-exacte actuele bronartefactset. Alleen een exact passende
 inhoudelijke terminale uitkomst wordt hergebruikt;
-`FAILED` en `DEFERRED` worden bij hervatting opnieuw geprobeerd. `--refresh`
-verwijdert uitsluitend R8-journalregels. Bij publieke blokkade, rate limit of providerlock
-stopt de live verwerking; resterende kandidaten krijgen
-`NOT_PROCESSED_INTERRUPTED`. Een gedeelde providerlock voorkomt parallelle KVK-runs en
-de gedeelde SQLite-cooldown wordt vóór iedere live zoekactie afgedwongen.
+`FAILED` en `DEFERRED` worden bij hervatting opnieuw beoordeeld.
+`NO_DIRECT_KVK_HINT` is een afgeronde offline beslissing en wordt bij
+gelijkblijvende fingerprint hergebruikt. `--refresh` verwijdert uitsluitend
+R8-journalregels. De providerlock blijft van kracht; de no-hint-pilot doet
+geen live zoekactie. Historische blokkaderesultaten blijven lokaal bewaard.
 
 ## Handmatige review en thresholds
 
@@ -55,4 +58,5 @@ vastgelegde R9-formules toegepast:
 - technische foutgraad maximaal 0,05, false matches nul en closure 1,0.
 
 Deze kwaliteitsuitkomst activeert R9 niet: R9 vereist daarnaast nog steeds expliciete
-activatie en succesvolle afronding van het geparkeerde R7-besluit.
+activatie en de nog open R7-productie- en gebruiksgates. R7 staat inmiddels
+op `IN_PROGRESS`; de officiële betaalde API-migratie blijft afzonderlijk geparkeerd.

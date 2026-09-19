@@ -1,38 +1,43 @@
 # Gebruikershandleiding
 
-Voor de geïntegreerde opdracht in versie 2.0.0: zie
-[één commando van bronnen tot eindlijst](e2e-command.md). Deze versie vereist
-Python 3.14.x; de onderstaande v1.0.0-commando's zijn historische
-documentatie. De v1.0.0-release, assets en tag zijn verwijderd; gebruik de
-actuele 2.0.0-handleiding voor een nieuwe installatie.
+Deze handleiding beschrijft de **publieke 3.0.0-wheel** op Python 3.14.x.
+De oudere 2.0.0-wheel bevat noch TenderNed noch de lichte eind-Excel.
+Gebruik voor de geïntegreerde opdracht
+[de actuele E2E-handleiding](e2e-command.md) en voor de drie Excel-varianten
+[eindbestanden en veldherkomst](output-files.md). Een broncheckout is voor
+gebruik van de 3.0.0-wheel niet nodig.
 
 De [korte historische snelstart](snelstart-v1.0.0.md) beschrijft de vroegere
 installatie, volledige workflow en hervatten, maar de downloadstap werkt niet
 meer.
 
-Zie [alle v1.0.0-commando's van installatie tot export](v1-end-to-end-commands.md)
-voor één uitvoertabel met de verwachte lokale bestanden en de poorten voor
-een strikte of bewust partiële levering.
+De [v1.0.0-commandotabel](v1-end-to-end-commands.md) is alleen historisch:
+de ingetrokken release en haar opties zijn geen actuele installatieroute.
 
-Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`. `run init --print-path` maakt uitsluitend een lokale run. De nieuwe standaardvoorbereiding gebruikt IND, GLEIF, ANBI en DUO; Wikidata wordt niet gedownload of aan de master toegevoegd.
+Installeer in een eigen virtual environment en kies `COMPANY_HARVEST_DATA_DIR`.
+`run init --print-path` maakt uitsluitend een lokale run; `--target 10000`
+is een doelgetal, geen exportlimiet of garantie op 10.000 bedrijven. Nieuwe
+bronvoorbereiding gebruikt IND, GLEIF, ANBI, DUO en TenderNed. Wikidata
+wordt niet gedownload of aan de master toegevoegd. Bestaande gebonden
+vierbronnenruns behouden hun scope.
 
 Gebruik voor ontwikkeling bijvoorbeeld:
 
 ```bash
-export COMPANY_HARVEST_DATA_DIR=/Users/pcvantol/Documents/GitHub/company-harvest
+export COMPANY_HARVEST_DATA_DIR="$HOME/Documents/company-lookup-data"
 RUN_DIR="$(company-harvest run init --target 10000 --print-path)"
 company-harvest run prepare-pre-kvk --run-dir "$RUN_DIR"
 company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
-`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. `kvk pre-kvk-batch` blijft een expliciete kleine batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
+`prepare-pre-kvk` downloadt voor een nieuwe run vijf volledige bronnen sequentieel (IND, GLEIF, ANBI, DUO, TenderNed), hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Oude vierbronnenruns blijven op hun gebonden scope. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. `kvk pre-kvk-batch` blijft een expliciete kleine batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
 
 De eigenaar heeft daarnaast de langlopende frontendcontrole expliciet
 geactiveerd. Kies bij `kvk pre-kvk-run` altijd bewust een begrensde sessie of
 de hele resterende lijst:
 
 ```bash
-RUN_DIR="/Users/pcvantol/Documents/GitHub/company-harvest/.local/r4/runs/1789809357641683000_20260919T091557.641560Z_aa1cb6"
+RUN_DIR="/absoluut/pad/naar/de/bestaande/run"
 company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --max-requests 10 --interval 2
 company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --until-complete --interval 2
 ```
@@ -46,13 +51,15 @@ lokale tussentijdse outputs; zij worden pas na gesloten kandidaatpartitie
 zonder actieve blokkade als COMPLETE-artefacten geregistreerd. Een onzekere
 uitkomst blijft unresolved en telt niet als geverifieerde match. Een HTTP
 401/403/429 stopt verder verkeer;
-gebruik geen browserwissel of nieuwe run om dit te omzeilen. Voor 119.801
-kandidaten kost alleen de minimale pacing al ruim 66 uur; responstijd komt
+gebruik geen browserwissel of nieuwe run om dit te omzeilen. Voor de
+historische vierbronnenlijst van 119.801 kandidaten kost alleen de minimale
+pacing al ruim 66 uur; een nieuwe vijfbronnenlijst kan een ander aantal
+hebben en responstijd komt
 daarbovenop. Dit is geen officiële API-key-route. De volledige doorloop is
 niet automatisch gestart en voorwaarden, velddekking en productkwaliteit
 blijven afzonderlijk te beoordelen.
 
-`run execute` voert dezelfde vierbronnenvoorbereiding uit; alleen met een expliciete `--limit` van 1–10 volgt één KVK-batch. Er wordt geen volledige KVK-harvest of downstream-export automatisch gestart. `sources collect` zonder selectie leest alleen IND; Wikidata vereist een expliciet legacy `--only-source` en maakt geen deel uit van deze workflow. Merge van bestaande bestanden blijft beschikbaar via `companies merge-lists --left … --right …`.
+`run execute` voert dezelfde gebonden bronvoorbereiding uit; alleen met een expliciete `--limit` van 1–10 volgt één KVK-batch. Er wordt geen volledige KVK-harvest of downstream-export automatisch gestart. `sources collect` zonder selectie leest alleen IND; Wikidata vereist een expliciet legacy `--only-source` en maakt geen deel uit van deze workflow. Merge van bestaande bestanden blijft beschikbaar via `companies merge-lists --left … --right …`.
 
 Een lokale bron hoeft nog geen KVK-nummer te bevatten. Importeer bijvoorbeeld alleen namen met:
 
@@ -69,7 +76,7 @@ machineleesbaar en een leesbaar capabilityrapport, ook wanneer een bron met `BLO
 niet als een actuele meting labelen. De meting is geen productieharvest en de
 Wikidata-steekproef is geen populatieschatting.
 
-`sources gleif` is een afzonderlijke bulkactie en wordt niet door `sources collect` gestart; `run prepare-pre-kvk` en `run execute` starten haar wel expliciet als onderdeel van de vierbronnenvoorbereiding. Zonder `--archive` downloadt het commando de officiële huidige Golden
+`sources gleif` is een afzonderlijke bulkactie en wordt niet door `sources collect` gestart; `run prepare-pre-kvk` en `run execute` starten haar wel expliciet als onderdeel van de gebonden bronvoorbereiding. Zonder `--archive` downloadt het commando de officiële huidige Golden
 Copy; gebruik `--limit N` voor een capabilitysample van maximaal N Nederlandse records.
 Een reeds gecontroleerde lokale ZIP kan zonder nieuw netwerkrequest worden gebruikt:
 
@@ -84,7 +91,7 @@ limiet hergebruikt. Bekijk na afloop altijd `gleif_ingest_report`, `gleif_reject
 outcome-rapport. GLEIF-status en -rechtsvorm zijn brondata, geen KVK-verificatie.
 
 `sources anbi` en `sources duo` zijn net als GLEIF afzonderlijke bulkacties en worden niet
-door `sources collect` gestart; de vierbronnenvoorbereiding gebruikt ze wel. Gebruik voor een gecontroleerde lokale
+door `sources collect` gestart; de bronvoorbereiding gebruikt ze wel. Gebruik voor een gecontroleerde lokale
 snapshot bijvoorbeeld:
 
 ```bash
@@ -98,14 +105,14 @@ regels niet stil: die staan in rejected. Ook huidige DUO-records zonder of met o
 KVK-veld blijven kandidaat. Bekijk na afloop de twee ingest reports en rejected-bestanden.
 
 `companies pre-kvk-list` bouwt zonder netwerk of KVK-call één brede lijst
-vlak vóór verificatie, maar alleen als de vier geselecteerde bronadapters
+vlak vóór verificatie, maar alleen als alle geselecteerde bronadapters
 onbegrensd en met intact bronbewijs zijn afgerond. De output bevat per
 regel de originele bronpayloads en bewijsrelaties; een directe KVK-hint is
 niet automatisch geverifieerd. Identieke namen zonder gedeelde geldige
 KVK-hint blijven apart om foutieve samenvoegingen te voorkomen. Bij een
 bronblokkade verschijnt geen volledige master. De historische run van
 2026-09-19 bevat een geblokkeerde preview; die blijft een historisch artefact.
-Een nieuw gebouwde `pre_kvk_master` heeft vier bronnen. Voor een bestaande
+Een nieuw gebouwde `pre_kvk_master` heeft vijf bronnen. Voor een bestaande
 master kan `companies pre-kvk-filter --run-dir "$RUN_DIR"` de filter zonder
 herdownload of KVK-verzoek afzonderlijk bouwen. Alleen `pre_kvk_eligible`
 mag naar `kvk pre-kvk-batch`. `pre_kvk_excluded` bevat iedere uitgesloten
@@ -135,14 +142,15 @@ De beoordeling sluit alleen wanneer zij exact bij de actuele queue past. Persoon
 bedrijfsrecords, de review en de pilotselectie blijven lokale runartefacten en worden niet
 in Git opgenomen.
 
-`kvk pilot` voert de R8-selectie expliciet en sequentieel uit. Het commando probeert
-eerst offline exacte koppeling en raadpleegt alleen voor resterende records de huidige
-publieke frontendroute. Voor echte providers is twee seconden de minimale configureerbare
-interval. Gebruik geen `--refresh` tenzij de meetset bewust opnieuw moet
-worden opgebouwd; zonder die optie worden exact passende inhoudelijke terminale
-journaluitkomsten hergebruikt en technische `FAILED`/`DEFERRED`-regels hervat.
-`--max-live N` is uitsluitend een technische bovengrens: niet-uitgevoerde
-records blijven zichtbaar als technische terminale uitkomst.
+`kvk pilot` voert de historische R8-selectie van kandidaten zonder directe
+KVK-hint nog uitsluitend offline uit. Een eenduidige bronkoppeling blijft als
+voorlopige match zichtbaar; voor de overige records ontstaat
+`NO_DIRECT_KVK_HINT`. Er worden **geen** publieke naamverzoeken verstuurd,
+ongeacht de waarde van de historische `--max-live`-optie. De journalquery is
+voor deze offline no-hint-uitkomst leeg, niet een verstuurde zoekopdracht.
+Voor nieuwe publieke checks geldt altijd een geldige directe bronhint als
+input. Gebruik `--refresh` alleen voor een bewuste nieuwe offline meetset;
+oude op naam gezochte pilotresultaten worden niet stil hergebruikt.
 
 Vul alle regels van `r8_review_queue.csv` in een apart TSV-bestand met
 `queue_sha256`, `review_id`, `review_verdict` (`CONFIRMED`, `FALSE_MATCH` of
@@ -155,6 +163,24 @@ company-harvest kvk pilot-review --run-dir "$RUN_DIR" --input r8-beoordeling.tsv
 Een gevonden KVK-nummer blijft voorlopig. `observed_legal_form` en `observed_status`
 zijn bronobservaties, geen geverifieerde canonieke velden. Ook een no-match, ambigu of
 technische fout verwijdert de oorspronkelijke kandidaat niet. Een succesvolle R8-review
-activeert R9 niet zolang R7 geparkeerd blijft.
+activeert R9 niet zolang de R7-productie- en gebruiksgates openstaan.
+
+Na de gewone filterstappen levert `company-harvest export --run-dir "$RUN_DIR"`
+alle actieve, geverifieerde bedrijven uit de gekozen KVK-scope. De actuele
+broncode heeft geen `--limit` voor export: een doelgetal kapt de lijst niet
+af. Een begrensde `run e2e` gebruikt uitsluitend `--limit-kvk-check` om vooraf
+het aantal KVK-zoekopdrachten te beperken; de niet-gecheckte rest blijft
+expliciet buiten de partiële eindlijst.
+
+Voor direct gebruik in Excel is er daarnaast
+`companies_delivery_light.xlsx` (met gelijknamige CSV) in de outputsetmap.
+Die bevat naam/nummer, alle aanwezige zakelijke velden uit de bewaarde
+publieke KVK-zoekhit, en `Website (bron)`/`Sector (bron)`. Technische
+kolommen en de ruwe respons-JSON staan alleen in `companies_delivery_full.xlsx`.
+Bronwebsite en -sector zijn niet door KVK geverifieerd; lege cellen betekenen
+dat de waarde niet beschikbaar was, niet dat KVK een negatieve uitspraak deed.
+Een onbekend nieuw KVK-responsveld met inhoud stopt de lichte export tot het veld is
+beoordeeld. Zie [het volledige outputcontract](output-files.md) voor
+bestandsrollen, kolommen, manifest en audit.
 
 `report` schrijft een leesbaar runrapport en een `outcome_report.json`. Dat machineleesbare rapport bevat per-broncijfers, identifierdekking, deduplicatie/conflicten, reviewvolume, kandidaatdiversiteit en gemeten overlap, count-closure per beschikbare procesovergang, doorlooptijd, piekgeheugen en lokale opslaggroei. `PARTIAL_CLOSED` betekent dat alle uitgevoerde overgangen sluiten maar latere stappen nog niet zijn uitgevoerd; alleen `COMPLETE_CLOSED` bestrijkt de hele pipeline. Nieuwe runs en rapporten vermelden ook de uitgaande User-Agent `company-lookup/0.1`.

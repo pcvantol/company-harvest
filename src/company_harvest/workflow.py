@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import importlib
 import itertools
@@ -31,6 +32,48 @@ from company_harvest.core import (
 from company_harvest.kvk_scope import scope_details
 
 OUTCOME_REPORT_SCHEMA_VERSION = 1
+LIGHT_KVK_HEADERS = [
+    "Bedrijfsnaam", "KVK-nummer", "Rechtsvorm (KVK)", "Status (KVK)",
+    "Plaats (KVK)", "Land (KVK)",
+]
+LIGHT_SOURCE_HEADERS = ["Website (bron)", "Sector (bron)"]
+_PUBLIC_HIT_EXCLUDED = {
+    "id", "bron", "set", "public_dom_fields",
+    "naam", "name", "handelsnaam", "kvkNummer", "kvk_number", "kvk", "nummer",
+    "rechtsvorm", "legalForm", "rechtsvormOmschrijving", "status", "ondernemingsstatus",
+    "plaats", "city", "land", "country",
+}
+_PUBLIC_HIT_ALLOWED = {
+    "rechtsvormCode", "actief", "inschrijvingsdatum", "inschrijvingstype",
+    "activiteitomschrijving", "activiteiten", "vestiging", "vestigingsnummer",
+    "huidigeStatutaireNaam", "huidigeHandelsNamen", "huidigeNamen",
+    *(f"{address}.{part}" for address in ("bezoeklocatie", "postlocatie")
+      for part in ("straat", "huisnummer", "huisletter", "toevoeging", "postcode", "plaats", "land")),
+    *(f"activiteiten.{part}" for part in ("code", "omschrijving", "sbiCode", "sbiOmschrijving")),
+}
+_PUBLIC_HIT_LABELS = {
+    "rechtsvormCode": "Rechtsvormcode (KVK)",
+    "actief": "Actief-vlag (KVK)",
+    "inschrijvingsdatum": "Inschrijfdatum (KVK)",
+    "inschrijvingstype": "Type inschrijving (KVK)",
+    "activiteitomschrijving": "Activiteitomschrijving (KVK)",
+    "activiteiten": "Activiteiten (KVK)",
+    "vestiging": "Vestiging (KVK)",
+    "vestigingsnummer": "Vestigingsnummer (KVK)",
+    "huidigeStatutaireNaam": "Statutaire naam (KVK)",
+    "huidigeHandelsNamen": "Handelsnamen (KVK)",
+    "huidigeNamen": "Huidige namen (KVK)",
+    "bezoeklocatie.straat": "Straat bezoekadres (KVK)",
+    "bezoeklocatie.huisnummer": "Huisnummer bezoekadres (KVK)",
+    "bezoeklocatie.huisletter": "Huisletter bezoekadres (KVK)",
+    "bezoeklocatie.toevoeging": "Toevoeging bezoekadres (KVK)",
+    "bezoeklocatie.postcode": "Postcode bezoekadres (KVK)",
+    "bezoeklocatie.plaats": "Plaats bezoekadres (KVK)",
+    "postlocatie.straat": "Straat postadres (KVK)",
+    "postlocatie.huisnummer": "Huisnummer postadres (KVK)",
+    "postlocatie.postcode": "Postcode postadres (KVK)",
+    "postlocatie.plaats": "Plaats postadres (KVK)",
+}
 
 
 def _missing_source_status(value: str | None) -> bool:
@@ -217,14 +260,109 @@ def write_xlsx(path: Path, headers: list[str], rows: list[dict[str, Any]]) -> No
     temporary.replace(path)
 
 
-def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
-    if type(limit) is not int or limit < 1:
-        raise HarvestError("exportlimiet moet positief zijn")
+def _public_hit_fields(row: dict[str, str]) -> dict[str, str]:
+    """Zet zakelijke velden uit de bewaarde publieke hit om naar platte tekstkolommen."""
+    try:
+        payload = json.loads(row.get("response_json") or "[]")
+    except (TypeError, ValueError) as exc:
+        raise HarvestError("ongeldige KVK-respons voor lichte export") from exc
+    hits = [item for item in payload if isinstance(item, dict)] if isinstance(payload, list) else [payload] if isinstance(payload, dict) else []
+
+    def flatten(value: Any, path: str) -> dict[str, str]:
+        if isinstance(value, dict):
+            result: dict[str, str] = {}
+            for key, nested in value.items():
+                result.update(flatten(nested, f"{path}.{key}" if path else str(key)))
+            return result
+        if isinstance(value, list):
+            parts = [flatten(item, path) for item in value]
+            keys = {key for part in parts for key in part}
+            return {key: "; ".join(part[key] for part in parts if part.get(key)) for key in keys}
+        if value is None:
+            return {}
+        if isinstance(value, bool):
+            return {path: "Ja" if value else "Nee"}
+        if isinstance(value, (str, int, float)):
+            return {path: str(value)}
+        return {}
+
+    fields: dict[str, str] = {}
+    for hit in hits:
+        for key, value in hit.items():
+            if key in _PUBLIC_HIT_EXCLUDED:
+                continue
+            for path, display in flatten(value, key).items():
+                if path not in _PUBLIC_HIT_ALLOWED:
+                    raise HarvestError(f"onbekend KVK-responsveld in lichte export: {path}")
+                label = _PUBLIC_HIT_LABELS.get(path, f"KVK: {path}")
+                prior = fields.get(label, "")
+                if display and display not in prior.split("; "):
+                    fields[label] = f"{prior}; {display}" if prior else display
+    return fields
+
+
+def _light_rows(run: Run, selected: list[dict[str, str]]) -> tuple[list[str], list[dict[str, str]], dict[str, str] | None]:
+    """Verrijk op stabiele kandidaat-ID; gebruik nooit een fuzzy naamkoppeling."""
+    from company_harvest.pre_kvk import validated_master
+
+    master = run.latest_artifact("03", "pre_kvk_master")
+    source = validated_master(run)[0] if master else run.latest_artifact("03", "candidates")
+    wanted = {row.get("candidate_id", "") for row in selected} - {""}
+    context: dict[str, dict[str, str]] = {}
+    if source is not None and wanted:
+        with source.open("r", encoding="utf-8", newline="") as handle:
+            for row in csv.DictReader(handle, delimiter="\t"):
+                candidate_id = row.get("candidate_id", "")
+                if candidate_id not in wanted:
+                    continue
+                if candidate_id in context:
+                    raise HarvestError(f"dubbele kandidaat-ID in broncontext: {candidate_id}")
+                context[candidate_id] = row
+        if set(context) != wanted:
+            raise HarvestError("broncontext mist kandidaat-ID's voor lichte export")
+
+    def source_field(candidate: dict[str, str], field: str) -> str:
+        if candidate.get(field, "").strip():
+            return candidate[field].strip()
+        try:
+            payloads = json.loads(candidate.get("source_payloads_json") or "[]")
+        except (TypeError, ValueError) as exc:
+            raise HarvestError("ongeldige bronpayload voor lichte export") from exc
+        if not isinstance(payloads, list):
+            raise HarvestError("ongeldige bronpayload voor lichte export")
+        return next((str(item[field]).strip() for item in payloads
+                     if isinstance(item, dict) and str(item.get(field, "")).strip()), "")
+
+    light: list[dict[str, str]] = []
+    public_headers: set[str] = set()
+    for row in selected:
+        candidate = context.get(row.get("candidate_id", ""), {})
+        if candidate and candidate.get("source_kvk_hint") != row["KVK-nummer"]:
+            raise HarvestError("KVK-nummer in broncontext wijkt af van gecontroleerd nummer")
+        public = _public_hit_fields(row)
+        public_headers.update(public)
+        light.append({
+            "Bedrijfsnaam": row["Bedrijfsnaam"],
+            "KVK-nummer": row["KVK-nummer"],
+            "Rechtsvorm (KVK)": row.get("raw_legal_form", ""),
+            "Status (KVK)": row.get("raw_status", ""),
+            "Plaats (KVK)": row.get("city", ""),
+            "Land (KVK)": row.get("country", ""),
+            **public,
+            "Website (bron)": source_field(candidate, "website"),
+            "Sector (bron)": source_field(candidate, "sector"),
+        })
+    provenance = ({"path": str(source.relative_to(run.path)), "sha256": sha256(source)}
+                  if source is not None and wanted else None)
+    headers = LIGHT_KVK_HEADERS + sorted(public_headers) + LIGHT_SOURCE_HEADERS
+    return headers, light, provenance
+
+
+def export(run: Run, allow_partial: bool = False) -> list[Path]:
     scope = scope_details(run)
     if scope is not None:
         if int(scope["not_checked_rows"]) > 0 and not allow_partial:
             raise HarvestError("begrensde KVK-proef vereist expliciet --allow-partial")
-        limit = min(limit, int(scope["limit_kvk_check"]))
     source = run.latest_artifact("07", "active")
     if not source:
         raise HarvestError("voer eerst active-only uit")
@@ -234,32 +372,41 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
     unresolved = run.latest_artifact("05", "kvk_unresolved")
     if unresolved and read_tsv(unresolved) and not allow_partial:
         raise HarvestError("run bevat unresolved/onverwerkte kandidaten; gebruik bewust --allow-partial")
-    ranked = sorted(rows, key=lambda row: hashlib.sha256(("company-harvest-v1\0" + row["KVK-nummer"]).encode()).digest())
-    selected = ranked[:limit]
-    reserve = ranked[limit:]
+    selected = sorted(rows, key=lambda row: (normalize_name(row["Bedrijfsnaam"]), row["KVK-nummer"]))
+    reserve: list[dict[str, str]] = []  # bestaand outputsetschema, nooit een verborgen afkap
     status = "PARTIAL" if allow_partial else "COMPLETE"
-    selected.sort(key=lambda row: (normalize_name(row["Bedrijfsnaam"]), row["KVK-nummer"]))
     headers = list(rows[0]) if rows else ["Bedrijfsnaam", "KVK-nummer"]
     minimal = ["Bedrijfsnaam", "KVK-nummer"]
+    light_headers, light, light_source = _light_rows(run, selected)
     set_name = f"{timestamp()}_08_delivery_outputset"
     staging = run.path / "artifacts" / f".{set_name}.tmp"
     final = run.path / "artifacts" / set_name
     staging.mkdir()
-    names = ("companies_delivery.csv", "companies_delivery.xlsx", "companies_delivery_full.csv", "companies_delivery_full.xlsx", "companies_reserve.csv")
+    names = (
+        "companies_delivery.csv", "companies_delivery.xlsx",
+        "companies_delivery_light.csv", "companies_delivery_light.xlsx",
+        "companies_delivery_full.csv", "companies_delivery_full.xlsx", "companies_reserve.csv",
+    )
     staged = [staging / name for name in names]
     try:
         write_tsv(staged[0], minimal, selected)
         write_xlsx(staged[1], minimal, selected)
-        write_tsv(staged[2], headers, selected)
-        write_xlsx(staged[3], headers, selected)
-        write_tsv(staged[4], headers, reserve)
-        kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
+        write_tsv(staged[2], light_headers, light)
+        write_xlsx(staged[3], light_headers, light)
+        write_tsv(staged[4], headers, selected)
+        write_xlsx(staged[5], headers, selected)
+        write_tsv(staged[6], headers, reserve)
+        kinds = ("delivery_csv", "delivery_xlsx", "delivery_light_csv", "delivery_light_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
         manifest_staged = staging / "outputset_manifest.json"
         manifest_payload: dict[str, Any] = {
-            "schema": 1,
+            "schema": 2,
             "status": status,
+            "selection_policy": "ALL_ACTIVE",
+            "active_rows": len(rows),
             "files": [{"path": path.name, "kind": kind, "sha256": sha256(path), "size": path.stat().st_size} for path, kind in zip(staged, kinds, strict=True)],
         }
+        if light_source is not None:
+            manifest_payload["light_source"] = light_source
         if scope is not None:
             manifest_payload["kvk_scope"] = {
                 "limit_kvk_check": scope["limit_kvk_check"],
@@ -275,10 +422,10 @@ def export(run: Run, limit: int, allow_partial: bool = False) -> list[Path]:
         shutil.rmtree(staging, ignore_errors=True)
         raise
     paths = [final / name for name in names]
-    kinds = ("delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
+    kinds = ("delivery_csv", "delivery_xlsx", "delivery_light_csv", "delivery_light_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve")
     manifest = final / "outputset_manifest.json"
     run.register_artifact_set([(path, "08", kind, status) for path, kind in zip(paths, kinds, strict=True)] + [(manifest, "08", "outputset_manifest", status)])
-    run.record_config("export", {"limit": limit, "allow_partial": allow_partial})
+    run.record_config("export", {"selection_policy": "ALL_ACTIVE", "allow_partial": allow_partial})
     run.update_status("PARTIAL_EXPORTED" if allow_partial else "EXPORT_COMPLETE", "08")
     return paths + [manifest]
 

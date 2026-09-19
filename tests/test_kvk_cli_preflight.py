@@ -33,13 +33,18 @@ from company_harvest.preflight import host, run_preflight
 class FakeProvider:
     name = "fake"
 
+    def __init__(self):
+        self.calls = 0
+
     def preflight(self):
         return {"available": True}
 
     def search(self, query, headed=False):
-        if query == "Blocked":
+        assert query == "01234567"
+        self.calls += 1
+        if self.calls == 2:
             raise KvkError("PUBLIC_ACCESS_BLOCKED", "blocked", 4)
-        return ProviderResult(query, [{"naam": query, "kvkNummer": "01234567", "rechtsvorm": "BV", "status": "actief", "plaats": "Utrecht", "land": "Nederland"}], True, "fake", "evidence.txt")
+        return ProviderResult(query, [{"naam": "Andere handelsnaam", "kvkNummer": "01234567", "rechtsvorm": "BV", "status": "actief", "plaats": "Utrecht", "land": "Nederland"}], True, "fake", "evidence.txt")
 
 
 def _candidates(run, names):
@@ -62,6 +67,26 @@ def test_retry_extract_match_and_cooldown(run) -> None:
     candidate = {"candidate_id": "1", "original_name": "Alpha", "source_kvk_hint": "01234567", "source_relations": "[]"}
     result = ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")
     assert _match(candidate, result)["KVK-nummer"] == "01234567"
+    assert _match({**candidate, "source_kvk_hint": ""}, result) is None
+    renamed = ProviderResult("01234567", [{"naam": "Nieuwe handelsnaam B.V.", "kvkNummer": "01234567",
+                                          "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")
+    assert _match(candidate, renamed)["match_method"] == "SOURCE_KVK_NUMBER_CONFIRMED"
+    assert _match(candidate, ProviderResult("01234567", [{"naam": "Alpha", "kvkNummer": "99999999",
+                                                        "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")) is None
+    conflicting = ProviderResult("01234567", [
+        {"naam": "Nieuwe naam", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland",
+         "rechtsvorm": "BV", "status": "Actief"},
+        {"naam": "Andere vestiging", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland",
+         "rechtsvorm": "Vereniging", "status": "Inactief"},
+    ], True, "mock", "x")
+    assert _match(candidate, conflicting) is None
+    status_conflict = ProviderResult("01234567", [
+        {"naam": "Alpha", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland",
+         "rechtsvorm": "BV", "status": "Actief"},
+        {"naam": "Nieuwe naam", "kvkNummer": "01234567", "plaats": "Utrecht", "land": "Nederland",
+         "rechtsvorm": "BV", "status": "Inactief"},
+    ], True, "mock", "x")
+    assert _match(candidate, status_conflict) is None
     assert _match(candidate, ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "01234567"}], True, "mock", "x")) is None
     conflict = ProviderResult("Alpha", [{"naam": "Alpha", "kvkNummer": "99999999", "plaats": "Utrecht", "land": "Nederland"}], True, "mock", "x")
     assert _has_source_conflict(candidate, conflict)
@@ -78,9 +103,30 @@ def test_http_preflight_and_resolve(run, monkeypatch: pytest.MonkeyPatch) -> Non
     matches, unresolved = resolve(run, "auto", None, False, False, False, 0)
     assert len(read_tsv(matches)) == 1
     assert read_tsv(unresolved)[0]["reason"] == "PUBLIC_ACCESS_BLOCKED"
+    with run.connect() as connection:
+        assert {row[0] for row in connection.execute("SELECT query FROM kvk_requests")} == {"01234567"}
     assert preflight(run, "public-http").is_file()
     with pytest.raises(HarvestError):
         preflight(run, "bad")
+
+
+def test_generic_resolve_never_searches_by_name_without_hint(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    _candidates(run, ["No Hint"])
+    path = run.latest_artifact("03", "candidates")
+    assert path is not None
+    rows = read_tsv(path)
+    rows[0]["source_kvk_hint"] = ""
+    replacement = run.artifact_path("03", "candidates_no_hint", "csv")
+    write_tsv(replacement, list(rows[0]), rows)
+    run.register_artifact(replacement, "03", "candidates")
+    provider = FakeProvider()
+    monkeypatch.setattr(provider, "search", lambda *_args, **_kwargs: pytest.fail("naamquery verstuurd"))
+    monkeypatch.setattr("company_harvest.kvk._provider_for_run", lambda *_: provider)
+    matches, unresolved = resolve(run, "auto", None, False, False, False, 0)
+    assert read_tsv(matches) == []
+    assert read_tsv(unresolved)[0]["reason"] == "NO_DIRECT_KVK_HINT"
+    with run.connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM kvk_requests").fetchone()[0] == 0
 
 
 class HttpResponse:
@@ -101,6 +147,7 @@ class HttpResponse:
 
 class HttpClient:
     headers = {}
+    request_params = {}
 
     def __init__(self, *args, **kwargs):
         type(self).headers = kwargs.get("headers", {})
@@ -113,6 +160,7 @@ class HttpClient:
 
     @contextmanager
     def stream(self, *args, **kwargs):
+        type(self).request_params = kwargs.get("params", {})
         yield HttpResponse()
 
 
@@ -124,10 +172,18 @@ def test_http_search_observed(run, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("company_harvest.kvk.httpx.Client", HttpClient)
     provider = PublicHttpProvider(run)
     assert provider.preflight()["available"]
-    result = provider.search("Alpha")
+    result = provider.search("01234567")
     assert result.hits and Path(run.path / result.evidence).is_file()
+    assert HttpClient.request_params["q"] == "01234567"
     assert HttpClient.headers["User-Agent"] == "company-lookup/0.1"
     assert "github" not in HttpClient.headers["User-Agent"].casefold()
+    for invalid in ("Alpha", "1234567", ""):
+        with pytest.raises(KvkError, match="achtcijferig bronnummer"):
+            provider.search(invalid)
+        with pytest.raises(KvkError, match="achtcijferig bronnummer"):
+            PublicBrowserProvider(run).search(invalid)
+        with pytest.raises(KvkError, match="achtcijferig bronnummer"):
+            AutoProvider(run).search(invalid)
     provider._cooldown(1, "test")
     assert _choose_provider(run, "auto").name == "public-http"
     assert _choose_provider(run, "public-browser").name == "public-browser"
@@ -148,7 +204,7 @@ def test_http_single_page_is_partial_and_bounded(run, monkeypatch: pytest.Monkey
             yield PartialResponse()
 
     monkeypatch.setattr("company_harvest.kvk.httpx.Client", PartialClient)
-    result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+    result = PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert result.complete is False and len(result.hits) == 1
     assert (run.path / result.evidence).is_file()
     assert PartialClient.calls == 1
@@ -169,7 +225,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
 
     monkeypatch.setattr("company_harvest.kvk.httpx.Client", BlockedClient)
     with pytest.raises(KvkError) as blocked:
-        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert blocked.value.reason == "PUBLIC_ACCESS_BLOCKED"
     assert blocked.value.evidence and (run.path / blocked.value.evidence).is_file()
     assert BlockedClient.calls == 1
@@ -188,7 +244,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
 
     monkeypatch.setattr("company_harvest.kvk.httpx.Client", ServerErrorClient)
     with pytest.raises(KvkError) as server_error:
-        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert server_error.value.reason == "NETWORK_ERROR"
     assert ServerErrorClient.calls == 1
 
@@ -204,7 +260,7 @@ def test_http_error_and_oversize_keep_local_evidence(run, monkeypatch: pytest.Mo
 
     monkeypatch.setattr("company_harvest.kvk.httpx.Client", OversizeClient)
     with pytest.raises(KvkError) as oversize:
-        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("Alpha")
+        PublicHttpProvider(run, max_pages=1, max_attempts=1).search("01234567")
     assert oversize.value.reason == "PARSING_ERROR"
     assert oversize.value.evidence and (run.path / oversize.value.evidence).is_file()
 
@@ -232,7 +288,7 @@ class Page:
     def wait_for_load_state(self, *args, **kwargs):
         response = SimpleNamespace(
             request=SimpleNamespace(resource_type="fetch"),
-            url="https://www.kvk.nl/public-search?q=Alpha",
+            url="https://www.kvk.nl/public-search?q=01234567",
             headers={"content-type": "application/json"},
             status=200,
             json=lambda: {"results": [{"naam": "Alpha", "kvkNummer": "01234567", "plaats": "Utrecht"}]},
@@ -263,7 +319,7 @@ def test_browser_provider(run, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("playwright.sync_api.sync_playwright", lambda: PlaywrightContext())
     provider = PublicBrowserProvider(run)
     assert provider.preflight()["available"]
-    result = provider.search("Alpha")
+    result = provider.search("01234567")
     assert result.hits and (run.path / ".provider" / "kvk_observed_http.json").is_file()
     assert Browser.context_options == {"user_agent": "company-lookup/0.1"}
 
@@ -273,10 +329,10 @@ def test_auto_fallback_and_provider_lock(run, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(auto.http, "preflight", lambda: {"available": True})
     monkeypatch.setattr(auto.http, "search", lambda query: (_ for _ in ()).throw(KvkError("NETWORK_ERROR", "temporary")))
     monkeypatch.setattr(auto.browser, "search", lambda query, headed=False: ProviderResult(query, [], True, "public-browser", "x"))
-    assert auto.search("Alpha").transport == "public-browser"
+    assert auto.search("01234567").transport == "public-browser"
     monkeypatch.setattr(auto.http, "search", lambda query: (_ for _ in ()).throw(KvkError("RATE_LIMITED", "stop", 4)))
     with pytest.raises(KvkError):
-        auto.search("Alpha")
+        auto.search("01234567")
     with ProviderLock(run):
         with pytest.raises(KvkError):
             with ProviderLock(run):
