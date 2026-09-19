@@ -8,10 +8,12 @@ import pytest
 from test_pre_kvk import _full_sources
 
 from company_harvest import cli, pre_kvk_kvk, prepare
-from company_harvest.core import HarvestError, Run, open_run, read_tsv
+from company_harvest.audit import verify
+from company_harvest.core import HarvestError, Run, open_run, read_tsv, write_tsv
 from company_harvest.kvk import KvkError, ProviderResult
 from company_harvest.pre_kvk import build_pre_kvk_list
 from company_harvest.pre_kvk_filter import build_pre_kvk_filter
+from company_harvest.workflow import export, outcome_metrics
 
 
 def test_prepare_collects_four_sources_without_wikidata(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,3 +190,136 @@ def test_cli_vertical_slice_from_init_to_batch(
     assert cli.main(["kvk", "pre-kvk-batch", "--run-dir", str(run.path), "--limit", "1"]) == 0
     with run.connect() as connection:
         assert connection.execute("SELECT COUNT(*) FROM kvk_requests").fetchone()[0] == 1
+
+
+def test_long_kvk_run_resumes_and_publishes_only_after_closure(
+    run: Run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _ready_master(run)
+    calls: list[str] = []
+    clock = [100.0]
+
+    def search(_provider: object, query: str) -> ProviderResult:
+        calls.append(query)
+        evidence = run.path / "evidence" / f"long-{len(calls)}.json"
+        evidence.write_text("{}")
+        hint = {"Gamma B.V.": "23456789", "Delta B.V.": "34567890"}[query]
+        return ProviderResult(query, [{"naam": query, "kvkNummer": hint, "plaats": "Utrecht",
+                                       "land": "Nederland", "rechtsvorm": "Besloten vennootschap",
+                                       "status": "Actief"}], True, "public-http", str(evidence.relative_to(run.path)))
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
+    monkeypatch.setattr(pre_kvk_kvk.time, "time", lambda: clock[0])
+    monkeypatch.setattr(pre_kvk_kvk.time, "sleep", lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+    matches, unresolved, progress = pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert len(calls) == 1
+    assert json.loads(progress.read_text())["remaining"] == 1
+    assert len(read_tsv(matches)) == 1 and read_tsv(unresolved) == []
+    assert run.latest_artifact("04", "kvk_matches") is None
+    pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert len(calls) == 2
+    assert json.loads(progress.read_text())["status"] == "COMPLETE"
+    assert len(read_tsv(run.latest_artifact("04", "kvk_matches"))) == 2  # type: ignore[arg-type]
+    assert read_tsv(run.latest_artifact("05", "kvk_unresolved")) == []  # type: ignore[arg-type]
+    assert verify(run)["valid"]
+    pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert len(calls) == 2
+
+
+def test_long_kvk_run_keeps_uncertain_request_without_resending(
+    run: Run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _ready_master(run)
+    calls = 0
+
+    def interrupted(_provider: object, _query: str) -> ProviderResult:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise KeyboardInterrupt
+        evidence = run.path / "evidence" / f"long-{calls}.json"
+        evidence.write_text("{}")
+        return ProviderResult(_query, [], True, "public-http", str(evidence.relative_to(run.path)))
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", interrupted)
+    monkeypatch.setattr(pre_kvk_kvk.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(pre_kvk_kvk.time, "time", lambda: 100.0 + calls * 2)
+    with pytest.raises(KeyboardInterrupt):
+        pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert json.loads((run.path / pre_kvk_kvk.PROGRESS_NAME).read_text())["states"]["SENT_OUTCOME_UNKNOWN"] == 1
+    pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert calls == 2
+    assert len(read_tsv(run.path / "pre_kvk_kvk_unresolved.tsv")) == 2
+    assert all(row["resumable"] == "false" for row in read_tsv(run.path / "pre_kvk_kvk_unresolved.tsv"))
+    assert run.latest_artifact("04", "kvk_matches") is not None
+    assert verify(run)["valid"]
+    assert outcome_metrics(run)["count_closure"]["transitions"]["candidates_to_kvk_terminal"]["status"] == "CLOSED"
+    active = run.artifact_path("07", "active", "csv")
+    write_tsv(active, ["Bedrijfsnaam", "KVK-nummer"], [])
+    run.register_artifact(active, "07", "active")
+    with pytest.raises(HarvestError, match="allow-partial"):
+        export(run, 1)
+
+
+def test_long_kvk_run_does_not_claim_complete_before_artifact_commit(
+    run: Run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _ready_master(run)
+    original = Run.register_artifact_set
+    evidence_count = 0
+
+    def interrupted_publication(check_run: Run, entries: object) -> None:
+        if any(entry[2] == "kvk_matches" for entry in entries):  # type: ignore[attr-defined]
+            raise OSError("disk full")
+        original(check_run, entries)  # type: ignore[arg-type]
+
+    def no_match(_provider: object, query: str) -> ProviderResult:
+        nonlocal evidence_count
+        evidence_count += 1
+        evidence = run.path / "evidence" / f"complete-failure-{evidence_count}.json"
+        evidence.write_text("{}")
+        return ProviderResult(query, [], True, "public-http", str(evidence.relative_to(run.path)))
+
+    monkeypatch.setattr(Run, "register_artifact_set", interrupted_publication)
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", no_match)
+    monkeypatch.setattr(pre_kvk_kvk.time, "time", lambda: 1000.0)
+    monkeypatch.setattr(pre_kvk_kvk.time, "sleep", lambda _seconds: None)
+    with pytest.raises(OSError, match="disk full"):
+        pre_kvk_kvk.run_pre_kvk(run, max_requests=2)
+    assert json.loads((run.path / pre_kvk_kvk.PROGRESS_NAME).read_text())["status"] == "FINALIZING"
+    assert run.latest_artifact("04", "kvk_matches") is None
+
+
+def test_long_kvk_run_halts_at_access_block_and_validates_arguments(
+    run: Run, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _ready_master(run)
+    for interval in (math.nan, math.inf, 1.9):
+        with pytest.raises(HarvestError, match="interval"):
+            pre_kvk_kvk.run_pre_kvk(run, interval=interval, max_requests=1)
+    with pytest.raises(HarvestError, match="positieve"):
+        pre_kvk_kvk.run_pre_kvk(run, max_requests=0)
+    calls = 0
+
+    def blocked(_provider: object, _query: str) -> ProviderResult:
+        nonlocal calls
+        calls += 1
+        raise KvkError("RATE_LIMITED", "rate limited")
+
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", blocked)
+    pre_kvk_kvk.run_pre_kvk(run, max_requests=10)
+    assert calls == 1
+    progress = json.loads((run.path / pre_kvk_kvk.PROGRESS_NAME).read_text())
+    assert progress["status"] == "BLOCKED" and progress["remaining"] == 1
+    with pytest.raises(HarvestError, match="blokkade"):
+        pre_kvk_kvk.run_pre_kvk(run, max_requests=1)
+    assert calls == 1
+
+
+def test_long_kvk_cli_requires_explicit_scope(run: Run, monkeypatch: pytest.MonkeyPatch) -> None:
+    _ready_master(run)
+    with pytest.raises(SystemExit, match="2"):
+        cli.main(["kvk", "pre-kvk-run", "--run-dir", str(run.path)])
+    monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", lambda _provider, query: ProviderResult(
+        query, [], True, "public-http", "evidence/not-present.json"))
+    assert cli.main(["kvk", "pre-kvk-run", "--run-dir", str(run.path), "--max-requests", "1"]) == 0

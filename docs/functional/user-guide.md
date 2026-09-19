@@ -11,7 +11,32 @@ company-harvest run prepare-pre-kvk --run-dir "$RUN_DIR"
 company-harvest kvk pre-kvk-batch --run-dir "$RUN_DIR" --limit 10
 ```
 
-`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. De KVK-opdracht is een expliciete kleine batch via de waargenomen publieke frontend-Web-API. Zij verwerkt maximaal tien nieuwe kandidaten uit `pre_kvk_eligible`, stopt bij blokkade en publiceert alleen partiële batchartefacten, geen definitieve export. Herhaal geen geblokkeerde requests. Voor systematische bulkverificatie is eerst een afzonderlijk gebruiks- en eigenaarbesluit nodig.
+`prepare-pre-kvk` downloadt de vier volledige bronnen sequentieel, hergebruikt eerder voltooide bronartefacten, bouwt een conservatief gededupliceerde master en filtert die vóór KVK. Gebruik `--refresh` alleen voor een bewust nieuwe bronmomentopname. Controleer bronrapporten, rejected-rijen, conflicten, het masterrapport en `pre_kvk_filter_metadata`. `kvk pre-kvk-batch` blijft een expliciete kleine batch via de waargenomen publieke frontend-Web-API: maximaal tien nieuwe kandidaten, alleen partiële batchartefacten. Herhaal geen geblokkeerde requests.
+
+De eigenaar heeft daarnaast de langlopende frontendcontrole expliciet
+geactiveerd. Kies bij `kvk pre-kvk-run` altijd bewust een begrensde sessie of
+de hele resterende lijst:
+
+```bash
+RUN_DIR="/Users/pcvantol/Documents/GitHub/company-harvest/.local/r4/runs/1789809357641683000_20260919T091557.641560Z_aa1cb6"
+company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --max-requests 10 --interval 2
+company-harvest kvk pre-kvk-run --run-dir "$RUN_DIR" --until-complete --interval 2
+```
+
+Na een pauze of herstart kunt u het tweede commando identiek herhalen. Ctrl+C
+stopt een foregroundproces; een eventueel lopende aanroep krijgt de status
+`SENT_OUTCOME_UNKNOWN` en wordt niet stil opnieuw verzonden.
+`pre_kvk_kvk_progress.json` toont de journalstatussen en het resterende
+aantal. `pre_kvk_kvk_matches.tsv` en `pre_kvk_kvk_unresolved.tsv` zijn
+lokale tussentijdse outputs; zij worden pas na gesloten kandidaatpartitie
+zonder actieve blokkade als COMPLETE-artefacten geregistreerd. Een onzekere
+uitkomst blijft unresolved en telt niet als geverifieerde match. Een HTTP
+401/403/429 stopt verder verkeer;
+gebruik geen browserwissel of nieuwe run om dit te omzeilen. Voor 119.801
+kandidaten kost alleen de minimale pacing al ruim 66 uur; responstijd komt
+daarbovenop. Dit is geen officiële API-key-route. De volledige doorloop is
+niet automatisch gestart en voorwaarden, velddekking en productkwaliteit
+blijven afzonderlijk te beoordelen.
 
 `run execute` voert dezelfde vierbronnenvoorbereiding uit; alleen met een expliciete `--limit` van 1–10 volgt één KVK-batch. Er wordt geen volledige KVK-harvest of downstream-export automatisch gestart. `sources collect` zonder selectie leest alleen IND; Wikidata vereist een expliciet legacy `--only-source` en maakt geen deel uit van deze workflow. Merge van bestaande bestanden blijft beschikbaar via `companies merge-lists --left … --right …`.
 

@@ -10,6 +10,12 @@
   downloadartefacten en een identieke master.
 - `kvk pre-kvk-batch` produceert alleen `PARTIAL`-uitkomsten; voer geen
   `kvk consolidate`/export op basis hiervan uit.
+- `kvk pre-kvk-run` bewaart journal, voortgangs-JSON en tussentijdse TSV's
+  lokaal. Hervat met dezelfde `--run-dir` zonder filterwijziging. Bestaande
+  verzoeken worden niet herhaald. `SENT_OUTCOME_UNKNOWN` of `FAILED` blijft
+  als niet-geverifieerde unresolved zichtbaar; gesloten input kan toch
+  COMPLETE-artefacten krijgen, maar export vergt `--allow-partial`.
+  Een 401/403/429 blokkeert verder gebruik tot een afzonderlijk besluit.
 - `run is vergrendeld`: controleer eigenaar/proces; verwijder een lock niet op alleen ouderdom.
 - `audit verify` faalt: publiceer/exporteer niet; behoud de run en onderzoek ontbrekende of gewijzigde bestanden.
 - Mergeconflicten zijn datawaarschuwingen, geen technisch mislukte run; inspecteer alle conflictbestanden.

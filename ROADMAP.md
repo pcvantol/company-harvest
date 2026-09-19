@@ -17,20 +17,19 @@ De eerstvolgende fase verschuift daarom van releaseceremonie naar drie meetbare 
 
 ## 2. Vaststaande besluiten
 
-### RD-001 — KVK-routemigratie is geparkeerd
+### RD-001 — Officiële KVK-routemigratie geparkeerd; publieke frontend gecontroleerd hervatbaar
 
-Een migratie naar officiële KVK-API's wordt nu niet ontworpen, gebouwd of aangevraagd. Ook wordt de bestaande publieke frontendroute niet voor bulkgebruik uitgebreid.
+Een migratie naar officiële KVK-API's wordt nu niet ontworpen, gebouwd of aangevraagd. De eigenaar heeft op 2026-09-19 de bestaande publieke frontend-Web-API expliciet aangewezen voor een beheerste, hervatbare doorloop met minimaal twee seconden tussen verzoekstarts. ADR-008 specificeert de technische begrenzing; het is geen API-key-integratie.
 
-Tot een expliciet besluit om dit onderwerp te hervatten:
+Voor de nog niet beantwoorde gebruiks- en productvragen:
 
 - blijft de huidige `public-http`/`public-browser`-implementatie bestaan;
-- worden alleen kleine, sequentiële capability- en regressiesmokes toegestaan;
-- geldt de frontendroute niet als bewezen route voor 10.000 records;
-- wordt geen productieharvest via deze route gestart;
+- blijven ontwikkeltests klein en sequentieel; een volledige doorloop is een expliciete afzonderlijke CLI-actie, niet automatisch tijdens ontwikkeling, CI of installatie;
+- geldt de frontendroute nog niet als bewezen route voor 10.000 geverifieerde actieve ondernemingen;
 - worden Playwright, cooldowns en fallbacklogica nog niet verwijderd;
 - wordt geen aanname gedaan dat Zoeken rechtsvorm en ondernemingsstatus volledig levert.
 
-Het latere beslismoment staat als increment R7 in deze roadmap en blijft `PARKED` totdat de eigenaar het activeert.
+R7 is door de eigenaar technisch geactiveerd voor deze frontendroute; externe gebruiksvoorwaarden, veldsemantiek en productkwaliteit blijven open gates.
 
 ### RD-002 — User-Agent blijft voorlopig `company-lookup/0.1`
 
@@ -49,6 +48,9 @@ De volgende publieke release bundelt een betekenisvolle productverbetering, bijv
 ### RD-004 — Geen automatische productieharvest
 
 Samples worden begrensd en vooraf gespecificeerd. Een 10.000-run wordt pas na de schaal- en gebruikspoorten in R9 door de eigenaar gestart; nooit automatisch tijdens ontwikkeling, CI, installatie of review.
+De expliciet gekozen hervatbare pre-KVK-frontendcontrole uit ADR-008 is
+een afzonderlijke verificatieactie, geen automatische productieharvest of
+kwalificatie van de uiteindelijke levering.
 
 ### RD-005 — Gefocuste engineeringgates
 
@@ -88,7 +90,7 @@ Daarbij gelden de volgende grenzen:
 - meerdere mogelijke KVK-nummers of conflicterende naam-, bron- of plaatsevidence eindigen als `AMBIGUOUS` of `SOURCE_CONFLICT`, zonder canonieke merge;
 - `no-match` en `ambigu` blijven bruikbare kandidaten en worden niet verwijderd;
 - KVK-nummermatching bewijst niet automatisch rechtsvorm, status of activiteit;
-- kleine, sequentiële matchingmetingen zijn toegestaan; bulkgebruik van de publieke KVK-frontend en migratie naar een andere KVK-route blijven onder RD-001/R7 geparkeerd.
+- de huidige pre-KVK-wachtrij mag op expliciet eigenaarsbesluit via de begrensde, hervatbare publieke frontendroute worden gecontroleerd; migratie naar een andere route blijft geparkeerd.
 
 ### RD-008 — Vierbronnenvoorbereiding zonder Wikidata
 
@@ -101,12 +103,11 @@ geselecteerde bronnen. De tool downloadt/hergebruikt deze vier bronnen,
 controleert full-scope evidence en dedupliceert ze vóór KVK.
 
 De eigenaar vroeg koppeling aan de door de frontend gebruikte publieke
-Web-API. Hiervoor is alleen een expliciete batch van maximaal tien kandidaten
-per opdracht beschikbaar, met lokaal journal en partiële outputs. De
-full-list-KVK-verificatie en finale export blijven onder RD-001/R7 geparkeerd:
-de publieke route en een geslaagde kleine batch bewijzen geen toestemming of
-technische geschiktheid voor systematische raadpleging. Een eventuele
-vrijgave vraagt een afzonderlijk aantoonbaar gebruiks- en eigenaarbesluit.
+Web-API. Naast de oorspronkelijke batch van maximaal tien is na expliciet
+eigenaarsbesluit een afzonderlijke hervatbare langlopende CLI-opdracht
+beschikbaar (ADR-008). De publieke route en geslaagde kleine batches bewijzen
+niet vanzelf externe toestemming, schaalgeschiktheid of productkwaliteit;
+de definitieve 10.000-export blijft onder R9 en kwaliteitscontrole vallen.
 
 ### RD-009 — Expliciete filter vóór de huidige KVK-wachtrij
 
@@ -145,7 +146,7 @@ De filter is heuristisch en kan na expliciet besluit herzien worden.
 | R4 | `DONE` | Eerste nieuwe bronadapter en herbruikbare brede-innamebasis | R2, R3 en een `GO` |
 | R5 | `DONE` | Brede bronportfolio uit meerdere onafhankelijke bronfamilies | feasibility na R1; adapterimplementatie na R4 |
 | R6 | `DONE` | Gestratificeerde bron-/dedupsample van 500 uit de brede kandidaatlaag | R4 en voldoende R5-breedte |
-| R7 | `PARKED` | Besluit over KVK-verificatie, velden, kosten en providerarchitectuur | expliciete activatie eigenaar |
+| R7 | `IN_PROGRESS` | Publieke frontendroute technisch hervatbaar; voorwaarden, schaal, velden en resultaten nog te beoordelen | expliciete activatie eigenaar op 2026-09-19 |
 | R8 | `DONE` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `BLOCKED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
 | R10 | `PLANNED` | Betekenisvolle volgende release met herdownloadkwalificatie | relevante increments + alle gates |
@@ -478,9 +479,9 @@ Test schaalgedrag en datakwaliteit op een doorsnede van de brede kandidaatlaag z
 
 ## 12. R7 — KVK-verificatiebesluit
 
-Status: `PARKED`.
+Status: `IN_PROGRESS` voor de publieke frontendroute; officiële API-migratie blijft `PARKED`.
 
-Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
+De eigenaar heeft de publieke frontendroute met minimaal twee seconden interval expliciet geactiveerd. ADR-008 beschrijft de hervatbare uitvoering. De onderstaande product- en gebruiksvragen blijven open; technische beschikbaarheid alleen sluit R7 niet af.
 
 ### Te beantwoorden vragen
 
@@ -499,9 +500,14 @@ Dit increment wordt alleen actief na een expliciete opdracht van de eigenaar.
 5. Go/no-go en nieuwe ADR vastleggen.
 6. Pas bij `GO` provider implementeren en oude code gecontroleerd uitfaseren.
 
-### Blokkade voor bulk
+### Open poorten voor productkwaliteit en gebruik
 
-Zolang R7 `PARKED` is, zijn bulkgebruik van een KVK-provider en volledige KVK-verificatie op 500/10.000 records niet release- of productiegekwalificeerd. Dit blokkeert niet het bewaren van kandidaten, onderlinge bronkoppeling of begrensde matching en verrijking naar een KVK-nummer.
+De eigenaar heeft de beheerste publieke frontenddoorloop expliciet geactiveerd,
+maar daarmee zijn externe gebruiksvoorwaarden, schaalgedrag en de semantiek van
+rechtsvorm/status nog niet gekwalificeerd. Een volledige verificatierun wordt
+niet automatisch door installatie, CI of ontwikkeling gestart. R9 en een
+definitieve 10.000-levering blijven afhankelijk van gemeten kwaliteit en een
+afzonderlijk go/no-go-besluit.
 
 De [afzonderlijke tien-GET-capability-smoke van 2026-09-19](docs/measurements/20260919-kvk-frontend-batch10.md)
 is als kleine regressiemeting beoordeeld, niet als activering van R7 of vrijgave
@@ -510,8 +516,8 @@ voor de 500-recordbulk.
 ## 13. R8 — Begrensde KVK-nummermatchingpilot
 
 Status: `DONE`; implementatie, echte 50-recordmeting, hashgebonden review en
-onafhankelijke finale review zijn afgerond met status `PASS`. R7 blijft `PARKED` en is
-voor deze begrensde identiteitsmatching niet vereist.
+onafhankelijke finale review zijn afgerond met status `PASS`. R7 was destijds
+`PARKED` en was voor deze begrensde identiteitsmatching niet vereist.
 
 De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten en lokale bedrijventerreinlijsten. Zulke bronnen kunnen waardevolle organisaties leveren zonder direct KVK-nummer. R8 meet daarom expliciet hoe goed hun kandidaten naar een KVK-nummer kunnen worden verrijkt. Het doel is identiteitskoppeling, niet het omzeilen van het geparkeerde besluit over providerbulk, rechtsvorm of ondernemingsstatus.
 
@@ -539,7 +545,7 @@ De externe review noemt onder andere SBB, brancheverenigingen, exposantenlijsten
 
 ## 14. R9 — Volledige sample- en schaalvalidatie
 
-Status: `BLOCKED`, onvoorwaardelijk afhankelijk van R6, een geslaagde R8-pilot en een expliciet geactiveerd en succesvol afgerond R7-besluit. R6 en R8 zijn gereed; R7 blijft expliciet `PARKED`, waardoor R9 niet uitvoerbaar is.
+Status: `BLOCKED`, onvoorwaardelijk afhankelijk van R6, een geslaagde R8-pilot en een expliciet geactiveerd en succesvol afgerond R7-besluit. R6 en R8 zijn gereed; R7 is voor de publieke frontendroute technisch `IN_PROGRESS`, maar nog niet succesvol afgerond. Daarom is R9 nog niet uitvoerbaar.
 
 ### Fase A — volledige sample van 500
 
@@ -633,6 +639,11 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 
 ### Wijzigingslog
 
+- **2026-09-19 — publieke frontendroute hervatbaar:** de eigenaar activeerde
+  expliciet een beheerste doorloop via de bestaande frontend-Web-API op
+  minimaal twee seconden per verzoekstart. ADR-008 en CH-2026-09-19-012
+  leggen checkpointing en stopvoorwaarden vast. R7 is `IN_PROGRESS`;
+  gebruiks-, schaal- en productgates blijven open, R9 blijft `BLOCKED`.
 - **2026-09-19 — zelfstandige vierbronnenworkflow:** op expliciete vervolgvraag
   vallen Wikidata-download en -vereiste buiten de nieuwe pre-KVK-master.
   IND/GLEIF/ANBI/DUO worden door de tool zelf ingenomen en verliesvrij

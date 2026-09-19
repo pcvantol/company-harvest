@@ -56,6 +56,8 @@ def verify(run: Run) -> dict[str, Any]:
         required_export_kinds = {"candidates", "kvk_matches", "kvk_unresolved", "canonical", "non_sole", "sole_excluded", "legal_form_review", "active", "inactive_excluded", "status_review", "delivery_csv", "delivery_xlsx", "delivery_full_csv", "delivery_full_xlsx", "reserve", "outputset_manifest"}
         if exported:
             for kind in sorted(required_export_kinds):
+                if kind == "candidates" and run.latest_artifact("03", "pre_kvk_eligible"):
+                    continue
                 if kind not in latest_by_kind or latest_by_kind[kind]["status"] not in {"COMPLETE", "PARTIAL"}:
                     errors.append(f"MISSING_REQUIRED:{kind}")
         active = run.latest_artifact("07", "active")
@@ -85,7 +87,7 @@ def verify(run: Run) -> dict[str, Any]:
             after = Counter(row["KVK-nummer"] for rows in partitions for row in rows)
             if before != after or _overlap(partitions):
                 errors.append("RELATION:status_partition_mismatch")
-        candidates = run.latest_artifact("03", "candidates")
+        candidates = run.latest_artifact("03", "pre_kvk_eligible") or run.latest_artifact("03", "candidates")
         matches = run.latest_artifact("04", "kvk_matches")
         unresolved = run.latest_artifact("05", "kvk_unresolved")
         if int(metadata.get("last_completed_step", "0")) >= 4 and not (candidates and matches and unresolved):

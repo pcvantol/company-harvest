@@ -7,6 +7,7 @@ import httpx
 import pytest
 from openpyxl import Workbook
 
+from company_harvest import core
 from company_harvest.core import (
     HTTP_USER_AGENT,
     HarvestError,
@@ -86,6 +87,20 @@ def test_run_lock_artifacts_and_open(run, tmp_path: Path) -> None:
     (run.path / "run.json").write_text(json.dumps(metadata))
     with pytest.raises(HarvestError, match="oorspronkelijke programmaversie"):
         open_run(run.path)
+
+
+def test_run_lock_recovers_only_proven_dead_owner(run, monkeypatch: pytest.MonkeyPatch) -> None:
+    lock = run.path / "run.lock"
+    lock.write_text(json.dumps({"pid": 456789, "created": "old"}))
+    monkeypatch.setattr(core, "_process_alive", lambda _pid: True)
+    with pytest.raises(HarvestError, match="vergrendeld"):
+        with run.lock():
+            pass
+    assert lock.is_file()
+    monkeypatch.setattr(core, "_process_alive", lambda _pid: False)
+    with run.lock():
+        assert json.loads(lock.read_text())["pid"] != 456789
+    assert not lock.exists()
 
 
 def test_sources_discovery_and_parsers(run) -> None:

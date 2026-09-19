@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Expliciete hervatbare `kvk pre-kvk-run` voor de publieke frontend-Web-API:
+  minimaal twee seconden tussen verzoekstarts, per-kandidaatjournal,
+  atomische voortgang, duurzame tussentijdse TSV's en pas na zekere
+  count-closure COMPLETE-artefacten voor de vervolgworkflow.
 - Herzienbare offline toelatingsfilter tussen vierbronnenmaster en KVK-batch:
   behoud van de volledige master, afzonderlijke KVK-geschikte lijst en
   uitsluitingsledger met alle redenen, criteria, hashes en gesloten aantallen.
@@ -16,7 +20,7 @@
 - Bron-HTTP leest begrensd als stream en valideert ook redirectdoelen;
   Wikidata-paginering pauzeert tussen publieke requests.
 - Geïsoleerde, niet-gepubliceerde tien-GET-capabilitymeting via de publieke
-  KVK-frontend-Web-API; R7 en bulkgebruik blijven geparkeerd.
+  KVK-frontend-Web-API; ten tijde van die meting bleven R7 en bulkgebruik geparkeerd.
 - GitHub Release-object `v0.1.0` en de vijf assets op eigenaarsverzoek verwijderd; de Git-tag en historische kwalificatie-evidence blijven behouden.
 - Doorlopende CI teruggebracht tot Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 gelden voor nieuwe wijzigingen als `NOT_TESTED`.
 - Broncatalogusschema 2 met expliciete identifier-, toegang-, voorwaarden-, actualiteits-, bronfamilie-, herkomst- en laagprofielen.

@@ -33,4 +33,6 @@ vermelden aanvullende voorwaarden voor grootschalig gebruik; de
 [gepubliceerde gebruiksvoorwaarden](https://developers.kvk.nl/cms/api/uploads/Gebruiksvoorwaarden_Verstrekking_en_Gebruik_Handelsregistergegevens.pdf)
 behandelen geautomatiseerd systematisch uitlezen afzonderlijk. Dit is een
 operationele gate, geen definitieve juridische beoordeling.
-R7 blijft daarvoor geparkeerd, in overeenstemming met RD-001 en RD-004.
+Dit was het besluit bij acceptatie van ADR-006; ADR-008 legt de latere
+expliciete eigenaarsactivatie van een technisch hervatbare publieke route vast.
+Die activatie is geen oordeel over externe gebruiksvoorwaarden.

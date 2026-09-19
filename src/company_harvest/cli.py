@@ -18,7 +18,7 @@ from company_harvest.matching import record_matching_review, run_matching_pilot
 from company_harvest.merge_lists import InputOptions, merge_lists
 from company_harvest.pre_kvk import build_pre_kvk_list
 from company_harvest.pre_kvk_filter import build_pre_kvk_filter
-from company_harvest.pre_kvk_kvk import resolve_pre_kvk
+from company_harvest.pre_kvk_kvk import resolve_pre_kvk, run_pre_kvk
 from company_harvest.preflight import host, run_preflight
 from company_harvest.prepare import prepare_pre_kvk
 from company_harvest.public_registers import collect_public_register
@@ -83,6 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
     kp = kvk.add_parser("preflight"); _run_arg(kp); _provider_arg(kp)
     kr = kvk.add_parser("resolve"); _run_arg(kr); _provider_arg(kr); kr.add_argument("--resume", action="store_true"); kr.add_argument("--refresh", action="store_true"); kr.add_argument("--headed", action="store_true"); kr.add_argument("--limit", type=int); kr.add_argument("--interval", type=float, default=2.0)
     kb = kvk.add_parser("pre-kvk-batch"); _run_arg(kb); kb.add_argument("--limit", type=int, default=10); kb.add_argument("--interval", type=float, default=2.0)
+    kl = kvk.add_parser("pre-kvk-run"); _run_arg(kl); kl.add_argument("--interval", type=float, default=2.0)
+    kl_mode = kl.add_mutually_exclusive_group(required=True)
+    kl_mode.add_argument("--max-requests", type=int)
+    kl_mode.add_argument("--until-complete", action="store_true")
     pilot = kvk.add_parser("pilot"); _run_arg(pilot); _provider_arg(pilot); pilot.add_argument("--refresh", action="store_true"); pilot.add_argument("--interval", type=float, default=2.0); pilot.add_argument("--review-size", type=int, default=20); pilot.add_argument("--max-live", type=int)
     pilot_review = kvk.add_parser("pilot-review"); _run_arg(pilot_review); pilot_review.add_argument("--input", type=Path, required=True)
     kc = kvk.add_parser("consolidate"); _run_arg(kc)
@@ -135,6 +139,7 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "kvk" and args.kvk_command == "pilot-review": _print(record_matching_review(run, args.input)); return 0
     if args.command == "kvk" and args.kvk_command == "resolve": _print(resolve(run, args.provider, args.limit, args.resume, args.refresh, args.headed, args.interval)); return 0
     if args.command == "kvk" and args.kvk_command == "pre-kvk-batch": _print(resolve_pre_kvk(run, args.limit, args.interval)); return 0
+    if args.command == "kvk" and args.kvk_command == "pre-kvk-run": _print(run_pre_kvk(run, args.interval, args.max_requests)); return 0
     if args.command == "kvk" and args.kvk_command == "consolidate": print(consolidate(run)); return 0
     if args.command == "companies" and args.companies_command == "exclude-sole-proprietorships": _print(exclude_sole_proprietorships(run)); return 0
     if args.command == "companies" and args.companies_command == "active-only": _print(active_only(run)); return 0

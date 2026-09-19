@@ -349,9 +349,12 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
         invalid_total += invalid
 
     candidate_path = run.latest_artifact("03", "candidates")
+    pre_kvk_candidate_path = run.latest_artifact("03", "pre_kvk_eligible")
     decision_path = run.latest_artifact("03", "dedup_decisions")
     conflict_path = run.latest_artifact("03", "dedup_conflicts")
     candidates = read_tsv(candidate_path) if candidate_path else []
+    terminal_candidate_count = (len(read_tsv(pre_kvk_candidate_path))
+                                if pre_kvk_candidate_path else len(candidates))
     decisions = read_tsv(decision_path) if decision_path else []
     conflicts = read_tsv(conflict_path) if conflict_path else []
     unique_before = {
@@ -449,7 +452,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
             closure_available,
         ),
         "candidates_to_kvk_terminal": transition(
-            len(candidates),
+            terminal_candidate_count,
             [matches_count, unresolved_count],
             matches_path is not None and unresolved_path is not None,
         ),
@@ -514,6 +517,7 @@ def outcome_metrics(run: Run) -> dict[str, Any]:
             "invalid_registration_numbers": invalid_total,
             "unique_candidates_before_deduplication": len(unique_before),
             "unique_candidates_after_deduplication": len(candidates),
+            **({"pre_kvk_eligible_candidates": terminal_candidate_count} if pre_kvk_candidate_path else {}),
             "identical_merges": sum(max(int(row.get("input_count") or 0) - 1, 0) for row in decisions if row.get("decision") == "MERGED_IDENTICAL"),
             "conflict_records": len(conflicts),
             "review_case_records": missing_total + invalid_total + len(conflicts),

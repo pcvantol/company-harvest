@@ -18,7 +18,9 @@
 | source_count | Aantal oorspronkelijke kandidaatrijen in die regel; som over de lijst moet het broninputtotaal sluiten. |
 | dedup_status | `KEPT_SINGLE`, `MERGED_DIRECT_HINT` of `SOURCE_CONFLICT`; alleen identieke naam plus dezelfde geldige directe hint wordt automatisch samengevoegd. |
 | kvk_queue_status | `READY_FOR_KVK_MATCHING`/`READY_FOR_KVK_VERIFICATION` in een complete master, `REVIEW_REQUIRED` bij conflict, of altijd `BLOCKED_SOURCE_INCOMPLETE` in een gedeeltelijke preview. Geen van deze statussen bewijst reeds KVK-verificatie. |
-| pre_kvk_eligible | Volledige masterrijen die de actuele toelatingsregels passeren; uitsluitend deze TSV is invoer voor `kvk pre-kvk-batch`. |
+| pre_kvk_eligible | Volledige masterrijen die de actuele toelatingsregels passeren; uitsluitend deze TSV is invoer voor `kvk pre-kvk-batch` en `kvk pre-kvk-run`. |
+| pre_kvk_kvk_progress.json | Atomische checkpoint met inputhash, totaal, journalstaten en resterend aantal; `state.sqlite3` is de bron van waarheid. |
+| pre_kvk_kvk_matches.tsv / pre_kvk_kvk_unresolved.tsv | Lokale tussentijdse outputs; op hervatten opnieuw uit de journal gereconstrueerd en pas bij gesloten kandidaatpartitie zonder actieve blokkade als COMPLETE geregistreerd. Onzekere uitkomsten blijven unresolved. |
 | pre_kvk_excluded | Lokale TSV-ledger van iedere uitgesloten kandidaat: ID, naam, bron-IDs, primaire reden en alle overlappende redenen. Volledige bronpayloads blijven in de master. |
 | pre_kvk_filter_metadata | JSON met regelversie, letterlijke criteria, master-/outputhashes, count-closure en primaire/overlappende redenaantallen. |
 | NO_DIRECT_KVK_HINT | Er is geen geldig direct KVK-nummer in de verzamelde brondata; dit bewijst niet dat de organisatie geen KVK-inschrijving heeft. |

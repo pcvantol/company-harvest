@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import ctypes
 import hashlib
 import json
 import os
@@ -24,6 +25,43 @@ HTTP_USER_AGENT = "company-lookup/0.1"
 KVK_RE = re.compile(r"^[0-9]{8}$", re.ASCII)
 SECRET_RE = re.compile(r"(?i)(authorization|cookie|token|secret|password)([=: ]+)([^\s,;]+)")
 _RUN_LOCKS = threading.local()
+
+
+def _process_alive(pid: int) -> bool:
+    """Een onzekere PID is levend: nooit een mogelijk actieve lock verwijderen."""
+    if pid < 1:
+        return True
+    if os.name == "nt":
+        windows_ctypes: Any = ctypes
+        kernel32 = windows_ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(0x1000, False, pid)
+        if handle:
+            kernel32.CloseHandle(handle)
+            return True
+        return bool(windows_ctypes.get_last_error() == 5)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _recover_dead_run_lock(path: Path) -> None:
+    """Aanroepen onder SQLite BEGIN IMMEDIATE; crash laat die guard vanzelf los."""
+    if path.is_symlink():
+        return
+    try:
+        stat = path.stat()
+        owner = json.loads(path.read_text(encoding="utf-8"))
+        pid = owner["pid"]
+        if type(pid) is not int or _process_alive(pid):
+            return
+        if path.stat().st_ino == stat.st_ino:
+            path.unlink()
+    except (OSError, ValueError, KeyError, TypeError):
+        return
 
 
 class HarvestError(RuntimeError):
@@ -205,6 +243,11 @@ class Run:
                 descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
                 os.write(descriptor, json.dumps({"pid": os.getpid(), "created": utc_now().isoformat()}).encode())
             except FileExistsError as exc:
+                with self.connect() as connection:
+                    connection.execute("BEGIN IMMEDIATE")
+                    _recover_dead_run_lock(lock_path)
+                if not lock_path.exists():
+                    continue
                 if time.monotonic() - started >= wait_seconds:
                     raise HarvestError(f"run is vergrendeld: {lock_path}", 6) from exc
                 time.sleep(0.1)

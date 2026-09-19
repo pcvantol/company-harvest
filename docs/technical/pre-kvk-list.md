@@ -65,7 +65,19 @@ opeenvolgende batches. Per kandidaat wordt maximaal één eerste-pagina-GET
 zonder automatische retry uitgevoerd; meer zoekhits blijven onvolledig.
 Een toegangs- of rateblokkade stopt de batch. Alle batchoutputs blijven
 `PARTIAL`, zodat `kvk consolidate` en export ze niet als volledige verificatie
-kunnen lezen. Een volledige frontendreeks is niet vrijgegeven.
+kunnen lezen. Dit laatste gold voor ADR-006; ADR-008 voegt een afzonderlijke
+expliciete langlopende opdracht toe.
+
+`kvk pre-kvk-run --run-dir RUN_DIR --until-complete --interval 2` gebruikt
+dezelfde gefilterde input, één pagina en één poging per kandidaat. Met
+`--max-requests N` is een begrensde sessie mogelijk. Iedere aanvraag heeft
+een duurzaam SQLite-journalrecord; na iedere uitkomst worden lokale TSV's
+en een atomisch voortgangs-JSON bijgewerkt. Bij herstart worden de TSV's uit
+de journal gereconstrueerd. Onzekere verzoekuitkomsten worden niet stil
+opnieuw bevraagd. Alleen een volledige, hashgebonden kandidaatpartitie zonder
+actieve blokkade levert `kvk_matches`/`kvk_unresolved` met status `COMPLETE`
+voor vervolgsteps. `COMPLETE` zegt niets over het aandeel geverifieerde
+matches; technische en onzekere uitkomsten blijven expliciet unresolved.
 
 De eenmalige, genegeerde lokale Wikidata-hervattingsrunner bewaart
 SPARQL-projectiepagina's en aparte labelbatches met request-/bodyhash,
