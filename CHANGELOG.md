@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- De historische Git-tag `v0.1.0` is op eigenaarsverzoek uit de lokale
+  checkout en van `origin` verwijderd; broncommit en releasebewijs blijven.
 - Korte functionele v1.0.0-snelstart met exacte commando's, hervatpad en
   outputgates naast de uitgebreide commandotabel; geen uitvoerbare wijziging.
 
@@ -28,7 +30,7 @@
   Wikidata-paginering pauzeert tussen publieke requests.
 - Geïsoleerde, niet-gepubliceerde tien-GET-capabilitymeting via de publieke
   KVK-frontend-Web-API; ten tijde van die meting bleven R7 en bulkgebruik geparkeerd.
-- GitHub Release-object `v0.1.0` en de vijf assets op eigenaarsverzoek verwijderd; de Git-tag en historische kwalificatie-evidence blijven behouden.
+- GitHub Release-object `v0.1.0` en de vijf assets op eigenaarsverzoek verwijderd; op dat moment bleven de Git-tag en historische kwalificatie-evidence behouden.
 - Doorlopende CI teruggebracht tot Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 gelden voor nieuwe wijzigingen als `NOT_TESTED`.
 - Broncatalogusschema 2 met expliciete identifier-, toegang-, voorwaarden-, actualiteits-, bronfamilie-, herkomst- en laagprofielen.
 - Verliesvrije lokale bronimport zonder verplichte KVK-kolom; ontbrekende en ongeldige nummers blijven meetbare kandidaten.
