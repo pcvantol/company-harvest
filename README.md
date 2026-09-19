@@ -75,8 +75,8 @@ Zie de [geïntegreerde gebruikshandleiding](docs/functional/e2e-command.md),
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-De [publieke release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0)
-bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
+De [publieke release v3.0.0](https://github.com/pcvantol/company-lookup/releases/tag/v3.0.0)
+bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-lookup/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
 en checksums; zie ook het [publicatiebewijs](docs/releases/20260919-v3.0.0-evidence.md).
 Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de publieke
 compatibiliteit en grenzen. Alle GitHub Releases en lokale/remote tags onder

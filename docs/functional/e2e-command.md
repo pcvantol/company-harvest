@@ -26,7 +26,7 @@ De **publieke 3.0.0-wheel** bevat dit proces en werkt zonder broncheckout,
 GitHub-login of Codex. De inmiddels ingetrokken 2.0.0-wheel verwerkte nog
 vier bronnen en maakte geen `companies_delivery_light.xlsx`. Alleen Python 3.14.x wordt
 ondersteund. Controleer vóór installatie de wheelhash tegen de
-`SHA256SUMS.txt` van [release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0).
+`SHA256SUMS.txt` van [release v3.0.0](https://github.com/pcvantol/company-lookup/releases/tag/v3.0.0).
 
 Wie alleen de bronnen, master en gefilterde KVK-invoer wil maken, gebruikt
 in de **nog niet gepubliceerde broncode** `run pre-kvk` (eventueel met

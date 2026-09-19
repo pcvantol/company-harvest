@@ -22,9 +22,10 @@ venv. Gebruik voor een bestaande run expliciet de oude datamap via de
 nieuwe env-var, `--data-dir` of `--run-dir`. De tool verplaatst, hernoemt of
 herschrijft nooit een bestaande run.
 
-De GitHub-repository wordt afzonderlijk via bevoegd beheer hernoemd naar
-`pcvantol/company-lookup` zodra authenticatie en netwerk dit toestaan;
-totdat dat is geverifieerd, blijft de oude remote gezaghebbend. De publieke
+De GitHub-repository is via bevoegd beheer hernoemd naar
+`pcvantol/company-lookup`. GitHub toont de nieuwe publieke URL, en de
+lokale `origin` gebruikt die URL; een bereikbaarheidstest van `main`
+slaagde. De publieke
 3.0.0-wheel, tags, releaseassets en historische bewijsdocumenten behouden
 hun werkelijk gebruikte namen en byte-identiteit.
 
