@@ -13,6 +13,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
+from company_harvest.console import emit
 from company_harvest.core import HarvestError, Run, atomic_write, normalize_name, sha256, write_tsv
 from company_harvest.kvk import (
     UNRESOLVED_HEADERS,
@@ -230,6 +231,9 @@ def _resolve_pre_kvk_locked(run: Run, limit: int, interval: float) -> tuple[Path
         run.register_artifact_set([(match_path, "04", "pre_kvk_kvk_batch_matches", "PARTIAL"),
                                    (outcome_path, "04", "pre_kvk_kvk_batch_outcomes", "PARTIAL"),
                                    (report_path, "04", "pre_kvk_kvk_batch_report", "PARTIAL")])
+        emit("WARN" if blocked else "INFO", "KVK-batch: verzoeken uitgevoerd",
+             count=attempted, total=limit)
+        emit("INFO", "KVK-batch: geverifieerde matches", count=len(matches))
         return match_path, outcome_path, report_path
 
 
@@ -371,6 +375,8 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
                                                "eligible_sha256": digest, "provider": "public-http"})
         _snapshot(run, eligible, total, states, digest, finalize=False)
         progress = _progress(run, digest, total, states, "", "RUNNING")
+        emit("INFO", "KVK-check hervat vanaf duurzaam journal", count=sum(states.values()),
+             total=total)
         attempted = 0
         last_id = ""
         stop_reason = "PAUSED"
@@ -452,6 +458,11 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
                     states[state] += 1
                     _append_output(run, candidate, state, match, error)
                     _progress(run, digest, total, states, candidate_id, stop_reason if state == "FAILED" else "RUNNING")
+                    completed = sum(states.values())
+                    frequency = 1 if total <= 10 else 10 if total <= 100 else 100
+                    if attempted == 1 or attempted % frequency == 0 or state == "FAILED" or completed == total:
+                        emit("WARN" if state == "FAILED" else "INFO",
+                             "KVK-checkpoint: kandidaten verwerkt", count=completed, total=total)
                     if state == "FAILED":
                         break
             if sum(states.values()) == total and not states["IN_FLIGHT"] and stop_reason != "BLOCKED":
@@ -465,4 +476,6 @@ def run_pre_kvk(run: Run, interval: float = 2.0, max_requests: int | None = None
             _snapshot(run, eligible, total, states, digest, finalize=stop_reason == "COMPLETE")
             if stop_reason == "COMPLETE":
                 _progress(run, digest, total, states, last_id, "COMPLETE")
+            emit("OK" if stop_reason == "COMPLETE" else "WARN",
+                 "KVK-checkpoint: " + stop_reason, count=sum(states.values()), total=total)
         return run.path / "pre_kvk_kvk_matches.tsv", run.path / "pre_kvk_kvk_unresolved.tsv", progress

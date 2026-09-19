@@ -31,6 +31,10 @@ gebonden: ook na hervatten maximaal 50 KVK-kandidaten en maximaal 50
 eindrecords. Deze proeflevering is PARTIAL ten opzichte van de volledige
 bronlijst. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
 
+De nog niet gepubliceerde CLI toont bij ieder commando gekleurde,
+recordvrije voortgang op stderr; de bestaande stdout-uitvoer blijft geschikt
+voor scripts. Zie [consolevoortgang](docs/functional/console-logging.md).
+
 ## Snel starten
 
 ```bash

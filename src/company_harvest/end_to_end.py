@@ -7,6 +7,7 @@ import math
 from typing import Any
 
 from company_harvest.audit import verify
+from company_harvest.console import emit, phase
 from company_harvest.core import HarvestError, Run, read_tsv
 from company_harvest.kvk import PublicHttpProvider
 from company_harvest.kvk import preflight as kvk_preflight
@@ -37,42 +38,58 @@ def run_end_to_end(run: Run, limit_kvk_check: int | None, interval: float = 2.0,
         "provider": "public-http",
     }
     with run.lock():
-        if run.metadata().get("workflow") != "HARVEST" or not host_preflight(run.path)["ready"]:
-            raise HarvestError("host/run-preflight is niet gereed; controleer run en opslag")
-        config = run.metadata().get("runtime_config", {}).get("end_to_end")
-        if config is not None and config != requested:
-            raise HarvestError("E2E-instellingen van deze run mogen bij hervatten niet wijzigen")
-        if config is None:
-            with run.connect() as connection:
-                if connection.execute("SELECT 1 FROM kvk_requests LIMIT 1").fetchone():
-                    raise HarvestError("bestaand KVK-journal vereist een eigen besluit; start hier geen nieuwe E2E-scope")
-            run.record_config("end_to_end", requested)
+        with phase("Host, run en hervatinstellingen controleren"):
+            if run.metadata().get("workflow") != "HARVEST" or not host_preflight(run.path)["ready"]:
+                raise HarvestError("host/run-preflight is niet gereed; controleer run en opslag")
+            config = run.metadata().get("runtime_config", {}).get("end_to_end")
+            if config is not None and config != requested:
+                raise HarvestError("E2E-instellingen van deze run mogen bij hervatten niet wijzigen")
+            if config is None:
+                with run.connect() as connection:
+                    if connection.execute("SELECT 1 FROM kvk_requests LIMIT 1").fetchone():
+                        raise HarvestError("bestaand KVK-journal vereist een eigen besluit; start hier geen nieuwe E2E-scope")
+                run.record_config("end_to_end", requested)
         if run.metadata()["status"] in {"EXPORT_COMPLETE", "PARTIAL_EXPORTED"}:
-            _ensure_report(run)
-            audit = verify(run)
+            emit("INFO", "Bestaande export wordt gecontroleerd; geen KVK-verzoeken")
+            with phase("Rapport en eindlijst controleren"):
+                _ensure_report(run)
+                audit = verify(run)
             return _finished(run, audit)
-        check_access_blocks(run)
-        prepare_pre_kvk(run)
-        scope = bind_kvk_scope(run, limit_kvk_check) if limit_kvk_check is not None else None
-        if scope is not None and scope_details(run) != scope:
-            raise HarvestError("KVK-cohortbinding is gewijzigd")
-        kvk_preflight(run, "public-http")
-        if not PublicHttpProvider(run).preflight()["available"]:
-            raise HarvestError("publieke KVK-frontendroute is niet beschikbaar; geen verzoek verstuurd")
-        _, _, progress_path = run_pre_kvk(run, interval=interval)
-        progress = json.loads(progress_path.read_text(encoding="utf-8"))
-        if progress["status"] != "COMPLETE":
-            raise HarvestError(
-                f"KVK-check stopte met status {progress['status']}; hervat uitsluitend deze run na beoordeling",
-                4 if progress["status"] == "BLOCKED" else 7,
-            )
-        verify(run)
-        if not run.latest_artifact("05", "canonical"):
-            consolidate(run)
-        if not run.latest_artifact("06", "non_sole"):
-            exclude_sole_proprietorships(run)
-        if not run.latest_artifact("07", "active"):
-            active_only(run)
+        with phase("Bekende KVK-blokkades controleren"):
+            check_access_blocks(run)
+        with phase("Publieke bronnen voorbereiden"):
+            prepare_pre_kvk(run)
+        with phase("KVK-cohort binden"):
+            scope = bind_kvk_scope(run, limit_kvk_check) if limit_kvk_check is not None else None
+            if scope is not None and scope_details(run) != scope:
+                raise HarvestError("KVK-cohortbinding is gewijzigd")
+        if scope is not None:
+            emit("INFO", "KVK-kandidaten geselecteerd", count=int(scope["selected_rows"]),
+                 total=int(scope["full_eligible_rows"]))
+        with phase("Publieke KVK-route controleren"):
+            kvk_preflight(run, "public-http")
+            if not PublicHttpProvider(run).preflight()["available"]:
+                raise HarvestError("publieke KVK-frontendroute is niet beschikbaar; geen verzoek verstuurd")
+        with phase("KVK-kandidaten controleren"):
+            _, _, progress_path = run_pre_kvk(run, interval=interval)
+            progress = json.loads(progress_path.read_text(encoding="utf-8"))
+            emit("INFO", "KVK-checkpoint bijgewerkt", count=int(progress["journal_rows"]),
+                 total=int(progress["eligible_rows"]))
+            if progress["status"] != "COMPLETE":
+                raise HarvestError(
+                    f"KVK-check stopte met status {progress['status']}; hervat uitsluitend deze run na beoordeling",
+                    4 if progress["status"] == "BLOCKED" else 7,
+                )
+        with phase("KVK-resultaten auditen en consolideren"):
+            verify(run)
+            if not run.latest_artifact("05", "canonical"):
+                consolidate(run)
+        with phase("Eenmanszaken uitsluiten"):
+            if not run.latest_artifact("06", "non_sole"):
+                exclude_sole_proprietorships(run)
+        with phase("Actieve bedrijven selecteren"):
+            if not run.latest_artifact("07", "active"):
+                active_only(run)
         unresolved = run.latest_artifact("05", "kvk_unresolved")
         unresolved_count = len(read_tsv(unresolved)) if unresolved else 0
         skipped = int(scope["not_checked_rows"]) if scope is not None else 0
@@ -80,9 +97,11 @@ def run_end_to_end(run: Run, limit_kvk_check: int | None, interval: float = 2.0,
             raise HarvestError("onopgeloste KVK-kandidaten vereisen expliciet --allow-partial voor export")
         partial = allow_partial or skipped > 0
         limit = min(export_limit, limit_kvk_check) if limit_kvk_check is not None else export_limit
-        export(run, limit, allow_partial=partial)
-        _ensure_report(run)
-        audit = verify(run)
+        with phase("Definitieve eindlijst exporteren"):
+            export(run, limit, allow_partial=partial)
+        with phase("Rapport en eindaudit afronden"):
+            _ensure_report(run)
+            audit = verify(run)
         return _finished(run, audit)
 
 

@@ -5,12 +5,17 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Never
 
 from company_harvest import __version__
 from company_harvest.audit import trace, verify
+from company_harvest.console import active as console_active
+from company_harvest.console import emit, error_text, phase
+from company_harvest.console import result as console_result
 from company_harvest.core import HarvestError, Run, data_root, initialize_run, open_run
 from company_harvest.end_to_end import run_end_to_end
 from company_harvest.gleif import collect_gleif
@@ -44,8 +49,18 @@ def _provider_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--provider", choices=("auto", "public-http", "public-browser"), default="auto")
 
 
+class _ConsoleParser(argparse.ArgumentParser):
+    def error(self, message: str) -> Never:
+        emit("FOUT", "Ongeldige opdracht of opties")
+        self.print_usage(sys.stderr)
+        option = re.search(r"--[a-z][a-z0-9-]*", message)
+        known = option.group() if option and option.group() in self._option_string_actions else None
+        detail = f" bij {known}" if known else ""
+        self.exit(2, f"{self.prog}: fout: ongeldige opdracht of opties{detail}; gebruik --help\n")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="company-harvest", description="Lokale, auditbare bedrijfsverzameling en offline lijstmerge")
+    parser = _ConsoleParser(prog="company-harvest", description="Lokale, auditbare bedrijfsverzameling en offline lijstmerge")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--data-dir", type=Path)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -114,6 +129,7 @@ def _options(args: argparse.Namespace, side: str) -> InputOptions:
 
 def _print(value: object) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=2, default=str))
+    console_result(value)
 
 
 def _dispatch_new_run(args: argparse.Namespace, root: Path) -> int:
@@ -121,6 +137,7 @@ def _dispatch_new_run(args: argparse.Namespace, root: Path) -> int:
     if args.run_command == "init":
         run = initialize_run(root, args.target)
         print(run.path if args.print_path else json.dumps({"run_dir": str(run.path)}))
+        console_result({"status": "CREATED"})
         return 0
     if args.run_command == "list":
         paths = sorted((root / "runs").glob("*")) if (root / "runs").exists() else []
@@ -134,6 +151,7 @@ def _dispatch_new_run(args: argparse.Namespace, root: Path) -> int:
             root, min(args.export_limit, args.limit_kvk_check) if args.limit_kvk_check is not None else args.export_limit
         )
         print(json.dumps({"run_dir": str(run.path), "phase": "STARTING"}), flush=True)
+        emit("INFO", "Runmap aangemaakt of hervat")
         _print(run_end_to_end(run, args.limit_kvk_check, args.interval, args.export_limit, args.allow_partial))
         return 0
     raise HarvestError("onbekend run-commando")
@@ -172,7 +190,9 @@ def _dispatch_sources(args: argparse.Namespace, run: Run) -> int:
     elif args.sources_command in {"anbi", "duo"}:
         _print(collect_public_register(run, args.public_register_source_id, args.archive, args.limit, args.refresh))
     elif args.sources_command == "import":
-        print(import_source(run, args.input, args.source_id, args.name_column, args.kvk_column, args.sheet))
+        path = import_source(run, args.input, args.source_id, args.name_column, args.kvk_column, args.sheet)
+        print(path)
+        console_result(path)
     else:
         raise HarvestError("onbekend broncommando")
     return 0
@@ -202,7 +222,9 @@ def _dispatch_companies(args: argparse.Namespace, run: Run) -> int:
 def _dispatch_kvk(args: argparse.Namespace, run: Run) -> int:
     """KVK-transport en vervolgverwerking blijven expliciet gescheiden."""
     if args.kvk_command == "preflight":
-        print(kvk_preflight(run, args.provider))
+        value = kvk_preflight(run, args.provider)
+        print(value)
+        console_result(value)
     elif args.kvk_command == "pilot":
         _print(run_matching_pilot(run, args.provider, args.interval, args.refresh, args.review_size, args.max_live))
     elif args.kvk_command == "pilot-review":
@@ -214,7 +236,9 @@ def _dispatch_kvk(args: argparse.Namespace, run: Run) -> int:
     elif args.kvk_command == "pre-kvk-run":
         _print(run_pre_kvk(run, args.interval, args.max_requests))
     elif args.kvk_command == "consolidate":
-        print(consolidate(run))
+        value = consolidate(run)
+        print(value)
+        console_result(value)
     else:
         raise HarvestError("onbekend KVK-commando")
     return 0
@@ -256,7 +280,9 @@ def dispatch(args: argparse.Namespace) -> int:
         _print(export(run, args.limit, args.allow_partial))
         return 0
     if args.command == "report":
-        print(report(run))
+        value = report(run)
+        print(value)
+        console_result(value)
         return 0
     if args.command == "audit":
         return _dispatch_audit(args, run)
@@ -264,11 +290,24 @@ def dispatch(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    try:
-        return dispatch(build_parser().parse_args(argv))
-    except HarvestError as exc:
-        print(f"FOUT: {exc}", file=sys.stderr)
-        return exc.exit_code
-    except KeyboardInterrupt:
-        print("ONDERBROKEN: voortgang is gecheckpoint; hervat de bestaande run", file=sys.stderr)
-        return 130
+    with console_active():
+        args = build_parser().parse_args(argv)
+        command = " ".join(str(part) for part in (
+            args.command, getattr(args, f"{args.command}_command", None)
+        ) if part is not None)
+        emit("START", command)
+        try:
+            with phase(command):
+                return dispatch(args)
+        except HarvestError as exc:
+            emit("FOUT", f"Commando gestopt (exitcode {exc.exit_code})")
+            print(f"FOUT: {error_text(str(exc), exc.exit_code)}", file=sys.stderr)
+            return exc.exit_code
+        except KeyboardInterrupt:
+            emit("WARN", "Onderbroken; voortgang is gecheckpoint")
+            print("ONDERBROKEN: voortgang is gecheckpoint; hervat de bestaande run", file=sys.stderr)
+            return 130
+        except Exception as exc:
+            emit("FOUT", "Onverwachte technische fout")
+            print(f"FOUT: onverwachte technische fout ({type(exc).__name__})", file=sys.stderr)
+            return 1

@@ -10,6 +10,7 @@ from test_pre_kvk import _full_sources, _raw
 
 from company_harvest import cli, end_to_end, pre_kvk_kvk, prepare
 from company_harvest.audit import verify
+from company_harvest.console import active as console_active
 from company_harvest.core import (
     HarvestError,
     Run,
@@ -67,7 +68,16 @@ def test_cli_e2e_bounded_from_empty_run_resumes_and_audits(
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
     args = ["--data-dir", str(tmp_path), "run", "e2e", "--limit-kvk-check", "1"]
     assert cli.main(args) == 0
-    output = capsys.readouterr().out
+    captured = capsys.readouterr()
+    output = captured.out
+    progress_log = captured.err
+    for phase in ("Broncatalogus controleren", "IND-bron verzamelen", "GLEIF-bron verzamelen",
+                  "ANBI-bron verzamelen", "DUO-bron verzamelen", "Pre-KVK-filter toepassen",
+                  "KVK-cohort binden", "KVK-kandidaten controleren", "Eenmanszaken uitsluiten",
+                  "Definitieve eindlijst exporteren", "Rapport en eindaudit afronden"):
+        assert phase in progress_log
+    assert "KVK-checkpoint" in progress_log and "1/1" in progress_log
+    assert "Delta B.V." not in progress_log and "34567890" not in progress_log
     run_path = Path(json.loads(output.splitlines()[0])["run_dir"])
     run = open_run(run_path)
     scope = scope_details(run)
@@ -184,7 +194,7 @@ def test_audit_checks_newest_partial_manifest_and_its_registered_files(
 
 
 def test_e2e_stops_at_block_and_never_exports(
-    run: Run, monkeypatch: pytest.MonkeyPatch
+    run: Run, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(end_to_end, "prepare_pre_kvk", _prepare)
     calls = 0
@@ -196,8 +206,12 @@ def test_e2e_stops_at_block_and_never_exports(
 
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", blocked)
     with pytest.raises(HarvestError, match="BLOCKED") as error:
-        end_to_end.run_end_to_end(run, 2)
+        with console_active():
+            end_to_end.run_end_to_end(run, 2)
     assert error.value.exit_code == 4 and calls == 1
+    progress_log = capsys.readouterr().err
+    assert "KVK-kandidaten controleren gestopt" in progress_log
+    assert "synthetic blocked" not in progress_log
     assert run.latest_artifact("07", "active") is None
     with pytest.raises(HarvestError, match="blokkade"):
         end_to_end.run_end_to_end(run, 2)
@@ -244,7 +258,7 @@ def test_bounded_progress_records_only_selected_count(run: Run, monkeypatch: pyt
 
 
 def test_limit_50_is_total_run_cap_and_output_cap(
-    run: Run, monkeypatch: pytest.MonkeyPatch
+    run: Run, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     def prepare_many(check_run: Run) -> tuple[Path, Path, Path, Path, Path]:
         _full_sources(check_run)
@@ -279,7 +293,12 @@ def test_limit_50_is_total_run_cap_and_output_cap(
         return _response(provider.run, query, number, calls)  # type: ignore[attr-defined]
 
     monkeypatch.setattr(pre_kvk_kvk.PublicHttpProvider, "search", search)
-    result = end_to_end.run_end_to_end(run, 50)
+    with console_active():
+        result = end_to_end.run_end_to_end(run, 50)
+    progress_log = capsys.readouterr().err
+    for checkpoint in ("1/50", "10/50", "20/50", "30/50", "40/50", "50/50"):
+        assert checkpoint in progress_log
+    assert "Synthetic 000" not in progress_log and "40000000" not in progress_log
     assert calls == 50 and result["delivery_rows"] == 50
     scope = result["scope"]
     assert scope["full_eligible_rows"] == 62 and scope["not_checked_rows"] == 12

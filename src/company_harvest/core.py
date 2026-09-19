@@ -228,6 +228,9 @@ class Run:
             handle.flush()
         with (logs / "execution.log").open("a", encoding="utf-8") as handle:
             handle.write(f"{clean['time']} {level} {event} {json.dumps(clean, ensure_ascii=False)}\n")
+        from company_harvest.console import audit_event
+
+        audit_event(level, event, safe_fields)
 
     @contextmanager
     def lock(self, wait_seconds: float = 0) -> Iterator[None]:

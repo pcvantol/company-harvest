@@ -1,5 +1,14 @@
 # Logging en audit
 
+De onuitgegeven 1.1.1-CLI toont daarnaast veilige menselijke voortgang op
+stderr. `console.py` beheert de ANSI-kleurkeuze, vaste fase- en
+resultaatlabels en de allowlist voor counters/statussen en audit-events.
+`NO_COLOR` schakelt kleur uit; `FORCE_COLOR=1` forceert kleur. stdout blijft
+het bestaande gestructureerde CLI-resultaat. `run e2e` heeft expliciete
+fasegrenzen; `pre_kvk_kvk.py` toont bij lange checks gedoseerde numerieke
+checkpointmeldingen zonder kandidaat-ID, naam, KVK-nummer of response.
+Zie [ADR-012](../adr/012-safe-cli-console-progress.md).
+
 Iedere run schrijft `execution.log` en `events.jsonl` met UTC-tijd, level, event, run/recordcontext en geschoonde fouten. Credentialachtige waarden worden geredigeerd. Volledige providerresponses staan alleen onder lokaal bewijs.
 
 Artefacten krijgen SHA-256, grootte, stap, type en status in SQLite. `audit verify` controleert bestaan/grootte/hash. `audit trace` zoekt een KVK-nummer door tabulaire snapshots en toont bron→stap→output. Dit detecteert wijzigingen, maar beschermt niet tegen iemand die database en bestanden met dezelfde rechten herschrijft.

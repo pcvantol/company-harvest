@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Alle CLI-routes tonen nu veilige, ANSI-gekleurde fase-, resultaat- en
+  foutmeldingen op stderr, zonder recordinhoud. De E2E-keten en langlopende
+  KVK-check geven tussentijdse stappen/checkpoints; machineleesbare stdout,
+  exitcodes en hervatten blijven behouden. `NO_COLOR` en `FORCE_COLOR`
+  worden ondersteund.
 - Interne gedragsbehoudende refactor: CLI-routering per commandofamilie en
   pre-KVK-streamingpartitie los van metadata-/artefactpublicatie. Extra
   route-/optie- en naambehoudtests; geen nieuwe fuzzy filter of datamigratie.

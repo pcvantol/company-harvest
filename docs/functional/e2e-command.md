@@ -25,6 +25,11 @@ company-harvest run e2e --run-dir "/absoluut/pad/naar/de/run" \
   --limit-kvk-check 50 --interval 2 --export-limit 50
 ```
 
+De nog niet gepubliceerde broncode toont daarnaast op stderr per fase een
+gekleurde, recordvrije voortgangsregel en tijdens de KVK-check alleen
+checkpointaantallen. stdout blijft de bestaande machineleesbare uitvoer;
+zie [consolevoortgang](console-logging.md).
+
 `--limit-kvk-check 50` is een harde **runbrede** grens, niet een batchgrootte.
 Vóór de eerste GET wordt de eerste stabiele cohort van hoogstens 50 toegelaten
 kandidaten met bron- en filterhash vastgelegd. Ook na herstart kan deze run

@@ -7,6 +7,8 @@
 | CH-E2E-001 | Geïnstalleerde CLI verbindt vier bronfamilies t/m audit zonder checkout | ADR-009/011, `end_to_end.py`, `cli.py` | synthetische CLI-E2E, afzonderlijke offline CI-integratiepoort, commandorouteringstests en geïsoleerde wheel-smoke |
 | CH-E2E-002 | `--limit-kvk-check N` is runbreed, hervatbaar, hashgebonden en eindoutput ≤N | ADR-009, `kvk_scope.py`, `pre_kvk_kvk.py` | 50-kandidaattest, hervat-/wijzigings-/blokkadetests |
 | CH-E2E-003 | Export met overgeslagen cohortkandidaten is expliciet PARTIAL; unresolved binnen de cohort eist opt-in; audit valideert nieuwste PARTIAL-manifest, status en vijf bijbehorende bestanden | ADR-009, `workflow.py`, `audit.py` | scope-/hash-/count-closure-tests plus gerichte PARTIAL-manifest-/bestandsmanipulaties |
+| CH-CLI-LOG-001 | Alle CLI-routes tonen fase-, resultaat- en foutvoortgang met ANSI-kleur waar passend, zonder machineleesbare stdout of exitcodes te wijzigen | ADR-012, `console.py`, `cli.py` | console-/commandofamilietests, lokale quality en CI |
+| CH-CLI-LOG-002 | E2E en langlopende KVK-check tonen veilige numerieke deelvoortgang zonder recordinhoud of wijziging aan journal/requestgedrag | ADR-012, `prepare.py`, `end_to_end.py`, `pre_kvk_kvk.py` | synthetische E2E-/resume-/blokkade-/redactietests |
 | CH-PY-001 | Normale installatie van de actuele tool accepteert uitsluitend Python 3.14.x; na geforceerde installatie onder een andere minorversie faalt de start direct | `pyproject.toml`, packageguard, hostpreflight en installers | metadata-/runtime-/wrappertests, onafhankelijke review |
 | CH-DATA-001 | Voorzichtige normalisatie/dedup | ADR-002, `workflow.merge_candidates` | deduptests |
 | CH-DATA-002 | Canoniek uniek KVK + unresolved | `kvk.py`, `workflow.consolidate` | provider/matchtests |
