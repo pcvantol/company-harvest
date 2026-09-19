@@ -21,7 +21,7 @@
 | CH-TEST-001 | >80% per file | ADR-004, `tools/check_coverage.py` | qualityrapport |
 | CH-TEST-002 | Onafhankelijke subagentreview | `docs/reviews/` | reviewdocument |
 | CH-DIST-001 | Wheel/sdist/bundle uit broncommit | `tools/release.py` | manifest/installtest |
-| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | `REMOVED`; een volgende release moet opnieuw worden gekwalificeerd |
+| CH-DIST-002 | Publieke GitHub Release-asset | ADR-004 | `v1.0.0` gepubliceerd; [anonieme byte-identieke herdownload](../releases/20260919-v1.0.0-evidence.md) |
 | CH-DIST-003 | Cross-platform wrappers/preflight | `scripts/`, `preflight.py` | wrapper/CI-smokes |
 
 ## Roadmapbesluiten en outcome-gates
@@ -30,7 +30,7 @@
 |---|---|---|---|
 | CH-RM-001 | KVK-routemigratie, providerbulk en volledige bulkverificatie blijven geparkeerd tot expliciete activatie | `ROADMAP.md` RD-001/R7 | documentatiebesluit |
 | CH-RM-002 | Outbound User-Agent blijft `company-lookup/0.1` zonder persoonlijke verwijzing | `ROADMAP.md` RD-002, `core.HTTP_USER_AGENT` | tests + toepasselijke CI |
-| CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R8 | R1-R6 en R8 uitgevoerd; R9/R10 geblokkeerd |
+| CH-RM-003 | Outcome-gates en bronopbrengst gaan vóór volgende release | `ROADMAP.md` RD-003/R1-R8 | R1-R6 en R8 uitgevoerd; R10-toolrelease gepubliceerd, R7/R9-productgates open |
 | CH-RM-004 | Een brede set goede bronfamilies wordt vroeg verzameld; registratienummers bepalen routing, niet vroege toelating | `ROADMAP.md` RD-006/R3-R6 | vijf actieve families; R5/R6 `DONE` |
 | CH-RM-005 | Geen productieharvest vóór representatieve pilot-, sample- en schaalpoorten | `ROADMAP.md` RD-004/R8-R9 | eigenaar-go/no-go vereist |
 | CH-RM-006 | Verkleining gebeurt expliciet tussen raw-, candidate- en verified-lagen; onzekerheid veroorzaakt geen stil dataverlies | `ROADMAP.md` RD-006/R6/R8-R9 | R6/R8 bewezen; R9 geblokkeerd |

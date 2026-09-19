@@ -29,8 +29,9 @@ Zie [de gebruikershandleiding](docs/functional/user-guide.md), [technische docum
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-Zie [v1.0.0](docs/releases/v1.0.0.md) voor release-inhoud en beperkingen; de
-GitHub Releases-pagina toont de actuele publicatiestatus. Het historische
+De [publieke release v1.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0)
+bevat de gekwalificeerde wheel en checksums; zie ook de [lokale releasenotities](docs/releases/v1.0.0.md)
+en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md). Het historische
 release-object `v0.1.0` en zijn assets zijn verwijderd; de tag bleef behouden.
 
 ## Status van externe toegang

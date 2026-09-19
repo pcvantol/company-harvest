@@ -149,7 +149,7 @@ De filter is heuristisch en kan na expliciet besluit herzien worden.
 | R7 | `IN_PROGRESS` | Publieke frontendroute technisch hervatbaar; voorwaarden, schaal, velden en resultaten nog te beoordelen | expliciete activatie eigenaar op 2026-09-19 |
 | R8 | `DONE` | Begrensde KVK-nummermatchingpilot voor kandidaten zonder registratienummer | R6 |
 | R9 | `BLOCKED` | Volledige sample- en schaalvalidatie, daarna eigenaar-go/no-go voor 10.000 | R6, R7, R8 |
-| R10 | `IN_PROGRESS` | Door eigenaar gevraagde toolrelease 1.0.0 met herdownloadkwalificatie | relevante increments + alle gates |
+| R10 | `DONE` (toolrelease) | Door eigenaar gevraagde toolrelease 1.0.0 met herdownloadkwalificatie; R7/R9 blijven open | relevante toolincrements + distributiegates |
 
 De volgorde is outcome-gedreven. Een later increment mag niet worden gestart omdat het technisch aantrekkelijk is; de afhankelijkheden en exitcriteria moeten eerst zijn gehaald.
 
@@ -582,7 +582,9 @@ Na een geslaagde sample:
 
 ## 15. R10 — Volgende release
 
-Status: `IN_PROGRESS` voor de expliciet gevraagde toolrelease 1.0.0.
+Status: `DONE` voor de expliciet gevraagde toolrelease 1.0.0;
+[releasebewijs](docs/releases/20260919-v1.0.0-evidence.md). R7 en R9 blijven
+respectievelijk `IN_PROGRESS` en `BLOCKED`.
 
 Er komt geen standalone `v0.1.1` uitsluitend voor de User-Agent. De eigenaar
 heeft na de betekenisvolle vierbronnen-, filter- en hervatbare KVK-tooling een
@@ -671,7 +673,8 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 - **2026-09-18 — R4 afgerond:** de streaming GLEIF-adapter, brede-innamecontracten,
   begrensde capability-run, expliciete bronpaaroverlap en onafhankelijke review zijn
   afgerond. R5 is de eerstvolgende uitvoerbare increment; R7 blijft `PARKED`.
-- **2026-09-18 — GitHub Release `v0.1.0` verwijderd:** op expliciet besluit van de repository-eigenaar zijn het release-object en de vijf assets verwijderd. De Git-tag, broncommit en historische kwalificatie-evidence zijn behouden. Er is momenteel geen publieke release; een volgende release doorloopt opnieuw alle toepasselijke gates.
+- **2026-09-18 — GitHub Release `v0.1.0` verwijderd:** op expliciet besluit van de repository-eigenaar zijn het release-object en de vijf assets verwijderd. De Git-tag, broncommit en historische kwalificatie-evidence zijn behouden. Op dat moment was er geen publieke release; een volgende release moest opnieuw alle toepasselijke gates doorlopen.
 - **2026-09-18 — CI-matrix gericht verkleind:** op expliciet besluit van de repository-eigenaar is RD-005 gewijzigd. Doorlopende CI valideert voortaan uitsluitend Python 3.14 op macOS en Windows; Ubuntu en Python 3.11–3.13 zijn voor nieuwe wijzigingen `NOT_TESTED`. De overige kwaliteits- en releasegates blijven staan.
 - **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.
 - **2026-09-18 — KVK-nummermatching toegestaan:** op expliciet besluit van de repository-eigenaar is RD-007 toegevoegd. Kandidaten zonder initieel KVK-nummer mogen regulier worden gematcht en verrijkt; R8 vereist daarom niet langer R7. Alleen providerbulk, routemigratie en volledige rechtsvorm-/statusverificatie blijven onder RD-001/R7 geparkeerd.
+- **2026-09-19 — toolrelease `v1.0.0` gepubliceerd:** na groene exacte-commit-CI op macOS/Windows, onafhankelijke bron-/assetreview, byte-identieke anonieme herdownload en verse installatie. R10-toolrelease is `DONE`; R7/R9 blijven open. Zie het [releasebewijs](docs/releases/20260919-v1.0.0-evidence.md).
