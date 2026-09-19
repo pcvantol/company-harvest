@@ -25,7 +25,10 @@ export COMPANY_HARVEST_DATA_DIR="$PWD"
 RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
 ```
 
-Zie [de gebruikershandleiding](docs/functional/user-guide.md), [technische documentatie](docs/README.md) en [releaseverificatie](docs/technical/release-and-download-verification.md).
+Zie de [korte functionele snelstart](docs/functional/snelstart-v1.0.0.md),
+[de uitgebreide gebruikershandleiding](docs/functional/user-guide.md),
+[technische documentatie](docs/README.md) en
+[releaseverificatie](docs/technical/release-and-download-verification.md).
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 

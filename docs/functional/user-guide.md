@@ -1,5 +1,8 @@
 # Gebruikershandleiding
 
+Begin met de [korte functionele snelstart (maximaal ongeveer twee A4)](snelstart-v1.0.0.md)
+voor installatie, volledige workflow en hervatten.
+
 Zie [alle v1.0.0-commando's van installatie tot export](v1-end-to-end-commands.md)
 voor één uitvoertabel met de verwachte lokale bestanden en de poorten voor
 een strikte of bewust partiële levering.

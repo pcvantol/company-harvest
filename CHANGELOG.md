@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Korte functionele v1.0.0-snelstart met exacte commando's, hervatpad en
+  outputgates naast de uitgebreide commandotabel; geen uitvoerbare wijziging.
+
 ## 1.0.0 - 2026-09-19
 
 - Sluit het tijdelijke SQLite-spoolbestand van de pre-KVK-master expliciet vóór
