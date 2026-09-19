@@ -1,10 +1,8 @@
 # Gebruikershandleiding
 
-Voor de nieuwe geïntegreerde opdracht in broncodeversie 1.1.1: zie
-[één commando van bronnen tot eindlijst](e2e-command.md). Deze versie is nog
-niet als release gepubliceerd en vereist Python 3.14.x; de onderstaande
-v1.0.0-commando's blijven de
-handleiding voor de bestaande wheel.
+Voor de geïntegreerde opdracht in versie 2.0.0: zie
+[één commando van bronnen tot eindlijst](e2e-command.md). Deze versie vereist
+Python 3.14.x; de onderstaande v1.0.0-commando's beschrijven de oudere wheel.
 
 Begin met de [korte functionele snelstart (maximaal ongeveer twee A4)](snelstart-v1.0.0.md)
 voor installatie, volledige workflow en hervatten.

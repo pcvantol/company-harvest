@@ -7,11 +7,10 @@ Company Harvest is een lokale, auditbare Python-CLI voor twee workflows:
 
 De tool voert bij installatie of starten nooit automatisch een harvest uit. Echte runtimegegevens blijven onder de gekozen datamap en vallen buiten Git. De publieke KVK-provider gebruikt geen betaalde API en omzeilt geen blokkades, CAPTCHA's of rate limits.
 
-De huidige, nog niet gepubliceerde 1.1.1-broncode en wheel vereisen uitsluitend
-Python 3.14.x. De reeds gepubliceerde v1.0.0-wheel behoudt haar eigen,
-historische compatibiliteitscontract.
+Versie 2.0.0 vereist uitsluitend Python 3.14.x. De oudere v1.0.0-wheel
+behoudt haar eigen historische compatibiliteitscontract.
 
-Nieuwe runs en bestanden uit de nog niet gepubliceerde 1.1.1-broncode krijgen
+Nieuwe runs en bestanden vanaf 2.0.0 krijgen
 een leesbare UTC-prefix, bijvoorbeeld `2026.09.19_103917_ab12cd34ef56`.
 Bestaande runmappen worden niet hernoemd; de gepubliceerde 1.0.0-wheel houdt
 zijn oorspronkelijke naamformaat.
@@ -24,14 +23,14 @@ hervatbare langlopende opdracht worden geraadpleegd. Die opdracht doet niets
 automatisch bij installatie of starten. Een gesloten kandidatenlijst is nog
 geen bewijs voor 10.000 actieve, geverifieerde bedrijven.
 
-De nog niet gepubliceerde 1.1.1-broncode bevat `run e2e` voor een
+Versie 2.0.0 bevat `run e2e` voor een
 expliciete verwerking van downloads tot geaudite eindlijst. Met
 `--limit-kvk-check 50` wordt vóór de eerste KVK-aanroep een vaste cohort
 gebonden: ook na hervatten maximaal 50 KVK-kandidaten en maximaal 50
 eindrecords. Deze proeflevering is PARTIAL ten opzichte van de volledige
 bronlijst. Zie de [E2E-gebruikshandleiding](docs/functional/e2e-command.md).
 
-De nog niet gepubliceerde CLI toont bij ieder commando gekleurde,
+De 2.0.0-CLI toont bij ieder commando gekleurde,
 recordvrije voortgang op stderr; de bestaande stdout-uitvoer blijft geschikt
 voor scripts. Zie [consolevoortgang](docs/functional/console-logging.md).
 
@@ -52,8 +51,9 @@ Zie de [korte functionele snelstart](docs/functional/snelstart-v1.0.0.md),
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
-De [publieke release v1.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0)
-bevat de gekwalificeerde wheel en checksums; zie ook de [lokale releasenotities](docs/releases/v1.0.0.md)
+Zie de [releasenotities voor 2.0.0](docs/releases/v2.0.0.md) voor de actuele
+compatibiliteit en grenzen. De oudere [publieke release v1.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0)
+bevat haar eigen gekwalificeerde wheel en checksums; zie ook de [historische releasenotities](docs/releases/v1.0.0.md)
 en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md). Het historische
 release-object `v0.1.0` en zijn assets zijn verwijderd; de historische Git-tag
 `v0.1.0` is op 19 september 2026 eveneens lokaal en op `origin` verwijderd.

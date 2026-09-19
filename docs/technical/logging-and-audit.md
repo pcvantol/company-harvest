@@ -1,6 +1,6 @@
 # Logging en audit
 
-De onuitgegeven 1.1.1-CLI toont daarnaast veilige menselijke voortgang op
+De 2.0.0-CLI toont daarnaast veilige menselijke voortgang op
 stderr. `console.py` beheert de ANSI-kleurkeuze, vaste fase- en
 resultaatlabels en de allowlist voor counters/statussen en audit-events.
 `NO_COLOR` schakelt kleur uit; `FORCE_COLOR=1` forceert kleur. stdout blijft

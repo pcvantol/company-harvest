@@ -20,7 +20,7 @@
   `PARTIAL`, terwijl `audit verify` dit manifest alleen als `COMPLETE` opzoekt.
   Daardoor geeft de eindaudit dan ten onrechte
   `MISSING_REQUIRED:outputset_manifest`. Beschouw een partiële v1.0.0-levering
-  niet als audit-PASS. In de nog niet gepubliceerde 1.1.1-broncode leest de
+  niet als audit-PASS. Vanaf versie 2.0.0 leest de
   audit het nieuwste PARTIAL-manifest en controleert ook de verplichte status,
   alle vijf bijbehorende bestandsregistraties, hashes en relaties.
 - `run e2e --limit-kvk-check N` bewaart de vaste cohort en haar hash in de

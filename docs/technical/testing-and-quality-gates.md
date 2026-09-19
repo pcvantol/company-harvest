@@ -23,7 +23,7 @@ idempotent hervatten. De test wordt ook door de algemene pytest-/coveragegate
 uitgevoerd; de aparte stap maakt haar CI-uitkomst expliciet zichtbaar.
 Linux wordt niet door de doorlopende CI gevalideerd en is voor nieuwe
 wijzigingen daarom `NOT_TESTED`. Python 3.11–3.13 en 3.15+ zijn voor de
-actuele 1.1.1-broncode expliciet `UNSUPPORTED`, niet alleen ongetest. De
+actuele 2.0.0-broncode expliciet `UNSUPPORTED`, niet alleen ongetest. De
 historische releasekwalificatie van `v0.1.0` bevat bewijs voor een bredere
 matrix; de reeds gepubliceerde v1.0.0-wheel wordt niet met terugwerkende
 kracht gewijzigd. De lokale Apple-Siliconcontrole gebruikt Python 3.14.

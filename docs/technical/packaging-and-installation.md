@@ -1,7 +1,7 @@
 # Packaging en installatie
 
-De Hatchling-wheel bevat de `src`-package en console-entrypoint. De actuele,
-nog niet gepubliceerde 1.1.1-broncode ondersteunt uitsluitend Python 3.14.x:
+De Hatchling-wheel bevat de `src`-package en console-entrypoint. Versie
+2.0.0 ondersteunt uitsluitend Python 3.14.x:
 `Requires-Python: >=3.14,<3.15` blokkeert normale installatie met andere
 minorversies en een package-guard blokkeert ook geforceerde installaties bij
 het starten. De gepubliceerde v1.0.0-wheel houdt haar historische bredere

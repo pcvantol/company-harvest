@@ -4,7 +4,7 @@ Elke run bevat `run.json`, SQLite in WAL-modus, append-only eventlogs, snapshots
 
 Exports worden naast de bestemming geschreven en atomisch verplaatst. SQLite-commit en filesystemswap zijn geen enkele transactie; `audit verify` detecteert ontbrekende/hashafwijkende outputs. Netwerk- en syncmappen zijn ongeschikt voor actieve state.
 
-## Leesbare namen vanaf de onuitgegeven 1.0.1-broncode
+## Leesbare namen vanaf versie 2.0.0
 
 Nieuwe run-ID's en namen van artefacten, evidence en snapshots beginnen met
 `yyyy.mm.dd_hhMMss` in **UTC**, gevolgd door 12 willekeurige hextekens tegen

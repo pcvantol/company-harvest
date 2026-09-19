@@ -1,4 +1,4 @@
-# Consolevoortgang (onuitgegeven 1.1.1)
+# Consolevoortgang (vanaf 2.0.0)
 
 Ieder `company-harvest`-commando toont op stderr een tijd, een gekleurde
 status (`START`, `STEP`, `INFO`, `OK`, `WARN` of `FOUT`) en een korte

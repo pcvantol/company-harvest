@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-09-19
+
+- Incompatibele Python-supportwijziging: na v1.0.0 (Python 3.11–3.14)
+  accepteert de tool alleen Python 3.14.x. Daarom verschijnt deze broncode
+  als 2.0.0 en niet als een compatibele 1.x-release; gebruik Python 3.14
+  voor installatie en uitvoering.
+
 - GitHub Actions gebruikt de actuele v7-versies van `checkout` en
   `setup-python` op Node 24; de Python 3.14/macOS+Windows-matrix en de aparte
   offline E2E-poort blijven ongewijzigd.
@@ -21,16 +28,16 @@
   E2E-integratieproef: CLI vanaf lege run, gesimuleerde broncollectors en
   KVK-check, echte filtering/export/audit en hervatten; netwerkverkeer is in
   deze proef voor niet-lokale bestemmingen verboden.
-- Broncodeversie 1.1.1: de audit van het nieuwste PARTIAL-outputmanifest eist
+- De audit van het nieuwste PARTIAL-outputmanifest eist
   een expliciete, met de run overeenkomende status en vijf bestanden met
   dezelfde registratiestatus. Gerichte regressies bewijzen een geldige
   partiële levering en weigeren ontbrekende status, gewijzigd bestand of een
   manifest dat niet met de afgeronde runstatus overeenkomt.
-  v1.0.0 blijft ongewijzigd; 1.1.1 is nog niet gepubliceerd.
-- De nog niet gepubliceerde 1.1.0-tool accepteert uitsluitend Python 3.14.x:
+  v1.0.0 blijft ongewijzigd.
+- De tool accepteert uitsluitend Python 3.14.x:
   packagingmetadata, runtime, hostpreflight, installers en ontwikkelinstellingen
   wijzen andere minorversies af. De gepubliceerde v1.0.0 blijft ongewijzigd.
-- Broncodeversie 1.1.0: expliciet `run e2e`-commando voor volledige
+- Expliciet `run e2e`-commando voor volledige
   vierbronnenvoorbereiding, publieke KVK-check, canonisering, filters, export,
   rapport en audit. `--limit-kvk-check N` bindt een onveranderlijke cohort van
   maximaal N kandidaten aan de run; hervatten kan de grens niet verhogen.
@@ -45,7 +52,7 @@
 - Nieuwe run-, artefact-, evidence- en snapshotnamen beginnen met een leesbare
   UTC-tijd `yyyy.mm.dd_hhMMss` plus een korte willekeurige suffix, zonder de
   lange nanosecondeprefixed waarde. Bestaande runs en bestandsnamen blijven
-  ongewijzigd en leesbaar; de broncode is nog niet als nieuwe release gepubliceerd.
+  ongewijzigd en leesbaar.
 - De historische Git-tag `v0.1.0` is op eigenaarsverzoek uit de lokale
   checkout en van `origin` verwijderd; broncommit en releasebewijs blijven.
 - Korte functionele v1.0.0-snelstart met exacte commando's, hervatpad en

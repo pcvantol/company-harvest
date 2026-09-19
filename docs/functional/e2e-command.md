@@ -1,12 +1,12 @@
-# Eén commando van bronnen tot eindlijst (broncode 1.1.1)
+# Eén commando van bronnen tot eindlijst (versie 2.0.0)
 
 `run e2e` verbindt de bestaande stappen 1–8: hostcheck, volledige downloads
 van IND/GLEIF/ANBI/DUO, samenvoegen/dedupliceren, pre-KVK-filter, publieke
 KVK-frontendcheck, canonisering, eenmanszaak-/statusfilters, export, rapport en
 audit. Er wordt geen Wikidata gelezen en geen officiële API-key gebruikt.
-Installeer eerst de **1.1.1-wheel zodra die is uitgebracht** in een venv op
-Python 3.14.x; andere Python-minorversies worden geweigerd. De huidige
-v1.0.0-wheel bevat dit commando niet. Een checkout,
+Installeer de **2.0.0-wheel** in een venv op Python 3.14.x; andere
+Python-minorversies worden geweigerd. De oudere v1.0.0-wheel bevat dit
+commando niet. Een checkout,
 GitHub-login of Codex is tijdens gebruik niet nodig.
 
 Voor een bewust begrensde proef op een nieuwe datamap:
@@ -25,7 +25,7 @@ company-harvest run e2e --run-dir "/absoluut/pad/naar/de/run" \
   --limit-kvk-check 50 --interval 2 --export-limit 50
 ```
 
-De nog niet gepubliceerde broncode toont daarnaast op stderr per fase een
+De 2.0.0-CLI toont daarnaast op stderr per fase een
 gekleurde, recordvrije voortgangsregel en tijdens de KVK-check alleen
 checkpointaantallen. stdout blijft de bestaande machineleesbare uitvoer;
 zie [consolevoortgang](console-logging.md).
