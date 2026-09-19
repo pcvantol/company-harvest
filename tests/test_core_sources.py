@@ -1,6 +1,7 @@
 import gzip
 import json
 import re
+import shutil
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
@@ -87,7 +88,9 @@ def test_new_names_and_old_run_path_remain_usable(tmp_path: Path) -> None:
     fresh.register_artifact(artifact, "01", "demo")
 
     legacy = fresh.path.with_name("1789809357641683000_20260919T091557.641560Z_aa1cb6")
-    fresh.path.rename(legacy)
+    # Windows kan een SQLite/WAL-runmap nog vergrendeld houden; een kopie
+    # bewijst het openen van een legacy-pad zonder een live run te verplaatsen.
+    shutil.copytree(fresh.path, legacy)
     metadata = json.loads((legacy / "run.json").read_text(encoding="utf-8"))
     metadata["run_id"] = legacy.name
     (legacy / "run.json").write_text(json.dumps(metadata), encoding="utf-8")
