@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
 from company_harvest.core import HarvestError, Run, read_tsv, sha256, validate_kvk
@@ -16,7 +17,7 @@ def verify(run: Run) -> dict[str, Any]:
     checked = 0
     with run.connect() as connection:
         artifacts = connection.execute("SELECT path,kind,sha256,size,status FROM artifacts ORDER BY id").fetchall()
-        latest_statuses = connection.execute("SELECT a.id,a.kind,a.status,a.path FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
+        latest_statuses = connection.execute("SELECT a.id,a.step,a.kind,a.status,a.path FROM artifacts a JOIN (SELECT kind,MAX(id) id FROM artifacts GROUP BY kind) latest ON a.id=latest.id").fetchall()
     latest_by_kind = {row["kind"]: row for row in latest_statuses}
     def current_output(kind: str) -> Any:
         row = latest_by_kind.get(kind)
@@ -130,10 +131,18 @@ def verify(run: Run) -> dict[str, Any]:
         elif output_manifest:
             try:
                 payload = json.loads(output_manifest.read_text(encoding="utf-8"))
-                manifest_row = latest_by_kind.get("outputset_manifest")
-                if payload.get("status") is not None and (
-                    manifest_row is None or payload["status"] != manifest_row["status"]
-                ):
+                if not isinstance(payload, dict):
+                    raise ValueError("outputsetmanifest moet een object zijn")
+                manifest_row = latest_by_kind["outputset_manifest"]
+                expected_status = (
+                    "PARTIAL" if metadata.get("status") == "PARTIAL_EXPORTED"
+                    else "COMPLETE" if metadata.get("status") == "EXPORT_COMPLETE"
+                    else None
+                )
+                if (manifest_row["step"] != "08"
+                        or expected_status is None
+                        or manifest_row["status"] != expected_status
+                        or payload.get("status") != manifest_row["status"]):
                     errors.append("OUTPUTSET:status_mismatch")
                 if scope is not None:
                     expected_scope = {key: scope[key] for key in (
@@ -154,10 +163,18 @@ def verify(run: Run) -> dict[str, Any]:
                         errors.append("OUTPUTSET:manifest_invalid_entry")
                         continue
                     kind = entry.get("kind", "")
-                    output = output_manifest.parent / entry.get("path", "")
+                    name = entry.get("path")
+                    if not isinstance(name, str) or name in {"", ".", ".."} or Path(name).name != name:
+                        errors.append("OUTPUTSET:manifest_invalid_entry")
+                        continue
+                    output = output_manifest.parent / name
                     registered = latest_by_kind.get(kind)
-                    if not registered or str(output.relative_to(run.path)) != registered["path"] or not output.is_file() or output.stat().st_size != entry.get("size") or sha256(output) != entry.get("sha256"):
-                        errors.append(f"OUTPUTSET:{entry.get('path', 'unknown')}")
+                    if (not registered or registered["step"] != "08"
+                            or registered["status"] != manifest_row["status"]
+                            or str(output.relative_to(run.path)) != registered["path"]
+                            or not output.is_file() or output.stat().st_size != entry.get("size")
+                            or sha256(output) != entry.get("sha256")):
+                        errors.append(f"OUTPUTSET:{name}")
             except (OSError, ValueError, TypeError, json.JSONDecodeError):
                 errors.append("OUTPUTSET:manifest_invalid")
     result = {"run": run.path.name, "checked_artifacts": checked, "errors": errors, "valid": not errors}

@@ -1,10 +1,10 @@
-# Eén commando van bronnen tot eindlijst (broncode 1.1.0)
+# Eén commando van bronnen tot eindlijst (broncode 1.1.1)
 
 `run e2e` verbindt de bestaande stappen 1–8: hostcheck, volledige downloads
 van IND/GLEIF/ANBI/DUO, samenvoegen/dedupliceren, pre-KVK-filter, publieke
 KVK-frontendcheck, canonisering, eenmanszaak-/statusfilters, export, rapport en
 audit. Er wordt geen Wikidata gelezen en geen officiële API-key gebruikt.
-Installeer eerst de **1.1.0-wheel zodra die is uitgebracht** in een venv op
+Installeer eerst de **1.1.1-wheel zodra die is uitgebracht** in een venv op
 Python 3.14.x; andere Python-minorversies worden geweigerd. De huidige
 v1.0.0-wheel bevat dit commando niet. Een checkout,
 GitHub-login of Codex is tijdens gebruik niet nodig.
@@ -43,7 +43,8 @@ Na succes staan de bestanden in
 (naam en KVK), `companies_delivery_full.csv`/`.xlsx` (extra velden),
 `companies_reserve.csv` en `outputset_manifest.json`. Het manifest bevat
 bestandschecksums, `status` en de KVK-cohortaantallen. `audit verify` is
-onderdeel van het commando. `pre_kvk_kvk_progress.json` en het SQLite-journal
+onderdeel van het commando en controleert ook PARTIAL-manifests met alle vijf
+bijbehorende bestanden. `pre_kvk_kvk_progress.json` en het SQLite-journal
 tonen onderweg verzoeken, matches en resterende **cohort**kandidaten.
 
 Een HTTP-blokkade of rate limit stopt vóór export; een nieuwe run in dezelfde

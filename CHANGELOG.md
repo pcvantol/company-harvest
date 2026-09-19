@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Broncodeversie 1.1.1: de audit van het nieuwste PARTIAL-outputmanifest eist
+  een expliciete, met de run overeenkomende status en vijf bestanden met
+  dezelfde registratiestatus. Gerichte regressies bewijzen een geldige
+  partiële levering en weigeren ontbrekende status, gewijzigd bestand of een
+  manifest dat niet met de afgeronde runstatus overeenkomt.
+  v1.0.0 blijft ongewijzigd; 1.1.1 is nog niet gepubliceerd.
 - De nog niet gepubliceerde 1.1.0-tool accepteert uitsluitend Python 3.14.x:
   packagingmetadata, runtime, hostpreflight, installers en ontwikkelinstellingen
   wijzen andere minorversies af. De gepubliceerde v1.0.0 blijft ongewijzigd.

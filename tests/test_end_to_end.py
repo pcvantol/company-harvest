@@ -24,7 +24,7 @@ from company_harvest.kvk_scope import bind_kvk_scope, scope_details
 from company_harvest.pre_kvk import build_pre_kvk_list
 from company_harvest.pre_kvk_filter import build_pre_kvk_filter
 from company_harvest.sources import RAW_HEADERS
-from company_harvest.workflow import outcome_metrics
+from company_harvest.workflow import export, outcome_metrics, report
 
 
 def _prepare(run: Run) -> tuple[Path, Path, Path, Path, Path]:
@@ -116,6 +116,71 @@ def test_e2e_unresolved_requires_explicit_partial_and_does_not_invent_match(
     assert calls == 2 and result["delivery_rows"] == 1
     assert result["status"] == "PARTIAL_EXPORTED" and result["audit_valid"]
     assert len(read_tsv(Path(result["delivery_csv"]))) == 1
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    ["missing_manifest_status", "changed_file", "wrong_file_status", "run_not_exported"],
+)
+def test_audit_checks_newest_partial_manifest_and_its_registered_files(
+    run: Run, monkeypatch: pytest.MonkeyPatch, tamper: str
+) -> None:
+    monkeypatch.setattr(end_to_end, "prepare_pre_kvk", _prepare)
+    monkeypatch.setattr(
+        pre_kvk_kvk.PublicHttpProvider,
+        "search",
+        lambda provider, query: _response(
+            provider.run, query, "34567890" if query == "Delta B.V." else "23456789", 1
+        ),
+    )
+    result = end_to_end.run_end_to_end(run, 1)
+    first_manifest = Path(result["outputset_manifest"])
+    assert result["status"] == "PARTIAL_EXPORTED" and result["audit_valid"]
+    assert run.latest_artifact("08", "outputset_manifest") is None
+
+    newest_manifest = export(run, 1, allow_partial=True)[-1]
+    assert newest_manifest != first_manifest
+    report(run)
+    assert verify(run)["valid"]
+    with run.connect() as connection:
+        latest = connection.execute(
+            "SELECT path,status FROM artifacts WHERE step='08' AND kind='outputset_manifest' "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    assert latest["path"] == str(newest_manifest.relative_to(run.path))
+    assert latest["status"] == "PARTIAL"
+
+    if tamper == "missing_manifest_status":
+        payload = json.loads(newest_manifest.read_text(encoding="utf-8"))
+        del payload["status"]
+        newest_manifest.write_text(json.dumps(payload), encoding="utf-8")
+        changed = newest_manifest
+        expected = "OUTPUTSET:status_mismatch"
+    elif tamper == "changed_file":
+        changed = newest_manifest.parent / "companies_delivery.csv"
+        changed.write_text("Bedrijfsnaam\tKVK-nummer\nAnders\t23456789\n", encoding="utf-8")
+        expected = "OUTPUTSET:companies_delivery.csv"
+    elif tamper == "wrong_file_status":
+        changed = None
+        expected = "OUTPUTSET:companies_delivery.csv"
+    else:
+        changed = None
+        expected = "OUTPUTSET:status_mismatch"
+        run.update_status("IN_PROGRESS", "08")
+    with run.connect() as connection:
+        if changed is not None:
+            connection.execute(
+                "UPDATE artifacts SET sha256=?,size=? WHERE path=?",
+                (sha256(changed), changed.stat().st_size, str(changed.relative_to(run.path))),
+            )
+        elif tamper == "wrong_file_status":
+            connection.execute(
+                "UPDATE artifacts SET status='COMPLETE' WHERE path=?",
+                (str((newest_manifest.parent / "companies_delivery.csv").relative_to(run.path)),),
+            )
+    with pytest.raises(HarvestError) as error:
+        verify(run)
+    assert expected in json.loads(str(error.value))["errors"]
 
 
 def test_e2e_stops_at_block_and_never_exports(

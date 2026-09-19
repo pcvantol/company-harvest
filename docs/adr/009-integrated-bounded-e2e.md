@@ -27,6 +27,12 @@ het outputmanifest en outcome-rapport vermelden de cohort. De audit toetst
 inputprefix, journalsubset, closure, outputlimiet, status en hashes. Zij leest
 ook PARTIAL-manifests in plaats van alleen COMPLETE-manifests.
 
+Aanvulling CH-2026-09-19-022: de nieuwste geregistreerde outputset bepaalt
+de audit. Ook een PARTIAL-manifest moet expliciet zijn status vermelden,
+overeenkomen met de runstatus en vijf bestanden uit dezelfde outputset met
+dezelfde registratiestatus, grootte en hash aanwijzen. Alleen de melding
+`MISSING_REQUIRED` onderdrukken is geen integriteitsbewijs.
+
 Een eerder lokaal gejournalde toegangs-/rateblokkade verhindert een nieuwe
 geïntegreerde run in dezelfde datamap. De blokkadecheck wordt onder de
 providerlock vóór elke GET herhaald, zodat een blokkade die tijdens de

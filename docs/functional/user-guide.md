@@ -1,6 +1,6 @@
 # Gebruikershandleiding
 
-Voor de nieuwe geïntegreerde opdracht in broncodeversie 1.1.0: zie
+Voor de nieuwe geïntegreerde opdracht in broncodeversie 1.1.1: zie
 [één commando van bronnen tot eindlijst](e2e-command.md). Deze versie is nog
 niet als release gepubliceerd en vereist Python 3.14.x; de onderstaande
 v1.0.0-commando's blijven de
