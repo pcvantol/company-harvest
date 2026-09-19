@@ -5,8 +5,8 @@ van IND/GLEIF/ANBI/DUO/TenderNed, samenvoegen/dedupliceren, pre-KVK-filter, publ
 KVK-frontendcheck, canonisering, eenmanszaak-/statusfilters, export, rapport en
 audit. Er wordt geen Wikidata gelezen en geen officiële API-key gebruikt.
 De **publieke 3.0.0-wheel** bevat dit proces en werkt zonder broncheckout,
-GitHub-login of Codex. De oudere 2.0.0-wheel verwerkt nog vier bronnen en
-maakt geen `companies_delivery_light.xlsx`. Alleen Python 3.14.x wordt
+GitHub-login of Codex. De inmiddels ingetrokken 2.0.0-wheel verwerkte nog
+vier bronnen en maakte geen `companies_delivery_light.xlsx`. Alleen Python 3.14.x wordt
 ondersteund. Controleer vóór installatie de wheelhash tegen de
 `SHA256SUMS.txt` van [release v3.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v3.0.0).
 

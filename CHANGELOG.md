@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-Geen wijzigingen sinds 3.0.0.
+- Distributiebeheer zonder software- of pakketversiewijziging: op
+  eigenaarsverzoek zijn alle GitHub Releases en lokale/remote tags onder
+  3.0 verwijderd. Alleen `v2.0.0` bestond nog; haar vijf publieke assets
+  en tag zijn ingetrokken. `v3.0.0`, broncommits en historische bewijzen
+  blijven intact (CH-2026-09-19-038).
 
 ## 3.0.0 - 2026-09-19
 

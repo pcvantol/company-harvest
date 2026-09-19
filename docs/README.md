@@ -2,7 +2,9 @@
 
 De huidige broncode en publieke wheel zijn **3.0.0**. Zij bevatten
 TenderNed als vijfde bron en een afzonderlijke lichte KVK-/bronexport.
-Versie 2.0.0 blijft beschikbaar als vorige release zonder die functies.
+Versie 2.0.0 was de vorige release zonder die functies, maar de publieke
+release en tag zijn inmiddels ingetrokken; gebruik voor nieuwe installaties
+alleen 3.0.0.
 Handleidingen hieronder beschrijven 3.0.0, tenzij zij expliciet als
 historisch zijn gemarkeerd. Zie ook
 [versies en migraties](technical/versioning-and-migrations.md).

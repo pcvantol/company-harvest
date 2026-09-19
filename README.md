@@ -67,11 +67,10 @@ De [publieke release v3.0.0](https://github.com/pcvantol/company-harvest/release
 bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v3.0.0/company_harvest-3.0.0-py3-none-any.whl)
 en checksums; zie ook het [publicatiebewijs](docs/releases/20260919-v3.0.0-evidence.md).
 Zie de [releasenotities voor 3.0.0](docs/releases/v3.0.0.md) voor de actuele
-compatibiliteit en grenzen. Versie 2.0.0 blijft beschikbaar als vorige release;
-alle oudere GitHub Releases en tags onder 2.0,
-waaronder `v1.0.0`, zijn verwijderd. De [historische releasenotities](docs/releases/v1.0.0.md)
-en het [publicatiebewijs](docs/releases/20260919-v1.0.0-evidence.md) blijven
-alleen als archief; de daarin genoemde 1.0.0-downloadlinks werken niet meer.
+compatibiliteit en grenzen. Alle GitHub Releases en lokale/remote tags onder
+3.0, inclusief `v2.0.0`, zijn op verzoek ingetrokken. De historische
+[releasenotities](docs/releases/README.md) en publicatiebewijzen blijven als
+archief; de oude downloadlinks werken niet meer.
 
 ## Status van externe toegang
 

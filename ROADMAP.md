@@ -733,3 +733,11 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
   `v2.0.0`, broncommits en historische bewijsdocumenten blijven behouden.
   Nieuwe installaties gebruiken alleen de publieke v2.0.0-wheel. R7/R9
   blijven ongewijzigd; zie CH-2026-09-19-029.
+- **2026-09-19 — alle releases/tags onder 3.0 ingetrokken:** dit latere
+  eigenaarsbesluit vervangt het bovenstaande installatieadvies. Alleen
+  `v2.0.0` resteerde onder de grens; haar GitHub Release met vijf assets
+  en de remote/lokale tag zijn verwijderd. Nieuwe installaties gebruiken
+  uitsluitend de publieke v3.0.0-wheel. Broncommits, lokaal bewaarde
+  distributiebytes en historische bewijsdocumenten blijven behouden;
+  R7/R9 veranderen niet. Zie CH-2026-09-19-038 en het
+  [intrekkingsbewijs](docs/releases/20260919-v2.0.0-withdrawal.md).

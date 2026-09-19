@@ -9,6 +9,11 @@ nieuwe virtuele omgeving maken. De oude v1.0.0-release en tag zijn op
 19 september 2026 verwijderd; een reeds lokaal bewaarde 1.0.0-wheel wordt
 hierdoor niet gewist. De tool hernoemt bestaande runs niet automatisch.
 
+De GitHub Release en tags van v2.0.0 zijn op 19 september 2026 eveneens
+op eigenaarsverzoek ingetrokken onder CH-2026-09-19-038. Dit verwijdert
+geen bestaande lokale installatie of broncommit; nieuwe installaties
+gebruiken de publieke v3.0.0-wheel.
+
 De publieke versie 3.0.0 verwijdert de CLI-opties
 `run e2e --export-limit` en `export --limit`. Dit is een MAJOR-wijziging
 ten opzichte van v2.0.0. De export levert voortaan alle

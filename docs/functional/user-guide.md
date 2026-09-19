@@ -1,7 +1,7 @@
 # Gebruikershandleiding
 
 Deze handleiding beschrijft de **publieke 3.0.0-wheel** op Python 3.14.x.
-De oudere 2.0.0-wheel bevat noch TenderNed noch de lichte eind-Excel.
+De inmiddels ingetrokken 2.0.0-wheel bevatte noch TenderNed noch de lichte eind-Excel.
 Gebruik voor de geïntegreerde opdracht
 [de actuele E2E-handleiding](e2e-command.md) en voor de drie Excel-varianten
 [eindbestanden en veldherkomst](output-files.md). Een broncheckout is voor
