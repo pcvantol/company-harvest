@@ -4,6 +4,12 @@
 
 Een lokale build is geen publieke release. Een tag zonder asset evenmin. Releasebewijs staat per versie in `docs/releases/`; echte downloadlinks worden pas na succesvolle publicatie vastgelegd.
 
+De actuele [v2.0.0-toolrelease](../releases/20260919-v2.0.0-evidence.md)
+is uit de exacte broncommit gebouwd, op macOS/Windows-Python-3.14-CI
+gekwalificeerd, eerst als concept byte-identiek gecontroleerd en daarna
+publiek en zonder login opnieuw byte-identiek gedownload en geïnstalleerd.
+Dit bewijst de distributie, niet een volledige live KVK-harvest.
+
 Voor CH-2026-09-19-010 is alleen een lokale wheel-smoke gedaan: de wheel is
 in een tijdelijke Python-3.14-omgeving buiten de checkout geïnstalleerd,
 met reeds aanwezige afhankelijkheden, en de twee nieuwe CLI-commando's plus

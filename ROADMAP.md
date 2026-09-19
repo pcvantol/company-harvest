@@ -678,3 +678,11 @@ Losse reviews en handoffs zijn input, geen automatische roadmapwijziging. Vooral
 - **2026-09-18 — breedte vóór verkleining:** op expliciet besluit van de repository-eigenaar is RD-006 toegevoegd. R4-R6 en R8-R9 zijn aangepast zodat meerdere goede bronfamilies vroeg worden verzameld, ook zonder direct registratienummer. De aanvankelijke koppeling van externe matching aan R7 is later op dezelfde datum vervangen door RD-007.
 - **2026-09-18 — KVK-nummermatching toegestaan:** op expliciet besluit van de repository-eigenaar is RD-007 toegevoegd. Kandidaten zonder initieel KVK-nummer mogen regulier worden gematcht en verrijkt; R8 vereist daarom niet langer R7. Alleen providerbulk, routemigratie en volledige rechtsvorm-/statusverificatie blijven onder RD-001/R7 geparkeerd.
 - **2026-09-19 — toolrelease `v1.0.0` gepubliceerd:** na groene exacte-commit-CI op macOS/Windows, onafhankelijke bron-/assetreview, byte-identieke anonieme herdownload en verse installatie. R10-toolrelease is `DONE`; R7/R9 blijven open. Zie het [releasebewijs](docs/releases/20260919-v1.0.0-evidence.md).
+- **2026-09-19 — eigenaarsverzoek nieuwste wheel, `v2.0.0` gepubliceerd:**
+  de geïntegreerde E2E-tool en auditfix zijn na onafhankelijke SemVer-review
+  als MAJOR uitgebracht, omdat Python 3.11–3.13 niet langer worden
+  ondersteund. Exacte-commit-CI op macOS/Windows, assetscan, anonieme
+  byte-identieke herdownload en een verse installatie slaagden. Dit is een
+  toolrelease, geen vrijgave of bewijs van volledige live KVK-bulkverwerking;
+  R7/R9-productgates blijven open. Zie het
+  [releasebewijs](docs/releases/20260919-v2.0.0-evidence.md).

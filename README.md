@@ -44,13 +44,17 @@ export COMPANY_HARVEST_DATA_DIR="$PWD"
 RUN_DIR="$(.venv/bin/company-harvest run init --target 10000 --print-path)"
 ```
 
-Zie de [korte functionele snelstart](docs/functional/snelstart-v1.0.0.md),
+Zie de [geïntegreerde 2.0.0-gebruikshandleiding](docs/functional/e2e-command.md),
+[de historische 1.0.0-snelstart](docs/functional/snelstart-v1.0.0.md),
 [de uitgebreide gebruikershandleiding](docs/functional/user-guide.md),
 [technische documentatie](docs/README.md) en
 [releaseverificatie](docs/technical/release-and-download-verification.md).
 
 De canonieke prioriteiten, parkeerbesluiten en uitvoeringsincrements staan in de [roadmap](ROADMAP.md).
 
+De [publieke release v2.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v2.0.0)
+bevat de [direct downloadbare wheel](https://github.com/pcvantol/company-harvest/releases/download/v2.0.0/company_harvest-2.0.0-py3-none-any.whl),
+checksums en het [publicatiebewijs](docs/releases/20260919-v2.0.0-evidence.md).
 Zie de [releasenotities voor 2.0.0](docs/releases/v2.0.0.md) voor de actuele
 compatibiliteit en grenzen. De oudere [publieke release v1.0.0](https://github.com/pcvantol/company-harvest/releases/tag/v1.0.0)
 bevat haar eigen gekwalificeerde wheel en checksums; zie ook de [historische releasenotities](docs/releases/v1.0.0.md)
